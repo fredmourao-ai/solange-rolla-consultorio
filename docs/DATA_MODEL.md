@@ -42,6 +42,7 @@ Relaciona responsável legal, responsável financeiro e tomador fiscal quando di
 - antecedência em horas computáveis
 - weekdays excluídos
 - regras de cobrança configuráveis
+- `legal_document_version_id`
 - vigência
 
 ### `appointments`
@@ -61,7 +62,7 @@ Relaciona responsável legal, responsável financeiro e tomador fiscal quando di
 ### `appointment_status_history`
 Histórico append-only de transições.
 
-## forms/signatures
+## forms/signatures/legal terms
 
 ### `form_templates`
 - id/nome/tipo
@@ -91,15 +92,46 @@ Para formulário `sensitive`:
 
 O envelope usa a infraestrutura de criptografia L3 e AAD vinculado ao ID da versão.
 
+### `legal_documents`
+Documentos lógicos: `service_terms`, `cancellation_policy`, `truthfulness_declaration`, `privacy_notice`.
+
+### `legal_document_versions`
+- document id/key
+- version
+- content
+- content hash SHA-256
+- effective_from
+- supersedes_id opcional
+- flag/status de revisão/produção
+
+### `legal_acceptances`
+- person_id
+- legal_document_version_id
+- accepted_at
+- signature_evidence_id opcional
+- content_hash snapshot
+- channel/capability metadata sanitizada
+
 ### `signature_evidence`
 - submission/version
 - `canonical_hash_sha256`
-- declaration_version
+- declaration/legal versions incluídas no pacote assinado
 - typed_name
 - signature_asset_path opcional em storage privado
 - signed_at
 - metadata técnica sanitizada
 - document status/path privado
+
+### `document_jobs`
+Outbox idempotente para geração assíncrona de comprovantes assinados.
+- signature_evidence_id
+- kind
+- idempotency_key unique
+- status
+- dispatched_at
+- attempts
+- last_error_code
+- completed_at
 
 ### `capabilities`
 - `token_hash`
@@ -207,11 +239,15 @@ Append-only por tentativa, sem conteúdo sensível desnecessário.
 ### `fiscal_profiles`
 Dados do prestador versionados/configuráveis por ambiente e vigência.
 
+### `fiscal_treatments`
+Tratamento fiscal versionado por origem (`appointment_completed`, `appointment_late_cancellation`, `appointment_no_show`, `event_registration`, `other_service`), com regra de elegibilidade/emissão e habilitação live.
+
 ### `fiscal_documents`
 - source_type/source_id
 - payer/person
 - amount_cents
 - provider/profile version
+- fiscal treatment/version
 - idempotency_key
 - external_id/protocol
 - status
