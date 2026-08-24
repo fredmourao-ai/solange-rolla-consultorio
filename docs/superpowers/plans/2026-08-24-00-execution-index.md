@@ -24,6 +24,7 @@
 - Migrations aplicadas são imutáveis; correções usam nova migration.
 - Fronteiras de módulos são verificadas automaticamente no CI.
 - PRs concorrentes nunca compartilham livremente o mesmo banco remoto mutável.
+- Termos, políticas e tratamentos fiscais que influenciam histórico são versionados e nunca reescritos retroativamente.
 
 ## Ordem de execução
 
@@ -34,12 +35,13 @@
 5. `2026-08-24-02-identity-people.md` — autenticação, MFA/RLS, perfis e cadastro único de pessoas.
 6. `2026-08-24-02b-sensitive-data-security.md` — criptografia L3, auditoria append-only e storage privado.
 7. `2026-08-24-03-appointments-forms-signatures.md` — agenda, política 48h, capabilities, formulários e assinatura.
-8. `2026-08-24-03b-signed-documents.md` — PDF assinado assíncrono, privado e idempotente.
-9. `2026-08-24-04-messaging-automations.md` — WhatsApp/e-mail por adapters, outbox/inbox, confirmações e aniversários.
-10. `2026-08-24-05-finance-events.md` — contas a receber/pagar, pagamentos, fluxo de caixa, eventos e participantes.
-11. `2026-08-24-06-fiscal.md` — NFS-e abstraction, homologação, worker e documentos fiscais.
-12. `2026-08-24-06b-clinical.md` — registro psicológico criptografado, anexos e isolamento AAL2.
-13. `2026-08-24-07-reports-hardening-release.md` — dashboards, relatórios, E2E, backup/restore, segurança e release candidate.
+8. `2026-08-24-03a-contract-terms.md` — termos/declarações versionados, aceite e vínculo com política de cobrança.
+9. `2026-08-24-03b-signed-documents.md` — PDF assinado assíncrono, privado e idempotente.
+10. `2026-08-24-04-messaging-automations.md` — WhatsApp/e-mail por adapters, outbox/inbox, confirmações e aniversários.
+11. `2026-08-24-05-finance-events.md` — contas a receber/pagar, pagamentos, fluxo de caixa, eventos e participantes.
+12. `2026-08-24-06-fiscal.md` — NFS-e abstraction, tratamento fiscal por origem, homologação, worker e documentos fiscais.
+13. `2026-08-24-06b-clinical.md` — registro psicológico criptografado, anexos e isolamento AAL2.
+14. `2026-08-24-07-reports-hardening-release.md` — dashboards, relatórios, E2E, backup/restore, segurança e release candidate.
 
 ## Paralelismo permitido
 
@@ -49,10 +51,11 @@
 - Identity/People vem antes de qualquer módulo que referencie pessoa ou staff.
 - Sensitive Data Security vem antes de Forms e Clinical.
 - Depois de Identity/People + Sensitive Security, Appointments/Forms e a base de Finance podem avançar em paralelo se não alterarem os mesmos contratos/schema.
-- Signed Documents depende de Signatures e da queue `documents` criada em Foundation.
-- Messaging depende dos contratos públicos de People/Appointments, mas não da UI final da agenda.
+- Contract Terms depende de Forms/Signatures e deve terminar antes de Signed Documents e da homologação da confirmação de consulta.
+- Signed Documents depende de Signatures, Contract Terms e da queue `documents` criada em Foundation.
+- Messaging depende dos contratos públicos de People/Appointments; sua homologação de confirmação depende também do snapshot de Contract Terms.
 - Events depende de People e Receivables, não de Clinical.
-- Fiscal depende de People + Receivables e usa provider mock até homologação externa.
+- Fiscal depende de People + Receivables e usa provider mock até homologação externa; falta/cancelamento ficam em revisão fiscal até tratamento explícito ser aprovado.
 - Clinical depende de Identity + People + Appointments + Sensitive Data Security e exige revisão de segurança separada.
 - Reports só começa depois de read models estáveis dos módulos que agrega.
 
