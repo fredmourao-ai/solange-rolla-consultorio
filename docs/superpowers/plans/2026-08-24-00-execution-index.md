@@ -23,26 +23,29 @@
 - Integrações externas são assíncronas, idempotentes e auditáveis.
 - Migrations aplicadas são imutáveis; correções usam nova migration.
 - Fronteiras de módulos são verificadas automaticamente no CI.
+- PRs concorrentes nunca compartilham livremente o mesmo banco remoto mutável.
 
 ## Ordem de execução
 
 1. `2026-08-24-01-foundation-platform.md` — scaffold, Supabase local, filas duráveis e CI base.
 2. `2026-08-24-01b-ui-foundation.md` — tokens de marca, componentes compartilhados, app shell e formatação pt-BR.
 3. `2026-08-24-01c-architecture-enforcement.md` — dependency rules, server/client guards, module contracts e schema ownership.
-4. `2026-08-24-02-identity-people.md` — autenticação, MFA/RLS, perfis e cadastro único de pessoas.
-5. `2026-08-24-02b-sensitive-data-security.md` — criptografia L3, auditoria append-only e storage privado.
-6. `2026-08-24-03-appointments-forms-signatures.md` — agenda, política 48h, capabilities, formulários e assinatura.
-7. `2026-08-24-03b-signed-documents.md` — PDF assinado assíncrono, privado e idempotente.
-8. `2026-08-24-04-messaging-automations.md` — WhatsApp/e-mail por adapters, outbox/inbox, confirmações e aniversários.
-9. `2026-08-24-05-finance-events.md` — contas a receber/pagar, pagamentos, fluxo de caixa, eventos e participantes.
-10. `2026-08-24-06-fiscal.md` — NFS-e abstraction, homologação, worker e documentos fiscais.
-11. `2026-08-24-06b-clinical.md` — registro psicológico criptografado, anexos e isolamento AAL2.
-12. `2026-08-24-07-reports-hardening-release.md` — dashboards, relatórios, E2E, backup/restore, segurança e release candidate.
+4. `2026-08-24-01d-environments-preview.md` — isolamento por PR, preview branches quando disponíveis e fallback staging serializado.
+5. `2026-08-24-02-identity-people.md` — autenticação, MFA/RLS, perfis e cadastro único de pessoas.
+6. `2026-08-24-02b-sensitive-data-security.md` — criptografia L3, auditoria append-only e storage privado.
+7. `2026-08-24-03-appointments-forms-signatures.md` — agenda, política 48h, capabilities, formulários e assinatura.
+8. `2026-08-24-03b-signed-documents.md` — PDF assinado assíncrono, privado e idempotente.
+9. `2026-08-24-04-messaging-automations.md` — WhatsApp/e-mail por adapters, outbox/inbox, confirmações e aniversários.
+10. `2026-08-24-05-finance-events.md` — contas a receber/pagar, pagamentos, fluxo de caixa, eventos e participantes.
+11. `2026-08-24-06-fiscal.md` — NFS-e abstraction, homologação, worker e documentos fiscais.
+12. `2026-08-24-06b-clinical.md` — registro psicológico criptografado, anexos e isolamento AAL2.
+13. `2026-08-24-07-reports-hardening-release.md` — dashboards, relatórios, E2E, backup/restore, segurança e release candidate.
 
 ## Paralelismo permitido
 
 - Foundation é serial e vem primeiro.
-- UI Foundation e Architecture Enforcement podem avançar em paralelo após o scaffold mínimo, mas ambos devem terminar antes de muitos agentes criarem módulos.
+- UI Foundation, Architecture Enforcement e Environment Preview podem avançar em paralelo após o scaffold mínimo, mas devem terminar antes da expansão ampla para múltiplos agentes.
+- Se Supabase Branching estiver disponível, cada PR usa Preview Branch isolada + seed sintético; se não estiver, cada agente usa Supabase local/CI e staging remoto é serializado.
 - Identity/People vem antes de qualquer módulo que referencie pessoa ou staff.
 - Sensitive Data Security vem antes de Forms e Clinical.
 - Depois de Identity/People + Sensitive Security, Appointments/Forms e a base de Finance podem avançar em paralelo se não alterarem os mesmos contratos/schema.
