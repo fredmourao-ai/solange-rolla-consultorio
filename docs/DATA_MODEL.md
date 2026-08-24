@@ -1,12 +1,12 @@
-# Data Model — v1
+# Data Model — v2
 
-Este é o modelo conceitual inicial. SQL/migrations concretas serão geradas task a task, preservando ownership por módulo.
+Este é o modelo conceitual alinhado à arquitetura v2. SQL/migrations concretas serão geradas task a task, preservando ownership por módulo.
 
 ## identity
 
 ### `profiles`
 - `user_id uuid PK/FK auth.users`
-- `role` enum: `psychologist_owner | secretary | accounting`
+- `role`: `psychologist_owner | secretary | accounting`
 - `display_name`
 - `active`
 - timestamps
@@ -17,9 +17,9 @@ Este é o modelo conceitual inicial. SQL/migrations concretas serão geradas tas
 - `id uuid PK`
 - `civil_name`
 - `preferred_name`
-- `cpf` normalizado/único quando informado
+- `cpf_normalized` único quando informado
 - `birth_date`
-- `email`
+- `email_normalized`
 - `phone_e164`
 - `preferred_channel`
 - `birthday_messages_enabled`
@@ -27,7 +27,7 @@ Este é o modelo conceitual inicial. SQL/migrations concretas serão geradas tas
 - timestamps
 
 ### `person_relationships`
-Relaciona responsável legal/financeiro/tomador quando diferente da pessoa atendida.
+Relaciona responsável legal, responsável financeiro e tomador fiscal quando diferente da pessoa atendida.
 
 ## appointments
 
@@ -65,29 +65,44 @@ Histórico append-only de transições.
 
 ### `form_templates`
 - id/nome/tipo
-- versão
-- schema JSONB
+- classificação `administrative | sensitive`
 - ativo/vigência
+
+### `form_template_versions`
+- template/version
+- schema JSONB de perguntas/validações
+- created_at
 
 ### `form_submissions`
 - pessoa/agendamento/event registration
 - template + versão
-- answers JSONB
-- estado draft/submitted/signed
+- estado `draft | submitted | signed | superseded`
 - timestamps
 
+### `form_submission_versions`
+Para formulário administrativo: payload JSONB mínimo quando apropriado.
+
+Para formulário `sensitive`:
+- `answers_ciphertext`
+- `answers_iv`
+- `answers_auth_tag`
+- `key_version`
+- nenhum plaintext persistido
+
+O envelope usa a infraestrutura de criptografia L3 e AAD vinculado ao ID da versão.
+
 ### `signature_evidence`
-- submission_id
-- canonical_hash_sha256
+- submission/version
+- `canonical_hash_sha256`
 - declaration_version
 - typed_name
-- signature_asset_path opcional
+- signature_asset_path opcional em storage privado
 - signed_at
 - metadata técnica sanitizada
-- documento PDF path
+- document status/path privado
 
 ### `capabilities`
-- token_hash
+- `token_hash`
 - purpose
 - subject ids
 - expires_at
@@ -155,7 +170,7 @@ Regra versionada para geração idempotente de despesas futuras.
 - attendance_status
 
 ### `event_expenses`
-Pode referenciar payable para cálculo de resultado.
+Referência a despesas/payables para cálculo de resultado.
 
 ## messaging
 
@@ -190,39 +205,42 @@ Append-only por tentativa, sem conteúdo sensível desnecessário.
 ## fiscal
 
 ### `fiscal_profiles`
-Dados do prestador versionados/configuráveis por ambiente.
+Dados do prestador versionados/configuráveis por ambiente e vigência.
 
 ### `fiscal_documents`
 - source_type/source_id
 - payer/person
 - amount_cents
-- provider
+- provider/profile version
 - idempotency_key
 - external_id/protocol
 - status
 - issued_at/cancelled_at
-- xml_path/pdf_path
+- xml_path/pdf_path privados
 
 ### `fiscal_attempts`
 Histórico de integração sanitizado.
 
 ## clinical
 
-### `clinical_records`
+Tabelas clínicas vivem no schema `clinical`, fora da exposição direta padrão do API schema.
+
+### `clinical.records`
+- id
 - appointment_id
 - person_id
 - author_user_id
 - `ciphertext`
-- `nonce_or_iv`
-- `auth_tag` quando exigido pelo algoritmo
+- `iv`
+- `auth_tag`
 - `key_version`
 - created_at
 - supersedes_id opcional
 
-O texto clínico é criptografado no servidor antes da persistência conforme ADR-0006. Chaves nunca ficam no banco nem chegam ao browser.
+O texto clínico é criptografado no servidor antes da persistência. Chaves nunca ficam no banco nem chegam ao browser.
 
-### `clinical_attachments`
-Referência a objeto em bucket `clinical-private`, protegido por RLS. Criptografia adicional de arquivo pode ser adicionada sem alterar o contrato do módulo.
+### `clinical.attachments`
+Referência a objeto em bucket `clinical-private`, protegido por autorização reforçada e URLs assinadas curtas.
 
 Não permitir acesso de secretaria/contabilidade.
 
@@ -237,11 +255,11 @@ Não permitir acesso de secretaria/contabilidade.
 - metadata sanitizada
 - occurred_at
 
-Preferência append-only; nenhuma informação clínica bruta.
+Append-only; nenhuma informação clínica bruta.
 
 ## queue/platform
 
-Supabase Queues/PGMQ mantém mensagens duráveis. Tabelas de domínio não devem duplicar a fila; tabelas de attempts/delivery guardam histórico de negócio necessário.
+Supabase Queues/PGMQ mantém filas duráveis: `messaging`, `automations`, `documents`, `fiscal`. Tabelas de attempts/outbox registram estado de negócio necessário; PGMQ é transporte e não fonte de verdade do domínio.
 
 ## Convenções
 
@@ -253,3 +271,4 @@ Supabase Queues/PGMQ mantém mensagens duráveis. Tabelas de domínio não devem
 - unique constraints para idempotência e deduplicação.
 - `CHECK` constraints para invariantes simples.
 - RLS default-deny para tabelas expostas.
+- conteúdo L3 cifrado antes de persistir.
