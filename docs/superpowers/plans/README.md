@@ -13,6 +13,7 @@ O índice define ordem, paralelismo, gates e dependências entre os subplanos.
 - `2026-08-24-01-foundation-platform.md`
 - `2026-08-24-01b-ui-foundation.md`
 - `2026-08-24-01c-architecture-enforcement.md`
+- `2026-08-24-01d-environments-preview.md`
 - `2026-08-24-02-identity-people.md`
 - `2026-08-24-02b-sensitive-data-security.md`
 - `2026-08-24-03-appointments-forms-signatures.md`
