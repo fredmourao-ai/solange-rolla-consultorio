@@ -4,7 +4,7 @@
 
 **Goal:** Entregar comunicação administrativa confiável por WhatsApp/e-mail, confirmações 24h antes, cancelamento/reagendamento por link e automações de aniversário sem acoplamento a provedores.
 
-**Architecture:** `messaging` possui outbox de negócio, adapters de provider e inbox deduplicada para webhooks. `automations` decide quando criar mensagens, mas não envia diretamente. Supabase Queues/Cron executa retries; cada envio possui idempotency key estável.
+**Architecture:** `messaging` possui outbox de negócio, adapters de provider e inbox deduplicada para webhooks. `automations` decide quando criar mensagens, mas não envia diretamente. As filas já são fornecidas por `src/platform/queue`; cada envio possui idempotency key estável.
 
 **Tech Stack:** PostgreSQL, Supabase Queues/pgmq, Supabase Cron, Edge Functions/worker, Meta WhatsApp Business Cloud API adapter, e-mail transactional adapter, TypeScript, Vitest, pgTAP.
 
@@ -21,23 +21,22 @@
 
 ---
 
-### Task 1: Contrato de mensageria, outbox e filas
+### Task 1: Contrato de mensageria e outbox
 
 **Files:**
 - Create: `supabase/migrations/20260824007000_messaging.sql`
 - Create: `supabase/tests/070_messaging.sql`
 - Create: `src/modules/messaging/domain/message.ts`
 - Create: `src/modules/messaging/application/enqueue-message.ts`
+- Create: `src/modules/messaging/application/dispatch-outbox.ts`
 - Create: `src/modules/messaging/public.ts`
 - Create: `src/modules/messaging/README.md`
-- Create: `src/platform/queue/queue.ts`
-- Create: `src/platform/queue/supabase-queue.ts`
 - Test: `src/modules/messaging/application/enqueue-message.test.ts`
 
 **Interfaces:**
+- Consumes `QueuePort` da plataforma e queue `messaging` já criada no plano Foundation.
 - Produces `MessagingProvider.send(message): Promise<ProviderDeliveryResult>`.
 - Produces `enqueueMessage(input)` com `idempotencyKey` obrigatória.
-- Produces queues `messaging`, `automations`, `documents`, `fiscal`.
 
 - [ ] **Step 1: Testar idempotência da outbox**
 
@@ -53,23 +52,19 @@ it('returns the existing logical message for the same idempotency key', async ()
 
 Criar `message_templates`, `outbound_messages`, `message_attempts`, `inbox_events`. `outbound_messages.idempotency_key` é unique; payload armazena apenas dados administrativos mínimos já renderizáveis/referenciáveis.
 
-- [ ] **Step 3: Criar filas PGMQ**
+- [ ] **Step 3: Implementar dispatcher outbox -> queue**
 
-Migration idempotente cria `messaging`, `automations`, `documents`, `fiscal` via extensão/funcões suportadas pela plataforma. Fila não é exposta a browser.
+Selecionar mensagens `queued` ainda não despachadas com lock/claim seguro; enviar job para `QueuePort` com a mesma `idempotencyKey`; marcar `dispatched_at`. Reexecução não duplica mensagem lógica.
 
-- [ ] **Step 4: Implementar adapter de queue**
+- [ ] **Step 4: DB tests**
 
-`QueuePort<T>` oferece `send`, `read`, `archive`; módulos recebem interface e não importam PGMQ diretamente.
+Testar unique idempotency key, claim concorrente e que anônimo/usuários comuns não leem `message_attempts`/inbox técnico.
 
-- [ ] **Step 5: DB tests**
-
-Testar unique idempotency key e que anônimo/usuários comuns não leem `message_attempts`/inbox técnico.
-
-- [ ] **Step 6: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
-git add supabase src/modules/messaging src/platform/queue
- git commit -m "feat: add durable messaging outbox"
+git add supabase src/modules/messaging
+git commit -m "feat: add durable messaging outbox"
 ```
 
 ---
@@ -117,7 +112,7 @@ Snapshot de todos templates confirma ausência de palavras/variáveis clínicas 
 
 ```bash
 git add src/modules/messaging
- git commit -m "feat: add neutral messaging providers and templates"
+git commit -m "feat: add neutral messaging providers and templates"
 ```
 
 ---
@@ -160,7 +155,7 @@ Cobrir duplicate webhook, out-of-order delivered/read, unknown message id e payl
 
 ```bash
 git add supabase/functions src/modules/messaging src/app/api/webhooks tests/integration
- git commit -m "feat: add idempotent messaging worker"
+git commit -m "feat: add idempotent messaging worker"
 ```
 
 ---
@@ -208,7 +203,7 @@ Cobrir Confirmar, Reagendar e Cancelar dentro/fora do prazo, incluindo históric
 
 ```bash
 git add src/modules/automations src/modules/appointments src/app/'(capability)' supabase tests/e2e
- git commit -m "feat: automate appointment confirmations"
+git commit -m "feat: automate appointment confirmations"
 ```
 
 ---
@@ -257,5 +252,5 @@ Expected: exit 0.
 
 ```bash
 git add src/modules/automations supabase/functions/automation-worker
- git commit -m "feat: add safe scheduled automations"
+git commit -m "feat: add safe scheduled automations"
 ```
