@@ -17,6 +17,7 @@ O índice define ordem, paralelismo, gates e dependências entre os subplanos.
 - `2026-08-24-02-identity-people.md`
 - `2026-08-24-02b-sensitive-data-security.md`
 - `2026-08-24-03-appointments-forms-signatures.md`
+- `2026-08-24-03a-contract-terms.md`
 - `2026-08-24-03b-signed-documents.md`
 - `2026-08-24-04-messaging-automations.md`
 - `2026-08-24-05-finance-events.md`
