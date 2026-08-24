@@ -16,13 +16,15 @@
 - Plaintext L3 não é gravado em arquivo temporário, log ou queue payload.
 - Queue payload contém IDs/referências, nunca respostas do formulário.
 - PDF final fica em `signed-documents-private`.
+- Esta fase cria migration nova; não modifica a migration de signatures já entregue.
 
 ---
 
 ### Task 1: Outbox de documento e dispatcher
 
 **Files:**
-- Modify: `supabase/migrations/20260824006000_signatures.sql` antes de aplicada; se já aplicada, Create: `supabase/migrations/20260824006100_document_jobs.sql`
+- Create: `supabase/migrations/20260824006100_document_jobs.sql`
+- Create: `supabase/tests/061_document_jobs.sql`
 - Create: `src/modules/signatures/application/dispatch-document-jobs.ts`
 - Test: `src/modules/signatures/application/dispatch-document-jobs.test.ts`
 
@@ -30,19 +32,23 @@
 - Produces `document_jobs(id, signature_evidence_id, kind, idempotency_key, status, dispatched_at, attempts, last_error_code, created_at, completed_at)`.
 - Consumes `QueuePort` queue `documents`.
 
-- [ ] **Step 1: Testar criação transacional**
+- [ ] **Step 1: Criar migration forward-only**
+
+Criar `document_jobs` e qualquer FK/constraint necessária por `20260824006100_document_jobs.sql`. Não editar `20260824006000_signatures.sql`.
+
+- [ ] **Step 2: Testar criação transacional**
 
 Assinar a mesma submission/version duas vezes com a mesma idempotency key deve resultar em uma evidência e um único `document_jobs`.
 
-- [ ] **Step 2: Dispatcher**
+- [ ] **Step 3: Dispatcher**
 
 Claim de jobs `pending` usa lock seguro; publica `{ kind: 'signed-form.pdf', idempotencyKey, payload: { jobId } }`; marca `dispatched_at` somente após send bem-sucedido.
 
-- [ ] **Step 3: Testar crash/reexecução**
+- [ ] **Step 4: Testar crash/reexecução**
 
 Se dispatcher cair depois de send e antes de marcar, segunda execução pode reenviar o job, mas worker deve deduplicar por `idempotencyKey`/job status e produzir um único artefato lógico.
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
 git add supabase src/modules/signatures
