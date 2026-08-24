@@ -4,7 +4,7 @@
 
 **Goal:** Entregar um scaffold reproduzível, CI obrigatório, Supabase local/staging e contratos básicos de plataforma antes de qualquer regra de negócio.
 
-**Architecture:** Next.js App Router + TypeScript em monólito modular. Supabase/PostgreSQL é a fonte de verdade; a aplicação usa adapters em `src/platform` e módulos não importam SDKs diretamente. O ambiente local roda via Supabase CLI e container runtime.
+**Architecture:** Next.js App Router + TypeScript em monólito modular. Supabase/PostgreSQL é a fonte de verdade; a aplicação usa adapters em `src/platform` e módulos não importam SDKs diretamente. Filas PGMQ são plataforma compartilhada e existem antes dos domínios que as consomem.
 
 **Tech Stack:** Node.js 24.19.0 LTS; Next.js 16.2.11 Active LTS; TypeScript strict; Supabase CLI 2.115.0; Vitest; Playwright; ESLint; GitHub Actions; Vercel.
 
@@ -16,6 +16,7 @@
 - Nenhum secret real no repositório.
 - Local, staging e production usam projetos Supabase distintos.
 - CI deve falhar em lint, typecheck, unit test, migration test ou build.
+- Filas são infraestrutura; domínio consome `QueuePort`, nunca PGMQ diretamente.
 
 ---
 
@@ -81,7 +82,7 @@ Expected: todos exit code 0.
 
 ```bash
 git add package.json package-lock.json .nvmrc tsconfig.json next.config.ts src
- git commit -m "chore: bootstrap modular next app"
+git commit -m "chore: bootstrap modular next app"
 ```
 
 ---
@@ -129,7 +130,7 @@ Expected: build concluído sem exposição de variáveis server-only.
 
 ```bash
 git add .env.example src/platform/env
- git commit -m "chore: add typed environment contracts"
+git commit -m "chore: add typed environment contracts"
 ```
 
 ---
@@ -183,12 +184,62 @@ Expected: migrations e seed aplicados sem erro a partir de banco vazio.
 
 ```bash
 git add supabase src/platform/supabase package.json package-lock.json
- git commit -m "chore: add local supabase platform"
+git commit -m "chore: add local supabase platform"
 ```
 
 ---
 
-### Task 4: CI, preview e proteção de main
+### Task 4: Filas duráveis e contrato de jobs
+
+**Files:**
+- Create: `supabase/migrations/20260824000200_queues.sql`
+- Create: `supabase/tests/002_queues.sql`
+- Create: `src/platform/queue/types.ts`
+- Create: `src/platform/queue/queue.ts`
+- Create: `src/platform/queue/supabase-queue.ts`
+- Test: `src/platform/queue/queue.test.ts`
+
+**Interfaces:**
+- Produces `QueuePort<T>` com `send`, `read`, `archive` e `fail/requeue` conforme adapter.
+- Produces queues `messaging`, `automations`, `documents`, `fiscal`.
+
+- [ ] **Step 1: Escrever teste do contrato**
+
+```ts
+it('preserves the application idempotency key in queued jobs', async () => {
+  const id = await queue.send({ kind: 'documents.render', idempotencyKey: 'doc:123', payload: { id: '123' } })
+  const [job] = await queue.read(1)
+  expect(job.id).toBe(id)
+  expect(job.message.idempotencyKey).toBe('doc:123')
+})
+```
+
+- [ ] **Step 2: Criar migration de filas**
+
+Habilitar extensão/recursos PGMQ suportados e criar exatamente as quatro filas. Reexecutar migration/reset não pode criar duplicações nem falhar por queue já existente.
+
+- [ ] **Step 3: Restringir acesso**
+
+Browser/anon não possuem permissão direta nas filas. Workers usam credencial/runtime server-side específico e contratos mínimos.
+
+- [ ] **Step 4: Implementar adapter**
+
+Payload comum inclui `kind`, `idempotencyKey`, `correlationId`, `payload`, `createdAt`. Domain modules dependem de `QueuePort`, não de Supabase.
+
+- [ ] **Step 5: Testar redelivery**
+
+Ler job sem archive e simular término do visibility timeout; job deve voltar a ser elegível e preservar idempotency key.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add supabase/migrations/20260824000200_queues.sql supabase/tests/002_queues.sql src/platform/queue
+git commit -m "feat: add durable platform queues"
+```
+
+---
+
+### Task 5: CI, preview e proteção de main
 
 **Files:**
 - Create: `.github/workflows/ci.yml`
@@ -229,5 +280,5 @@ No dia de qualquer deploy de produção, verificar a versão suportada de Next.j
 
 ```bash
 git add .github docs/TESTING_DEPLOYMENT.md
- git commit -m "ci: enforce platform quality gates"
+git commit -m "ci: enforce platform quality gates"
 ```
