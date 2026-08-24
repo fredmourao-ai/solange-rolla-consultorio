@@ -11,6 +11,7 @@
 **Spec:** `docs/superpowers/specs/2026-08-24-multiagent-architecture-design.md`
 
 ## Global Constraints
+- `APP_ENV` aceita exatamente `local | test | preview | staging | production`.
 - Production nunca é usada para desenvolvimento, preview ou teste.
 - Staging remoto não recebe migrations concorrentes de múltiplos PRs.
 - Preview/local usa somente dados sintéticos.
@@ -26,30 +27,37 @@
 - Create: `docs/ENVIRONMENTS.md`
 - Modify: `docs/TESTING_DEPLOYMENT.md`
 - Modify: `AGENTS.md`
+- Modify: `src/platform/env/schema.ts`
+- Test: `src/platform/env/schema.test.ts`
 
 **Interfaces:**
 - Produces dois modos operacionais documentados: `preview-branch` e `local-ci-serialized-staging`.
+- Produces `AppEnvironment = 'local' | 'test' | 'preview' | 'staging' | 'production'`.
 
-- [ ] **Step 1: Detectar capacidade sem assumir plano**
+- [ ] **Step 1: Fixar enum de ambiente**
+
+Atualizar o schema criado na Foundation para aceitar somente `local`, `test`, `preview`, `staging`, `production`. Adicionar teste que aceita `preview` e rejeita `prod`, string vazia e valores desconhecidos.
+
+- [ ] **Step 2: Detectar capacidade sem assumir plano**
 
 Na configuração inicial do Supabase, verificar se Branching/Preview Branches está habilitado para o projeto. Registrar a decisão no `docs/ENVIRONMENTS.md` e no Task Contract do bootstrap.
 
-- [ ] **Step 2: Documentar modo A — Preview Branch**
+- [ ] **Step 3: Documentar modo A — Preview Branch**
 
 Quando disponível: cada PR que altera aplicação/schema recebe uma Supabase Preview Branch isolada, sem dados de production, populada pelo `supabase/seed.sql` sintético. A Vercel Preview do mesmo PR recebe URL/keys dessa branch.
 
-- [ ] **Step 3: Documentar modo B — Local/CI + staging serial**
+- [ ] **Step 4: Documentar modo B — Local/CI + staging serial**
 
 Quando Branching não estiver disponível: cada agente usa Supabase local próprio; GitHub CI sobe banco novo do zero por job; staging remoto só recebe uma integração por vez depois de PR revisado. PRs com migration não usam staging simultaneamente.
 
-- [ ] **Step 4: Definir regra de descarte**
+- [ ] **Step 5: Definir regra de descarte**
 
 Preview branches são efêmeras. Encerrar/remover ao fechar/mergear PR conforme automação da plataforma; local é descartável; staging é restaurável e nunca vira fonte de migrations manuais.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
-git add docs/ENVIRONMENTS.md docs/TESTING_DEPLOYMENT.md AGENTS.md
+git add docs/ENVIRONMENTS.md docs/TESTING_DEPLOYMENT.md AGENTS.md src/platform/env/schema.ts src/platform/env/schema.test.ts
 git commit -m "docs: define isolated environment strategy"
 ```
 
