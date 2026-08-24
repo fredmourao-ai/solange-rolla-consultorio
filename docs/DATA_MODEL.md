@@ -103,7 +103,7 @@ Histórico append-only de transições.
 - original_amount_cents
 - due_at
 - status
-- balance_cents derivado/consistente
+- balance_cents derivado de pagamentos/ajustes com invariantes de consistência
 - timestamps
 
 ### `payments`
@@ -115,7 +115,7 @@ Histórico append-only de transições.
 - status
 
 ### `receivable_adjustments`
-Desconto, isenção, multa permitida, estorno/ajuste, sempre com motivo e ator.
+Desconto, isenção, estorno/ajuste e outras correções permitidas, sempre com motivo e ator.
 
 ## payables
 
@@ -212,12 +212,17 @@ Histórico de integração sanitizado.
 - appointment_id
 - person_id
 - author_user_id
-- encrypted/sensitive content conforme decisão de implementação
+- `ciphertext`
+- `nonce_or_iv`
+- `auth_tag` quando exigido pelo algoritmo
+- `key_version`
 - created_at
 - supersedes_id opcional
 
+O texto clínico é criptografado no servidor antes da persistência conforme ADR-0006. Chaves nunca ficam no banco nem chegam ao browser.
+
 ### `clinical_attachments`
-Referência a objeto em bucket `clinical-private`.
+Referência a objeto em bucket `clinical-private`, protegido por RLS. Criptografia adicional de arquivo pode ser adicionada sem alterar o contrato do módulo.
 
 Não permitir acesso de secretaria/contabilidade.
 
