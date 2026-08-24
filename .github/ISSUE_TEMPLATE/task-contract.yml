@@ -1,0 +1,82 @@
+name: Task Contract
+description: Contrato de execução para uma unidade de trabalho isolada
+title: "[TASK] "
+labels: []
+body:
+  - type: textarea
+    id: objective
+    attributes:
+      label: Objetivo
+      description: Resultado observável que esta task deve entregar.
+    validations:
+      required: true
+  - type: dropdown
+    id: module
+    attributes:
+      label: Módulo owner
+      options:
+        - identity
+        - people
+        - appointments
+        - forms
+        - signatures
+        - messaging
+        - receivables
+        - payables
+        - events
+        - fiscal
+        - clinical
+        - automations
+        - reports
+        - audit
+        - platform/shared
+    validations:
+      required: true
+  - type: dropdown
+    id: risk
+    attributes:
+      label: Risco
+      options:
+        - baixo
+        - médio
+        - alto
+        - crítico
+    validations:
+      required: true
+  - type: textarea
+    id: allowed
+    attributes:
+      label: Caminhos permitidos
+      description: Arquivos/diretórios que podem ser alterados.
+      placeholder: "src/modules/appointments/**"
+    validations:
+      required: true
+  - type: textarea
+    id: forbidden
+    attributes:
+      label: Caminhos proibidos
+      description: Áreas que esta task não deve tocar.
+  - type: textarea
+    id: contracts
+    attributes:
+      label: Contratos consumidos/produzidos
+      description: public.ts, eventos, interfaces ou views afetadas.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Critérios de aceitação e testes
+      description: Liste comportamentos verificáveis e checks obrigatórios.
+    validations:
+      required: true
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependências
+      description: Issues/PRs que precisam estar mergeados antes.
+  - type: textarea
+    id: rollback
+    attributes:
+      label: Rollback/recuperação
+      description: Como desfazer com segurança caso a mudança falhe.

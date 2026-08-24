@@ -1,0 +1,15 @@
+# Initial ownership. Replace/add visible teams as collaborators are onboarded.
+* @fredmourao-ai
+
+# Security and governance
+/.github/ @fredmourao-ai
+/AGENTS.md @fredmourao-ai
+/docs/ARCHITECTURE.md @fredmourao-ai
+/docs/adr/ @fredmourao-ai
+
+# High-risk domains
+/src/modules/identity/ @fredmourao-ai
+/src/modules/clinical/ @fredmourao-ai
+/src/modules/fiscal/ @fredmourao-ai
+/src/modules/signatures/ @fredmourao-ai
+/supabase/migrations/ @fredmourao-ai
