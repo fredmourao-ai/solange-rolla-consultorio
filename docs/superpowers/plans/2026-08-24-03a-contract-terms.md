@@ -14,6 +14,7 @@
 - Texto final para produção exige revisão jurídica antes do go-live.
 - A versão exibida/aceita é persistida e imutável.
 - Política inicial: 48 horas computáveis; sábado e domingo excluídos.
+- Toda mensagem de confirmação informa que cancelamentos após o prazo e faltas podem gerar cobrança do horário reservado.
 - Confirmação de consulta repete a regra vigente, mas não cria nem altera prazo.
 - Não usar linguagem de “multa” sem validação jurídica específica; referir cobrança do horário reservado.
 
@@ -152,7 +153,7 @@ git commit -m "feat: include legal terms in signed intake"
 
 - [ ] **Step 1: Mensagem antes/depois do prazo**
 
-Se prazo ainda aberto, informar deadline exato. Se encerrado, informar que o prazo para cancelamento sem cobrança terminou e que cancelamento/falta podem gerar cobrança conforme condições previamente aceitas.
+Toda confirmação inclui, em linguagem clara, que **cancelamentos efetuados após o prazo aplicável e faltas podem gerar cobrança do horário reservado, conforme condições previamente aceitas**. Se o prazo ainda estiver aberto, informar também o deadline exato para cancelamento sem cobrança. Se o prazo estiver encerrado, informar explicitamente que ele já terminou. O texto usado é derivado da versão jurídica ligada ao snapshot da consulta.
 
 - [ ] **Step 2: Não criar novo prazo**
 
