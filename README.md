@@ -2,7 +2,7 @@
 
 Sistema privado para gestão de consultório, psicoterapia, eventos, formulários pré-atendimento, assinatura eletrônica simples, comunicação, financeiro e NFS-e.
 
-> Status: **arquitetura v2 em revisão**. Não usar com dados reais de pacientes antes da conclusão da segurança, homologação jurídica/fiscal e checklist de produção.
+> Status: **arquitetura v2 aprovada; implementação ainda não iniciada**. Não usar com dados reais de pacientes antes da conclusão da segurança, homologação jurídica/fiscal e checklist de produção.
 
 ## Direção técnica
 
@@ -26,11 +26,12 @@ Arquitetura: **monólito modular orientado a domínio**, PostgreSQL/Supabase com
 
 1. [AGENTS.md](AGENTS.md)
 2. [Arquitetura oficial](docs/ARCHITECTURE.md)
-3. [Modelo operacional multiagente](docs/AGENT_OPERATING_MODEL.md)
-4. [Module Boundaries](docs/MODULE_BOUNDARIES.md)
-5. [Definition of Done](docs/DEFINITION_OF_DONE.md)
-6. [ADRs](docs/adr/)
-7. Issue/Task Contract da tarefa
+3. [Índice de execução v2](docs/superpowers/plans/2026-08-24-00-execution-index.md)
+4. [Modelo operacional multiagente](docs/AGENT_OPERATING_MODEL.md)
+5. [Module Boundaries](docs/MODULE_BOUNDARIES.md)
+6. [Definition of Done](docs/DEFINITION_OF_DONE.md)
+7. [ADRs](docs/adr/)
+8. Issue/Task Contract da tarefa
 
 ## Documentação do projeto
 
@@ -45,7 +46,7 @@ Arquitetura: **monólito modular orientado a domínio**, PostgreSQL/Supabase com
 - [Referências pesquisadas](docs/REFERENCES.md)
 - [Spec arquitetura multiagente v2](docs/superpowers/specs/2026-08-24-multiagent-architecture-design.md)
 - [Spec funcional inicial](docs/superpowers/specs/2026-08-24-solange-rolla-consultorio-design.md)
-- [Plano de implementação v1](docs/superpowers/plans/2026-08-24-solange-rolla-consultorio-implementation.md) — será regenerado após aprovação da arquitetura v2.
+- [Planos de implementação](docs/superpowers/plans/README.md)
 
 ## Fluxos principais
 
@@ -63,6 +64,7 @@ Evento → inscrição → cadastro da pessoa → formulário/termo quando aplic
 - Dados necessários à NFS-e fazem parte do cadastro fiscal.
 - Data de nascimento alimenta felicitação automática, respeitando preferência de comunicação.
 - Formulário pré-consulta é obrigatório quando configurado e pode ser enviado por WhatsApp/e-mail.
+- Dados sensíveis de pré-consulta são criptografados antes de persistir.
 - Assinatura deve ser simples para o paciente, com forte trilha técnica nos bastidores.
 - Confirmação é enviada 24h antes, com Confirmar, Solicitar reagendamento e Cancelar.
 - Reagendamento é tratado pela secretaria; o paciente não escolhe novo horário diretamente.
