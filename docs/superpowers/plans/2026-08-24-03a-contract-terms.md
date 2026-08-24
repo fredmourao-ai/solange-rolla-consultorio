@@ -17,6 +17,7 @@
 - Toda mensagem de confirmação informa que cancelamentos após o prazo e faltas podem gerar cobrança do horário reservado.
 - Confirmação de consulta repete a regra vigente, mas não cria nem altera prazo.
 - Não usar linguagem de “multa” sem validação jurídica específica; referir cobrança do horário reservado.
+- Esta fase nunca edita migrations já criadas em planos anteriores; qualquer alteração de schema usa nova migration forward-only.
 
 ---
 
@@ -68,32 +69,37 @@ git commit -m "feat: add versioned legal terms and acceptance"
 ### Task 2: Política de cancelamento textual ligada à política operacional
 
 **Files:**
-- Modify: `supabase/migrations/20260824003000_appointments.sql` antes de aplicada, ou Create migration corretiva se já aplicada
+- Create: `supabase/migrations/20260824004600_bind_cancellation_legal_version.sql`
+- Create: `supabase/tests/046_cancellation_legal_binding.sql`
 - Create: `src/modules/appointments/domain/policy-copy.ts`
 - Create: `src/modules/appointments/application/get-cancellation-policy-copy.ts`
 - Test: `src/modules/appointments/domain/policy-copy.test.ts`
 
 **Interfaces:**
-- `cancellation_policies` referencia `legal_document_version_id` da política textual aprovada.
+- `cancellation_policies` passa a referenciar `legal_document_version_id` da política textual aprovada por uma migration nova.
 - Produces `CancellationPolicyCopy { summary, fullText, deadlineText }`.
 
 - [ ] **Step 1: Testar vínculo obrigatório**
 
 Uma política operacional ativa para novos agendamentos não pode entrar em vigor sem versão textual correspondente em ambiente production.
 
-- [ ] **Step 2: Texto-base inicial**
+- [ ] **Step 2: Criar migration forward-only**
+
+Adicionar `legal_document_version_id` e FK/constraints necessárias a `cancellation_policies` por `20260824004600_bind_cancellation_legal_version.sql`. Não editar `20260824003000_appointments.sql`.
+
+- [ ] **Step 3: Texto-base inicial**
 
 Usar como conteúdo de staging uma versão explicitamente marcada `DRAFT_LEGAL_REVIEW_REQUIRED` baseada em `docs/LEGAL_COMPLIANCE.md`: cancelamento sem cobrança com 48 horas computáveis; sábado/domingo não contam; cancelamento posterior/falta podem gerar cobrança do horário reservado; situações excepcionais podem receber isenção manual. Production bloqueia versão marcada draft.
 
-- [ ] **Step 3: Deadline individual**
+- [ ] **Step 4: Deadline individual**
 
 Mensagem/UI nunca exige que paciente faça a conta; exibir `Você pode cancelar sem cobrança até DD/MM às HH:mm`, derivado do `cancellation_deadline_at` persistido.
 
-- [ ] **Step 4: Testar histórico**
+- [ ] **Step 5: Testar histórico**
 
 Consulta criada com policy v1/legal v1 continua apontando ambas mesmo depois de policy/legal v2 serem ativadas.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
 git add supabase src/modules/appointments
