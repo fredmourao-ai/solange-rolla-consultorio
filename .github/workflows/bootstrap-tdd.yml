@@ -9,6 +9,24 @@ permissions:
   contents: read
 
 jobs:
+  task-4-contract-red:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node 24.19.0
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.19.0
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Run queue contract test
+        run: npm test -- src/platform/queue/queue.test.ts --run
+
   task-3-head-verification:
     runs-on: ubuntu-latest
     steps:
