@@ -11,6 +11,7 @@ const fixtureMigrations = path.join(
   'tests/architecture/migration-fixtures/base/supabase/migrations',
 )
 const temporaryRepositories: string[] = []
+const temporaryExternalPaths: string[] = []
 
 function runGit(repository: string, args: string[]) {
   execFileSync('git', args, {
@@ -89,6 +90,9 @@ function outputOf(result: ReturnType<typeof checkMigrations>) {
 afterEach(() => {
   for (const repository of temporaryRepositories.splice(0)) {
     fs.rmSync(repository, { recursive: true, force: true })
+  }
+  for (const externalPath of temporaryExternalPaths.splice(0)) {
+    fs.rmSync(externalPath, { recursive: true, force: true })
   }
 })
 
@@ -354,6 +358,59 @@ describe('migration history', () => {
     expect(result.status).not.toBe(0)
     expect(outputOf(result)).toContain(
       `${migration}: SQL contains unsupported or dynamic syntax`,
+    )
+  })
+
+  it('rejects SQL references hidden behind an unhandled table command', () => {
+    const repository = createRepository()
+    const migration = '20260824000300_people_add_cleanup.sql'
+    fs.writeFileSync(
+      path.join(repository, 'supabase/migrations', migration),
+      '-- owners: people\n-- task-contract: docs/task-contracts/cleanup.json\nselect * from public.people;\ntruncate clinical.records;\n',
+    )
+    writeTaskContract(repository, 'cleanup.json', {
+      issue: 123,
+      migration,
+      objects: [{ name: 'public.people', owner: 'people' }],
+      owners: ['people'],
+    })
+
+    const result = checkMigrations(repository, { baseRef: 'migration-base' })
+
+    expect(result.status).not.toBe(0)
+    expect(outputOf(result)).toContain(
+      'cleanup.json: SQL object "clinical.records" is missing from the contract',
+    )
+  })
+
+  it('rejects a Task Contract symlink that resolves outside its directory', () => {
+    const repository = createRepository()
+    const externalDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'external-contract-'))
+    temporaryExternalPaths.push(externalDirectory)
+    fs.writeFileSync(
+      path.join(externalDirectory, 'escape.json'),
+      JSON.stringify({
+        version: 1,
+        status: 'approved',
+        issue: 123,
+        migration: '20260824000300_platform_escape.sql',
+        owners: ['platform'],
+        objects: [{ name: 'pgmq.queue_metrics', owner: 'platform' }],
+      }),
+    )
+    fs.mkdirSync(path.join(repository, 'docs'), { recursive: true })
+    fs.symlinkSync(externalDirectory, path.join(repository, 'docs/task-contracts'), 'dir')
+    const migration = '20260824000300_platform_escape.sql'
+    fs.writeFileSync(
+      path.join(repository, 'supabase/migrations', migration),
+      '-- owners: platform\n-- task-contract: docs/task-contracts/escape.json\nselect * from pgmq.queue_metrics;\n',
+    )
+
+    const result = checkMigrations(repository, { baseRef: 'migration-base' })
+
+    expect(result.status).not.toBe(0)
+    expect(outputOf(result)).toContain(
+      'escape.json: Task Contract must resolve inside docs/task-contracts',
     )
   })
 

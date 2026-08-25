@@ -412,7 +412,28 @@ function sqlObjects(migration) {
       }
       continue
     }
-    if (['table', 'view', 'sequence', 'into', 'update', 'from', 'join', 'references'].includes(token)) {
+    if (
+      [
+        'table',
+        'view',
+        'sequence',
+        'truncate',
+        'copy',
+        'analyze',
+        'lock',
+        'reindex',
+        'vacuum',
+        'into',
+        'update',
+        'from',
+        'join',
+        'references',
+      ].includes(token)
+    ) {
+      if (token === 'copy' && tokens[index + 1] === '(') {
+        parsed.unsupported = true
+        continue
+      }
       const object = objectFromTokens(tokens, index + 1)
       if (object) {
         objects.add(object)
@@ -447,6 +468,7 @@ function validateTaskContract(migration, owners, header) {
   const contractPath = references[0][1]
   const contractName = path.posix.basename(contractPath)
   const absoluteContractPath = path.resolve(contractPath)
+  const contractDirectory = path.resolve('docs/task-contracts')
   const relativeContractPath = path.relative(process.cwd(), absoluteContractPath)
 
   if (
@@ -456,6 +478,28 @@ function validateTaskContract(migration, owners, header) {
     !fs.statSync(absoluteContractPath).isFile()
   ) {
     return [`${contractName}: Task Contract file does not exist`]
+  }
+
+  let realContractPath
+  let realContractDirectory
+  try {
+    if (
+      fs.lstatSync(contractDirectory).isSymbolicLink() ||
+      fs.lstatSync(absoluteContractPath).isSymbolicLink()
+    ) {
+      return [`${contractName}: Task Contract must resolve inside docs/task-contracts`]
+    }
+    realContractPath = fs.realpathSync(absoluteContractPath)
+    realContractDirectory = fs.realpathSync(contractDirectory)
+  } catch {
+    return [`${contractName}: Task Contract file cannot be resolved safely`]
+  }
+  const relativeRealContractPath = path.relative(realContractDirectory, realContractPath)
+  if (
+    relativeRealContractPath.startsWith('..') ||
+    path.isAbsolute(relativeRealContractPath)
+  ) {
+    return [`${contractName}: Task Contract must resolve inside docs/task-contracts`]
   }
 
   let contract
@@ -613,6 +657,44 @@ function validateSchemaOwnership(baseMigrations, migrations) {
   return errors
 }
 
+function validateOwnershipManifestHistory(baseCommit) {
+  const baseManifest = runGit([
+    'show',
+    `${baseCommit}:docs/schema-ownership.json`,
+  ])
+  if (baseManifest.status !== 0) {
+    return []
+  }
+
+  let parsedBase
+  try {
+    parsedBase = JSON.parse(baseManifest.stdout)
+  } catch {
+    return ['base schema ownership manifest is not valid JSON']
+  }
+
+  const errors = []
+  if (parsedBase.version !== ownershipManifest.version) {
+    errors.push('schema ownership manifest version cannot change retroactively')
+  }
+  for (const [objectName, owner] of Object.entries(parsedBase.objects ?? {})) {
+    if (ownershipManifest.objects[objectName] !== owner) {
+      errors.push(
+        `schema ownership cannot reassign existing object "${objectName}" from "${owner}"`,
+      )
+    }
+  }
+  for (const [alias, owners] of Object.entries(parsedBase.descriptionAliases ?? {})) {
+    if (
+      JSON.stringify(ownershipManifest.descriptionAliases[alias]) !==
+      JSON.stringify(owners)
+    ) {
+      errors.push(`schema ownership alias cannot change retroactively: ${alias}`)
+    }
+  }
+  return errors
+}
+
 function main() {
   const options = parseArguments(process.argv.slice(2))
   const directory = migrationDirectory()
@@ -625,6 +707,7 @@ function main() {
     ...validateTimestampOrder(current.migrations),
     ...validateBaseHistory(baseMigrations, current.migrations),
     ...validateSchemaOwnership(baseMigrations, current.migrations),
+    ...validateOwnershipManifestHistory(baseCommit),
   ]
 
   if (errors.length > 0) {
