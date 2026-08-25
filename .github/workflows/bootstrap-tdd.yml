@@ -9,6 +9,24 @@ permissions:
   contents: read
 
 jobs:
+  env-key-migration-red:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node 24.19.0
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.19.0
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Verify current Supabase API-key contract
+        run: npm test -- src/platform/env/schema.test.ts --run
+
   task-3-red:
     runs-on: ubuntu-latest
     steps:

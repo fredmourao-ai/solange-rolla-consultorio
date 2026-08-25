@@ -3,8 +3,8 @@ import { parseClientEnv, parseServerEnv } from './schema'
 
 const validServerEnv = {
   NEXT_PUBLIC_SUPABASE_URL: 'https://example.supabase.co',
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: 'public-key',
-  SUPABASE_SERVICE_ROLE_KEY: 'server-secret',
+  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_test',
+  SUPABASE_SECRET_KEY: 'sb_secret_test',
   APP_URL: 'http://localhost:3000',
   APP_ENV: 'test',
   CLINICAL_ENCRYPTION_KEY_V1: 'test-encryption-key',
@@ -14,7 +14,7 @@ const validServerEnv = {
 
 describe('server environment contract', () => {
   it('rejects missing server secrets', () => {
-    expect(() => parseServerEnv({})).toThrow(/SUPABASE_SERVICE_ROLE_KEY/)
+    expect(() => parseServerEnv({})).toThrow(/SUPABASE_SECRET_KEY/)
   })
 
   it('accepts only explicit live-provider booleans', () => {
@@ -28,8 +28,20 @@ describe('server environment contract', () => {
     const parsed = parseClientEnv(validServerEnv)
     expect(parsed).toEqual({
       NEXT_PUBLIC_SUPABASE_URL: 'https://example.supabase.co',
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: 'public-key',
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_test',
     })
-    expect('SUPABASE_SERVICE_ROLE_KEY' in parsed).toBe(false)
+    expect('SUPABASE_SECRET_KEY' in parsed).toBe(false)
+  })
+
+  it('rejects legacy API key names', () => {
+    expect(() =>
+      parseServerEnv({
+        ...validServerEnv,
+        NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: undefined,
+        SUPABASE_SECRET_KEY: undefined,
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: 'legacy-anon',
+        SUPABASE_SERVICE_ROLE_KEY: 'legacy-service-role',
+      }),
+    ).toThrow()
   })
 })
