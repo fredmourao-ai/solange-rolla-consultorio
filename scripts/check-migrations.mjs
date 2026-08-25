@@ -5,7 +5,7 @@ import process from 'node:process'
 
 const migrationNamePattern = /^(?<timestamp>\d{14})_(?<description>[a-z][a-z0-9]*(?:_[a-z0-9]+)*)\.sql$/u
 const ownershipManifest = JSON.parse(
-  fs.readFileSync(new URL('../docs/schema-ownership.json', import.meta.url), 'utf8'),
+  fs.readFileSync(path.resolve('docs/schema-ownership.json'), 'utf8'),
 )
 const schemaOwners = new Set(ownershipManifest.owners)
 const specialDescriptionOwners = new Map(
@@ -393,11 +393,46 @@ function sqlObjects(migration) {
   const objects = new Set()
   const { tokens } = parsed
 
+  const unsupportedObjectOperations = new Set([
+    'database',
+    'function',
+    'index',
+    'materialized',
+    'policy',
+    'procedure',
+    'publication',
+    'role',
+    'server',
+    'subscription',
+    'trigger',
+    'type',
+    'user',
+  ])
+  const multiTargetCommands = new Set([
+    'analyze',
+    'lock',
+    'reindex',
+    'truncate',
+    'vacuum',
+  ])
+
   for (let index = 0; index < tokens.length; index += 1) {
     const token = tokens[index]
     if (token === 'execute') {
       parsed.unsupported = true
       continue
+    }
+    if (unsupportedObjectOperations.has(token)) {
+      parsed.unsupported = true
+    }
+    if (multiTargetCommands.has(token)) {
+      for (let cursor = index + 1; cursor < tokens.length; cursor += 1) {
+        if (tokens[cursor] === ';') break
+        if (tokens[cursor] === ',') {
+          parsed.unsupported = true
+          break
+        }
+      }
     }
     if (token === 'extension') {
       objects.add('platform.extensions')
@@ -690,6 +725,11 @@ function validateOwnershipManifestHistory(baseCommit) {
       JSON.stringify(owners)
     ) {
       errors.push(`schema ownership alias cannot change retroactively: ${alias}`)
+    }
+  }
+  for (const owner of parsedBase.owners ?? []) {
+    if (!ownershipManifest.owners.includes(owner)) {
+      errors.push(`schema ownership owner cannot be removed: ${owner}`)
     }
   }
   return errors

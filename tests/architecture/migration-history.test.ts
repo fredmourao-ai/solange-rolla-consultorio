@@ -25,6 +25,11 @@ function createRepository() {
   temporaryRepositories.push(repository)
 
   fs.mkdirSync(path.join(repository, 'supabase'), { recursive: true })
+  fs.mkdirSync(path.join(repository, 'docs'), { recursive: true })
+  fs.copyFileSync(
+    path.join(repositoryRoot, 'docs/schema-ownership.json'),
+    path.join(repository, 'docs/schema-ownership.json'),
+  )
   fs.cpSync(
     fixtureMigrations,
     path.join(repository, 'supabase/migrations'),
@@ -412,6 +417,72 @@ describe('migration history', () => {
     expect(outputOf(result)).toContain(
       'escape.json: Task Contract must resolve inside docs/task-contracts',
     )
+  })
+
+  it('fails closed for comma-separated table targets', () => {
+    const repository = createRepository()
+    const migration = '20260824000300_clinical.sql'
+    fs.writeFileSync(
+      path.join(repository, 'supabase/migrations', migration),
+      '-- owners: clinical\n-- task-contract: docs/task-contracts/clinical.json\ntruncate clinical.records, public.people;\n',
+    )
+    writeTaskContract(repository, 'clinical.json', {
+      issue: 123,
+      migration,
+      objects: [{ name: 'clinical.records', owner: 'clinical' }],
+      owners: ['clinical'],
+    })
+
+    const result = checkMigrations(repository, { baseRef: 'migration-base' })
+
+    expect(result.status).not.toBe(0)
+    expect(outputOf(result)).toContain('SQL contains unsupported or dynamic syntax')
+  })
+
+  it('fails closed for unhandled function operations', () => {
+    const repository = createRepository()
+    const migration = '20260824000300_clinical.sql'
+    fs.writeFileSync(
+      path.join(repository, 'supabase/migrations', migration),
+      '-- owners: clinical\n-- task-contract: docs/task-contracts/clinical.json\ncreate function clinical.read_record() returns void language sql as $$ select 1 $$;\n',
+    )
+    writeTaskContract(repository, 'clinical.json', {
+      issue: 123,
+      migration,
+      objects: [{ name: 'clinical.records', owner: 'clinical' }],
+      owners: ['clinical'],
+    })
+
+    const result = checkMigrations(repository, { baseRef: 'migration-base' })
+
+    expect(result.status).not.toBe(0)
+    expect(outputOf(result)).toContain('SQL contains unsupported or dynamic syntax')
+  })
+
+  it('rejects removing an existing manifest owner', () => {
+    const repository = createRepository()
+    const manifest = {
+      version: 1,
+      owners: ['clinical', 'platform'],
+      descriptionAliases: {},
+      objects: {},
+    }
+    fs.mkdirSync(path.join(repository, 'docs'), { recursive: true })
+    fs.writeFileSync(
+      path.join(repository, 'docs/schema-ownership.json'),
+      `${JSON.stringify(manifest, null, 2)}\n`,
+    )
+    runGit(repository, ['add', 'docs/schema-ownership.json'])
+    runGit(repository, ['commit', '--quiet', '-m', 'add ownership manifest'])
+    fs.writeFileSync(
+      path.join(repository, 'docs/schema-ownership.json'),
+      `${JSON.stringify({ ...manifest, owners: ['clinical'] }, null, 2)}\n`,
+    )
+
+    const result = checkMigrations(repository, { baseRef: 'HEAD' })
+
+    expect(result.status).not.toBe(0)
+    expect(outputOf(result)).toContain('schema ownership owner cannot be removed')
   })
 
   it('rejects an owner declaration hidden after executable SQL', () => {
