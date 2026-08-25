@@ -1,9 +1,13 @@
 name: Bootstrap TDD
 
 on:
-  push:
+  pull_request:
     branches:
-      - feat/1-foundation-platform
+      - main
+    types:
+      - opened
+      - synchronize
+      - reopened
 
 permissions:
   contents: read
