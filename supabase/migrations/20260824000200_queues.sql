@@ -2,15 +2,15 @@ create extension if not exists pgmq;
 
 do $$
 declare
-  queue_name text;
+  v_queue_name text;
 begin
-  foreach queue_name in array array['messaging', 'automations', 'documents', 'fiscal']::text[] loop
+  foreach v_queue_name in array array['messaging', 'automations', 'documents', 'fiscal']::text[] loop
     if not exists (
       select 1
       from pgmq.list_queues() as queues
-      where queues.queue_name = queue_name
+      where queues.queue_name = v_queue_name
     ) then
-      perform pgmq.create(queue_name);
+      perform pgmq.create(v_queue_name);
     end if;
   end loop;
 end;
