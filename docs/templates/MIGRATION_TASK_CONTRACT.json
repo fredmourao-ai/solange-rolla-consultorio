@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "status": "draft",
+  "issue": 0,
+  "migration": "YYYYMMDDHHMMSS_owner_description.sql",
+  "owners": ["owner"],
+  "objects": [
+    {
+      "name": "schema.object",
+      "owner": "owner"
+    }
+  ]
+}

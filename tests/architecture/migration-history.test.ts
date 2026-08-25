@@ -40,6 +40,24 @@ function createRepository() {
   return repository
 }
 
+function writeTaskContract(
+  repository: string,
+  filename: string,
+  contract: {
+    issue: number
+    migration: string
+    objects: Array<{ name: string; owner: string }>
+    owners: string[]
+  },
+) {
+  const contractsDirectory = path.join(repository, 'docs/task-contracts')
+  fs.mkdirSync(contractsDirectory, { recursive: true })
+  fs.writeFileSync(
+    path.join(contractsDirectory, filename),
+    `${JSON.stringify({ version: 1, status: 'approved', ...contract }, null, 2)}\n`,
+  )
+}
+
 function checkMigrations(
   repository: string,
   options?: {
@@ -148,10 +166,17 @@ describe('migration history', () => {
 
   it('accepts a valid forward-only migration after unchanged base migrations', () => {
     const repository = createRepository()
+    const migration = '20260824000300_platform_add_queue_metrics.sql'
     fs.writeFileSync(
-      path.join(repository, 'supabase/migrations/20260824000300_platform_add_queue_metrics.sql'),
-      '-- owners: platform\nselect 1;\n',
+      path.join(repository, 'supabase/migrations', migration),
+      '-- owners: platform\n-- task-contract: docs/task-contracts/queue_metrics.json\nselect 1;\n',
     )
+    writeTaskContract(repository, 'queue_metrics.json', {
+      issue: 123,
+      migration,
+      objects: [{ name: 'pgmq.queue_metrics', owner: 'platform' }],
+      owners: ['platform'],
+    })
 
     const result = checkMigrations(repository, { baseRef: 'migration-base' })
 
@@ -202,23 +227,90 @@ describe('migration history', () => {
 
     expect(result.status).not.toBe(0)
     expect(outputOf(result)).toContain(
-      '20260824000300_bind_cancellation_legal_version.sql: cross-module migrations require "-- cross-module-task: #<issue>"',
+      '20260824000300_bind_cancellation_legal_version.sql: missing "-- cross-module-task: docs/task-contracts/<contract>.json"',
     )
   })
 
   it('accepts a cross-module migration with matching owners and Task Contract', () => {
     const repository = createRepository()
+    const migration =
+      '20260824000300_bind_cancellation_legal_version.sql'
     fs.writeFileSync(
-      path.join(
-        repository,
-        'supabase/migrations/20260824000300_bind_cancellation_legal_version.sql',
-      ),
-      '-- owners: appointments, forms\n-- cross-module-task: #123\nselect 1;\n',
+      path.join(repository, 'supabase/migrations', migration),
+      '-- owners: appointments, forms\n-- cross-module-task: docs/task-contracts/cancellation_legal.json\nselect 1;\n',
     )
+    writeTaskContract(repository, 'cancellation_legal.json', {
+      issue: 123,
+      migration,
+      objects: [
+        { name: 'public.cancellation_policies', owner: 'appointments' },
+        { name: 'public.legal_document_versions', owner: 'forms' },
+      ],
+      owners: ['appointments', 'forms'],
+    })
 
     const result = checkMigrations(repository, { baseRef: 'migration-base' })
 
     expect(result.status, outputOf(result)).toBe(0)
+  })
+
+  it('requires a repository-local Task Contract for single-owner migrations', () => {
+    const repository = createRepository()
+    fs.writeFileSync(
+      path.join(repository, 'supabase/migrations/20260824000300_clinical.sql'),
+      '-- owners: clinical\nselect 1;\n',
+    )
+
+    const result = checkMigrations(repository, { baseRef: 'migration-base' })
+
+    expect(result.status).not.toBe(0)
+    expect(outputOf(result)).toContain(
+      '20260824000300_clinical.sql: missing "-- task-contract: docs/task-contracts/<contract>.json"',
+    )
+  })
+
+  it('rejects a Task Contract without a positive issue number', () => {
+    const repository = createRepository()
+    const migration = '20260824000300_clinical.sql'
+    fs.writeFileSync(
+      path.join(repository, 'supabase/migrations', migration),
+      '-- owners: clinical\n-- task-contract: docs/task-contracts/clinical.json\nselect 1;\n',
+    )
+    writeTaskContract(repository, 'clinical.json', {
+      issue: 0,
+      migration,
+      objects: [{ name: 'clinical.records', owner: 'clinical' }],
+      owners: ['clinical'],
+    })
+
+    const result = checkMigrations(repository, { baseRef: 'migration-base' })
+
+    expect(result.status).not.toBe(0)
+    expect(outputOf(result)).toContain(
+      'clinical.json: issue must be a positive integer',
+    )
+  })
+
+  it('rejects contract objects assigned outside the declared owners', () => {
+    const repository = createRepository()
+    const migration = '20260824000300_people_add_preferences.sql'
+    fs.writeFileSync(
+      path.join(repository, 'supabase/migrations', migration),
+      '-- owners: people\n-- task-contract: docs/task-contracts/people.json\nselect 1;\n',
+    )
+    writeTaskContract(repository, 'people.json', {
+      issue: 123,
+      migration,
+      objects: [{ name: 'public.people', owner: 'clinical' }],
+      owners: ['people'],
+    })
+
+    const result = checkMigrations(repository, { baseRef: 'migration-base' })
+
+    expect(result.status).not.toBe(0)
+    expect(outputOf(result)).toContain(
+      'people.json: object "public.people" owner "clinical" is not a declared migration owner',
+    )
   })
 
   it('rejects an owner declaration hidden after executable SQL', () => {

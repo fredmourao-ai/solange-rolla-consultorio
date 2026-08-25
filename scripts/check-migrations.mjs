@@ -4,34 +4,14 @@ import path from 'node:path'
 import process from 'node:process'
 
 const migrationNamePattern = /^(?<timestamp>\d{14})_(?<description>[a-z][a-z0-9]*(?:_[a-z0-9]+)*)\.sql$/u
-const schemaOwners = new Set([
-  'appointments',
-  'audit',
-  'clinical',
-  'events',
-  'fiscal',
-  'forms',
-  'identity',
-  'messaging',
-  'payables',
-  'people',
-  'platform',
-  'receivables',
-  'reports',
-  'signatures',
-])
-const specialDescriptionOwners = new Map([
-  ['appointment_confirmation', ['appointments']],
-  ['bind_cancellation_legal_version', ['appointments', 'forms']],
-  ['capabilities', ['forms']],
-  ['document_jobs', ['signatures']],
-  ['extensions', ['platform']],
-  ['legal_terms', ['forms']],
-  ['payments', ['receivables']],
-  ['private_storage', ['platform']],
-  ['public_rate_limits', ['platform']],
-  ['queues', ['platform']],
-])
+const ownershipManifest = JSON.parse(
+  fs.readFileSync(new URL('../docs/schema-ownership.json', import.meta.url), 'utf8'),
+)
+const schemaOwners = new Set(ownershipManifest.owners)
+const specialDescriptionOwners = new Map(
+  Object.entries(ownershipManifest.descriptionAliases),
+)
+const objectOwners = new Map(Object.entries(ownershipManifest.objects))
 
 function parseArguments(argumentsList) {
   const options = { baseRef: undefined }
@@ -304,6 +284,120 @@ function declaredOwnersFor(migration) {
   return { header, owners: [...new Set(owners)].sort() }
 }
 
+function validateTaskContract(migration, owners, header) {
+  const errors = []
+  const marker = owners.length > 1 ? 'cross-module-task' : 'task-contract'
+  const expectedMarker = `-- ${marker}: docs/task-contracts/<contract>.json`
+  const markerPattern = new RegExp(
+    `^-- ${marker}:\\s*(docs/task-contracts/[a-z0-9][a-z0-9_-]*\\.json)\\s*$`,
+    'gmu',
+  )
+  const references = [...header.matchAll(markerPattern)]
+
+  if (references.length !== 1) {
+    return [`${migration.name}: missing "${expectedMarker}"`]
+  }
+
+  const contractPath = references[0][1]
+  const contractName = path.posix.basename(contractPath)
+  const absoluteContractPath = path.resolve(contractPath)
+  const relativeContractPath = path.relative(process.cwd(), absoluteContractPath)
+
+  if (
+    relativeContractPath.startsWith('..') ||
+    path.isAbsolute(relativeContractPath) ||
+    !fs.existsSync(absoluteContractPath) ||
+    !fs.statSync(absoluteContractPath).isFile()
+  ) {
+    return [`${contractName}: Task Contract file does not exist`]
+  }
+
+  let contract
+  try {
+    contract = JSON.parse(fs.readFileSync(absoluteContractPath, 'utf8'))
+  } catch {
+    return [`${contractName}: Task Contract must be valid JSON`]
+  }
+
+  if (contract.version !== 1) {
+    errors.push(`${contractName}: version must be 1`)
+  }
+  if (contract.status !== 'approved') {
+    errors.push(`${contractName}: status must be "approved"`)
+  }
+  if (!Number.isInteger(contract.issue) || contract.issue <= 0) {
+    errors.push(`${contractName}: issue must be a positive integer`)
+  }
+  if (contract.migration !== migration.name) {
+    errors.push(`${contractName}: migration must be "${migration.name}"`)
+  }
+
+  const contractOwners = Array.isArray(contract.owners)
+    ? [...new Set(contract.owners)].sort()
+    : []
+  if (
+    contractOwners.length !== owners.length ||
+    contractOwners.some((owner, index) => owner !== owners[index])
+  ) {
+    errors.push(
+      `${contractName}: owners must be "${owners.join(', ')}"`,
+    )
+  }
+
+  if (!Array.isArray(contract.objects) || contract.objects.length === 0) {
+    errors.push(`${contractName}: objects must be a non-empty array`)
+    return errors
+  }
+
+  const representedOwners = new Set()
+  const seenObjects = new Set()
+  for (const object of contract.objects) {
+    const objectName = object?.name
+    const objectOwner = object?.owner
+
+    if (
+      typeof objectName !== 'string' ||
+      !/^[a-z][a-z0-9_]*\.[a-z][a-z0-9_]*$/u.test(objectName) ||
+      typeof objectOwner !== 'string'
+    ) {
+      errors.push(`${contractName}: every object requires a valid name and owner`)
+      continue
+    }
+    if (seenObjects.has(objectName)) {
+      errors.push(`${contractName}: duplicate object "${objectName}"`)
+      continue
+    }
+    seenObjects.add(objectName)
+
+    if (!owners.includes(objectOwner)) {
+      errors.push(
+        `${contractName}: object "${objectName}" owner "${objectOwner}" is not a declared migration owner`,
+      )
+      continue
+    }
+    representedOwners.add(objectOwner)
+
+    const manifestOwner = objectOwners.get(objectName)
+    if (!manifestOwner) {
+      errors.push(
+        `${contractName}: object "${objectName}" is missing from docs/schema-ownership.json`,
+      )
+    } else if (manifestOwner !== objectOwner) {
+      errors.push(
+        `${contractName}: object "${objectName}" is owned by "${manifestOwner}", not "${objectOwner}"`,
+      )
+    }
+  }
+
+  for (const owner of owners) {
+    if (!representedOwners.has(owner)) {
+      errors.push(`${contractName}: owner "${owner}" has no declared object`)
+    }
+  }
+
+  return errors
+}
+
 function validateSchemaOwnership(baseMigrations, migrations) {
   const errors = []
   const basePaths = new Set(baseMigrations.map((migration) => migration.path))
@@ -340,11 +434,7 @@ function validateSchemaOwnership(baseMigrations, migrations) {
       continue
     }
 
-    if (owners.length > 1 && !/^-- cross-module-task:\s*(?:#\d+|https:\/\/github\.com\/[^/]+\/[^/]+\/issues\/\d+)\s*$/mu.test(header)) {
-      errors.push(
-        `${migration.name}: cross-module migrations require "-- cross-module-task: #<issue>"`,
-      )
-    }
+    errors.push(...validateTaskContract(migration, owners, header))
   }
 
   return errors

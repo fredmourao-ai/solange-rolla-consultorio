@@ -17,6 +17,7 @@ machine-readable ownership declaration:
 
 ```sql
 -- owners: people
+-- task-contract: docs/task-contracts/123_people.json
 ```
 
 The filename description starts with the owner (`people_add_preferences`) or
@@ -25,11 +26,18 @@ sorted alphabetically and require the Task Contract issue:
 
 ```sql
 -- owners: appointments, forms
--- cross-module-task: #123
+-- cross-module-task: docs/task-contracts/123_cancellation_legal.json
 ```
 
 The migration checker grandfathers blobs already present in the base branch so
 an applied migration is never edited merely to add metadata.
+
+The referenced JSON follows `docs/templates/MIGRATION_TASK_CONTRACT.json` and
+is reviewed in the same PR. CI requires version 1, `status: approved`, a
+positive Issue number, the exact migration filename, matching owners, and at
+least one owned object per owner. Every object must exist in the
+machine-readable `docs/schema-ownership.json`; adding a new table therefore
+updates that manifest and this human-readable document in the same task.
 
 | Description alias | Enforced owner(s) |
 | --- | --- |
