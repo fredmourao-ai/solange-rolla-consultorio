@@ -204,28 +204,43 @@ function unresolvedCrossModuleName(
   }
 
   const pathBase = compilerOptions.baseUrl ?? projectDirectory
+  const matchingPaths = Object.entries(compilerOptions.paths ?? {})
+    .map(([pattern, replacements]) => {
+      const wildcardIndex = pattern.indexOf('*')
 
-  for (const [pattern, replacements] of Object.entries(
-    compilerOptions.paths ?? {},
-  )) {
-    const wildcardIndex = pattern.indexOf('*')
-    let wildcardValue
-
-    if (wildcardIndex === -1) {
-      if (pattern !== specifier) {
-        continue
+      if (wildcardIndex === -1) {
+        return pattern === specifier
+          ? { exact: true, prefixLength: pattern.length, replacements, wildcardValue: '' }
+          : undefined
       }
-      wildcardValue = ''
-    } else {
+
       const prefix = pattern.slice(0, wildcardIndex)
       const suffix = pattern.slice(wildcardIndex + 1)
       if (!specifier.startsWith(prefix) || !specifier.endsWith(suffix)) {
-        continue
+        return undefined
       }
-      wildcardValue = specifier.slice(prefix.length, specifier.length - suffix.length)
-    }
 
-    for (const replacement of replacements) {
+      return {
+        exact: false,
+        prefixLength: prefix.length,
+        replacements,
+        wildcardValue: specifier.slice(
+          prefix.length,
+          specifier.length - suffix.length,
+        ),
+      }
+    })
+    .filter(Boolean)
+    .sort(
+      (left, right) =>
+        Number(right.exact) - Number(left.exact) ||
+        right.prefixLength - left.prefixLength,
+    )
+
+  const bestPath = matchingPaths[0]
+  if (bestPath) {
+    for (const replacement of bestPath.replacements) {
+      const wildcardValue = bestPath.wildcardValue
       const mappedPath = replacement.replace('*', wildcardValue)
       const mappedModuleName = moduleNameFor(
         path.resolve(pathBase, mappedPath),
