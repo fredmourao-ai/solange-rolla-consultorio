@@ -136,9 +136,9 @@ export type TablesInsert<
     : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
     ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-        Row: infer R
+        Insert: infer I
       }
-      ? R
+      ? I
       : never
     : never
 
