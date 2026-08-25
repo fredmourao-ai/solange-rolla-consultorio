@@ -93,7 +93,7 @@ describe('module contracts', () => {
 
     expect(result.status).not.toBe(0)
     expect(outputOf(result)).toContain(
-      'consumer: unresolved cross-module import "@/modules/producer/missing"',
+      'consumer: unresolved cross-module import "@producer/missing"',
     )
   }, 30_000)
 

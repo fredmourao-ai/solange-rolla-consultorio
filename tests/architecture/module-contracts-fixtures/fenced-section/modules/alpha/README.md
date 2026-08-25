@@ -14,6 +14,7 @@ Fixture.
 None.
 
 ```markdown
+```not-a-close
 ## Proibições
 This is an example, not the module contract.
 ```

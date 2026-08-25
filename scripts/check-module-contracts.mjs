@@ -97,7 +97,10 @@ function readCompilerOptions(projectPath) {
     )
   }
 
-  return parsed.options
+  return {
+    compilerOptions: parsed.options,
+    projectDirectory: path.dirname(projectPath),
+  }
 }
 
 function moduleNameFor(filePath, modulesRoot, moduleNames) {
@@ -157,19 +160,21 @@ function markdownHeadings(markdown) {
   let fence
 
   for (const line of markdown.split(/\r?\n/u)) {
-    const fenceMatch = line.match(/^\s*(`{3,}|~{3,})/u)
-
-    if (fenceMatch) {
-      const marker = fenceMatch[1]
-      if (!fence) {
-        fence = marker
-      } else if (marker[0] === fence[0] && marker.length >= fence.length) {
+    if (fence) {
+      const closingFence = line.match(/^\s{0,3}(`{3,}|~{3,})\s*$/u)?.[1]
+      if (
+        closingFence &&
+        closingFence[0] === fence[0] &&
+        closingFence.length >= fence.length
+      ) {
         fence = undefined
       }
       continue
     }
 
-    if (fence) {
+    const openingFence = line.match(/^\s{0,3}(`{3,}|~{3,})/u)?.[1]
+    if (openingFence) {
+      fence = openingFence
       continue
     }
 
@@ -187,6 +192,8 @@ function unresolvedCrossModuleName(
   sourcePath,
   modulesRoot,
   moduleNames,
+  compilerOptions,
+  projectDirectory,
 ) {
   if (specifier.startsWith('.')) {
     return moduleNameFor(
@@ -194,6 +201,41 @@ function unresolvedCrossModuleName(
       modulesRoot,
       moduleNames,
     )
+  }
+
+  const pathBase = compilerOptions.baseUrl ?? projectDirectory
+
+  for (const [pattern, replacements] of Object.entries(
+    compilerOptions.paths ?? {},
+  )) {
+    const wildcardIndex = pattern.indexOf('*')
+    let wildcardValue
+
+    if (wildcardIndex === -1) {
+      if (pattern !== specifier) {
+        continue
+      }
+      wildcardValue = ''
+    } else {
+      const prefix = pattern.slice(0, wildcardIndex)
+      const suffix = pattern.slice(wildcardIndex + 1)
+      if (!specifier.startsWith(prefix) || !specifier.endsWith(suffix)) {
+        continue
+      }
+      wildcardValue = specifier.slice(prefix.length, specifier.length - suffix.length)
+    }
+
+    for (const replacement of replacements) {
+      const mappedPath = replacement.replace('*', wildcardValue)
+      const mappedModuleName = moduleNameFor(
+        path.resolve(pathBase, mappedPath),
+        modulesRoot,
+        moduleNames,
+      )
+      if (mappedModuleName) {
+        return mappedModuleName
+      }
+    }
   }
 
   const normalizedSpecifier = specifier.replaceAll('\\', '/')
@@ -229,7 +271,12 @@ function checkReadmes(modulesRoot, moduleNames) {
   return errors
 }
 
-function checkCrossModuleImports(modulesRoot, moduleNames, compilerOptions) {
+function checkCrossModuleImports(
+  modulesRoot,
+  moduleNames,
+  compilerOptions,
+  projectDirectory,
+) {
   const errors = []
   const reportedErrors = new Set()
   const moduleResolutionCache = ts.createModuleResolutionCache(
@@ -271,6 +318,8 @@ function checkCrossModuleImports(modulesRoot, moduleNames, compilerOptions) {
             sourcePath,
             modulesRoot,
             moduleNames,
+            compilerOptions,
+            projectDirectory,
           )
 
           if (unresolvedProviderName && unresolvedProviderName !== consumerName) {
@@ -311,10 +360,15 @@ function main() {
   const { modulesRoot, project } = parseArguments(process.argv.slice(2))
   const moduleDirectories = listModuleDirectories(modulesRoot)
   const moduleNames = new Set(moduleDirectories)
-  const compilerOptions = readCompilerOptions(project)
+  const { compilerOptions, projectDirectory } = readCompilerOptions(project)
   const errors = [
     ...checkReadmes(modulesRoot, moduleDirectories),
-    ...checkCrossModuleImports(modulesRoot, moduleNames, compilerOptions),
+    ...checkCrossModuleImports(
+      modulesRoot,
+      moduleNames,
+      compilerOptions,
+      projectDirectory,
+    ),
   ]
 
   if (errors.length > 0) {
