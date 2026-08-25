@@ -149,9 +149,14 @@ Outbox idempotente para geração assíncrona de comprovantes assinados.
 - source_type/source_id
 - original_amount_cents
 - due_at
-- status
-- balance_cents derivado de pagamentos/ajustes com invariantes de consistência
+- status `open | partial | paid | overdue | refund_due | refunded | voided`
 - timestamps
+
+Valores calculados por projection/query transacional, não editáveis diretamente:
+- `charge_amount_cents`: original + adjustments válidos
+- `net_paid_cents`: payments - refunds efetivados
+- `balance_cents`: valor ainda devido
+- `refund_due_cents`: valor recebido que deve ser devolvido após redução/zeragem do charge
 
 ### `payments`
 - receivable_id
@@ -159,10 +164,23 @@ Outbox idempotente para geração assíncrona de comprovantes assinados.
 - paid_at
 - payment_method
 - external_reference opcional
+- idempotency_key unique
 - status
 
+### `payment_refunds`
+- payment_id
+- amount_cents
+- refunded_at
+- refund_method
+- reason
+- external_reference opcional
+- idempotency_key unique
+- actor
+
+Refund nunca apaga nem substitui o pagamento original; soma de refunds não pode exceder o payment.
+
 ### `receivable_adjustments`
-Desconto, isenção, estorno/ajuste e outras correções permitidas, sempre com motivo e ator.
+Desconto, `cancellation_waiver`, isenção e outras correções de charge permitidas, sempre com motivo, ator e valor. Ajuste não é refund e não altera histórico de caixa.
 
 ## payables
 
@@ -181,7 +199,7 @@ Cadastro simples de fornecedor.
 Baixa de despesa e comprovante privado.
 
 ### `recurrence_rules`
-Regra versionada para geração idempotente de despesas futuras.
+Regra versionada para geração idempotente de despesas futuras, incluindo política explícita para dia inexistente no mês (`last_day` quando configurado).
 
 ## events
 
