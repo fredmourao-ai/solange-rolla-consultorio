@@ -6,10 +6,10 @@ on:
       - feat/1-foundation-platform
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  task-2-lock:
+  foundation-gate:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -19,22 +19,30 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 24.19.0
+          cache: npm
 
-      - name: Install dependencies and refresh lockfile
-        run: npm install --ignore-scripts
-
-      - name: Persist lockfile if changed
+      - name: Verify runtime
         run: |
-          if ! git diff --quiet -- package-lock.json; then
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add package-lock.json
-            git commit -m "chore: lock typed environment dependency [skip ci]"
-            git push origin HEAD:feat/1-foundation-platform
-          fi
+          node --version
+          npm --version
 
-      - name: Verify environment tests
-        run: npm test -- src/platform/env/schema.test.ts --run
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Verify lockfile is reproducible
+        run: git diff --exit-code -- package-lock.json
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm run test:run
+
+      - name: Build
+        run: npm run build
 
       - name: Dependency audit
         run: npm audit --audit-level=high
