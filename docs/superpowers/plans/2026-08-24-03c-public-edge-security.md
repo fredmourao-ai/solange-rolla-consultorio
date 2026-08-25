@@ -62,12 +62,19 @@ git commit -m "feat: add web security headers and noindex"
 **Files:**
 - Create: `src/platform/security/origin.ts`
 - Create: `src/platform/security/action-token.ts`
-- Modify: public mutation route handlers/server actions usados por capability
+- Create: `src/platform/security/public-action.ts`
+- Modify: `src/modules/forms/application/save-draft.ts`
+- Modify: `src/modules/forms/application/submit-form.ts`
+- Modify: `src/modules/signatures/application/sign-submission.ts`
+- Modify: `src/modules/appointments/application/respond-to-confirmation.ts`
 - Test: `src/platform/security/origin.test.ts`
+- Test: `src/platform/security/action-token.test.ts`
 - Test: `tests/e2e/capability-csrf.spec.ts`
 
 **Interfaces:**
-- Produces `requireTrustedOrigin(request)` e token anti-replay/CSRF quando necessário para formulários mutáveis.
+- Produces `requireTrustedOrigin(request)`.
+- Produces `issuePublicActionToken({ capabilitySessionId, purpose, subjectId })` e `consumePublicActionToken(...)`.
+- Produces `PublicActionContext` que os quatro use-cases públicos acima exigem para mutações iniciadas pelo paciente.
 
 - [ ] **Step 1: Origin allowlist**
 
@@ -77,18 +84,22 @@ Permitir somente `APP_URL` e origins de preview explicitamente verificadas no en
 
 Capability session cookie permanece `HttpOnly`, `Secure` em HTTPS, `SameSite=Lax` ou mais restritivo quando fluxo permitir, path/TTL mínimos.
 
-- [ ] **Step 3: Anti-replay de ação**
+- [ ] **Step 3: PublicActionContext**
 
-Para ações finais como assinar/cancelar, usar nonce/action token one-time vinculado à capability/session e à finalidade. Retry idempotente retorna resultado existente; token não autoriza outra ação.
+`public-action.ts` combina sessão capability validada, Origin aprovado e nonce de ação. `saveDraft`, `submitForm`, `signSubmission` e `respondToConfirmation` recebem esse contexto quando chamados pelo fluxo público e rejeitam contexto ausente/incompatível antes de qualquer escrita.
 
-- [ ] **Step 4: E2E negativo**
+- [ ] **Step 4: Anti-replay de ação**
 
-POST cross-origin, nonce de outra capability, nonce reaproveitado para outra finalidade e cookie ausente devem falhar sem alterar estado.
+Para ações finais como assinar/cancelar, usar nonce/action token one-time vinculado à capability session, finalidade e subject. Retry idempotente da mesma operação já concluída retorna resultado existente; o token consumido não autoriza outra ação/finalidade.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 5: E2E negativo**
+
+POST cross-origin, nonce de outra capability, nonce reaproveitado para outra finalidade, subject divergente e cookie ausente devem falhar sem alterar estado.
+
+- [ ] **Step 6: Commit**
 
 ```bash
-git add src/platform/security src/app tests/e2e/capability-csrf.spec.ts
+git add src/platform/security src/modules/forms/application src/modules/signatures/application src/modules/appointments/application tests/e2e/capability-csrf.spec.ts
 git commit -m "feat: protect public capability mutations"
 ```
 
