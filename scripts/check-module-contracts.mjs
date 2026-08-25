@@ -1,0 +1,271 @@
+import fs from 'node:fs'
+import path from 'node:path'
+import process from 'node:process'
+import ts from 'typescript'
+
+const requiredReadmeSections = [
+  'Responsabilidade',
+  'Public API',
+  'Owns',
+  'Consumes',
+  'Invariantes',
+  'Dados sensíveis',
+  'Proibições',
+]
+const sourceFilePattern = /\.(?:[cm]?ts|[cm]?tsx)$/
+
+function parseArguments(argumentsList) {
+  const options = {
+    modulesRoot: path.resolve('src/modules'),
+    project: path.resolve('tsconfig.json'),
+  }
+
+  for (let index = 0; index < argumentsList.length; index += 1) {
+    const argument = argumentsList[index]
+    const value = argumentsList[index + 1]
+
+    if (argument === '--modules-root' && value) {
+      options.modulesRoot = path.resolve(value)
+      index += 1
+    } else if (argument === '--project' && value) {
+      options.project = path.resolve(value)
+      index += 1
+    } else {
+      throw new Error(`Unknown or incomplete argument: ${argument}`)
+    }
+  }
+
+  return options
+}
+
+function listModuleDirectories(modulesRoot) {
+  if (!fs.existsSync(modulesRoot)) {
+    return []
+  }
+
+  return fs
+    .readdirSync(modulesRoot, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name)
+    .sort()
+}
+
+function listSourceFiles(directory) {
+  const files = []
+
+  for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+    const filePath = path.join(directory, entry.name)
+
+    if (entry.isDirectory()) {
+      files.push(...listSourceFiles(filePath))
+    } else if (entry.isFile() && sourceFilePattern.test(entry.name)) {
+      files.push(filePath)
+    }
+  }
+
+  return files
+}
+
+function readCompilerOptions(projectPath) {
+  if (!fs.existsSync(projectPath)) {
+    throw new Error(`TypeScript project not found: ${projectPath}`)
+  }
+
+  const config = ts.readConfigFile(projectPath, ts.sys.readFile)
+
+  if (config.error) {
+    throw new Error(ts.flattenDiagnosticMessageText(config.error.messageText, '\n'))
+  }
+
+  const parsed = ts.parseJsonConfigFileContent(
+    config.config,
+    ts.sys,
+    path.dirname(projectPath),
+    undefined,
+    projectPath,
+  )
+
+  const configurationErrors = parsed.errors.filter(
+    (diagnostic) => diagnostic.code !== 18003,
+  )
+
+  if (configurationErrors.length > 0) {
+    throw new Error(
+      configurationErrors
+        .map((diagnostic) => ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n'))
+        .join('\n'),
+    )
+  }
+
+  return parsed.options
+}
+
+function moduleNameFor(filePath, modulesRoot, moduleNames) {
+  const relativePath = path.relative(modulesRoot, filePath)
+
+  if (relativePath.startsWith('..') || path.isAbsolute(relativePath)) {
+    return undefined
+  }
+
+  const [moduleName] = relativePath.split(path.sep)
+  return moduleNames.has(moduleName) ? moduleName : undefined
+}
+
+function moduleSpecifiersIn(sourceFile) {
+  const specifiers = []
+
+  function addSpecifier(node) {
+    if (node && ts.isStringLiteralLike(node)) {
+      specifiers.push(node.text)
+    }
+  }
+
+  function visit(node) {
+    if (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) {
+      addSpecifier(node.moduleSpecifier)
+    } else if (
+      ts.isImportEqualsDeclaration(node) &&
+      ts.isExternalModuleReference(node.moduleReference)
+    ) {
+      addSpecifier(node.moduleReference.expression)
+    } else if (
+      ts.isCallExpression(node) &&
+      ((node.expression.kind === ts.SyntaxKind.ImportKeyword && node.arguments.length === 1) ||
+        (ts.isIdentifier(node.expression) &&
+          node.expression.text === 'require' &&
+          node.arguments.length === 1))
+    ) {
+      addSpecifier(node.arguments[0])
+    }
+
+    ts.forEachChild(node, visit)
+  }
+
+  visit(sourceFile)
+  return specifiers
+}
+
+function isPublicContract(filePath, providerName, modulesRoot) {
+  return (
+    path.relative(modulesRoot, filePath) ===
+    path.join(providerName, 'public.ts')
+  )
+}
+
+function checkReadmes(modulesRoot, moduleNames) {
+  const errors = []
+
+  for (const moduleName of moduleNames) {
+    const readmePath = path.join(modulesRoot, moduleName, 'README.md')
+
+    if (!fs.existsSync(readmePath)) {
+      errors.push(`${moduleName}: missing README.md`)
+      continue
+    }
+
+    const readme = fs.readFileSync(readmePath, 'utf8')
+    for (const section of requiredReadmeSections) {
+      const sectionPattern = new RegExp(`^#{1,6}\\s+${section}\\s*$`, 'mu')
+      if (!sectionPattern.test(readme)) {
+        errors.push(
+          `${moduleName}: README.md is missing required section "${section}"`,
+        )
+      }
+    }
+  }
+
+  return errors
+}
+
+function checkCrossModuleImports(modulesRoot, moduleNames, compilerOptions) {
+  const errors = []
+  const reportedErrors = new Set()
+  const moduleResolutionCache = ts.createModuleResolutionCache(
+    process.cwd(),
+    ts.sys.useCaseSensitiveFileNames ? (value) => value : (value) => value.toLowerCase(),
+    compilerOptions,
+  )
+
+  function report(message) {
+    if (!reportedErrors.has(message)) {
+      reportedErrors.add(message)
+      errors.push(message)
+    }
+  }
+
+  for (const consumerName of moduleNames) {
+    const consumerPath = path.join(modulesRoot, consumerName)
+
+    for (const sourcePath of listSourceFiles(consumerPath)) {
+      const sourceFile = ts.createSourceFile(
+        sourcePath,
+        fs.readFileSync(sourcePath, 'utf8'),
+        ts.ScriptTarget.Latest,
+        false,
+      )
+
+      for (const specifier of moduleSpecifiersIn(sourceFile)) {
+        const resolution = ts.resolveModuleName(
+          specifier,
+          sourcePath,
+          compilerOptions,
+          ts.sys,
+          moduleResolutionCache,
+        ).resolvedModule
+
+        if (!resolution) {
+          continue
+        }
+
+        const providerPath = path.resolve(resolution.resolvedFileName)
+        const providerName = moduleNameFor(providerPath, modulesRoot, moduleNames)
+
+        if (!providerName || providerName === consumerName) {
+          continue
+        }
+
+        if (!fs.existsSync(path.join(modulesRoot, providerName, 'public.ts'))) {
+          report(`${providerName}: cross-module contract requires public.ts`)
+        }
+
+        if (!isPublicContract(providerPath, providerName, modulesRoot)) {
+          report(
+            `${consumerName}: imports ${providerName} internal file "${path
+              .relative(modulesRoot, providerPath)
+              .split(path.sep)
+              .join('/')}"`,
+          )
+        }
+      }
+    }
+  }
+
+  return errors
+}
+
+function main() {
+  const { modulesRoot, project } = parseArguments(process.argv.slice(2))
+  const moduleDirectories = listModuleDirectories(modulesRoot)
+  const moduleNames = new Set(moduleDirectories)
+  const compilerOptions = readCompilerOptions(project)
+  const errors = [
+    ...checkReadmes(modulesRoot, moduleDirectories),
+    ...checkCrossModuleImports(modulesRoot, moduleNames, compilerOptions),
+  ]
+
+  if (errors.length > 0) {
+    for (const error of errors) {
+      console.error(`Module contract violation: ${error}`)
+    }
+    process.exitCode = 1
+  }
+}
+
+try {
+  main()
+} catch (error) {
+  console.error(
+    error instanceof Error ? `Module contract check failed: ${error.message}` : error,
+  )
+  process.exitCode = 1
+}

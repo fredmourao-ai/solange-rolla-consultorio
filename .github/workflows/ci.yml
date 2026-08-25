@@ -64,6 +64,24 @@ jobs:
       - name: Unit tests
         run: npm run test:run
 
+  architecture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Use Node 24.19.0
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24.19.0
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Architecture dependency contracts
+        run: npm run arch:check
+      - name: Module contracts
+        run: npm run modules:check
+
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 15

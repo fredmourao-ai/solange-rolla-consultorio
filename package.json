@@ -15,6 +15,7 @@
     "test": "vitest",
     "test:run": "vitest run",
     "arch:check": "depcruise src --config .dependency-cruiser.cjs --output-type err-long",
+    "modules:check": "node scripts/check-module-contracts.mjs",
     "test:e2e": "playwright test",
     "supabase:start": "npx supabase@2.115.0 start",
     "supabase:stop": "npx supabase@2.115.0 stop",
