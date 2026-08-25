@@ -6,10 +6,10 @@ on:
       - feat/1-foundation-platform
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  result-contract:
+  task-1-gate:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -19,38 +19,40 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 24.19.0
+          cache: npm
 
       - name: Verify runtime
         run: |
           node --version
           npm --version
 
-      - name: Install dependencies and generate lockfile
-        run: npm install --ignore-scripts
+      - name: Install locked dependencies
+        run: npm ci
 
-      - name: Persist lockfile once
-        run: |
-          if ! git ls-files --error-unmatch package-lock.json >/dev/null 2>&1; then
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add package-lock.json
-            git commit -m "chore: lock bootstrap dependencies [skip ci]"
-            git push origin HEAD:feat/1-foundation-platform
-          fi
+      - name: Verify lockfile is reproducible
+        run: git diff --exit-code -- package-lock.json
 
-      - name: Run Result contract test
-        run: npm test -- src/shared/kernel/result.test.ts --run
+      - name: Lint
+        run: npm run lint
 
-      - name: Capture dependency audit
-        if: always()
-        run: npm audit --json > npm-audit.json || true
+      - name: Typecheck
+        run: npm run typecheck
 
-      - name: Preserve bootstrap artifacts
+      - name: Unit tests
+        run: npm run test:run
+
+      - name: Build
+        run: npm run build
+
+      - name: Dependency audit
+        run: npm audit --audit-level=high
+
+      - name: Capture generated Next metadata
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: bootstrap-${{ github.sha }}
+          name: next-generated-${{ github.sha }}
           path: |
-            package-lock.json
-            npm-audit.json
-          if-no-files-found: error
+            next-env.d.ts
+            tsconfig.json
+          if-no-files-found: warn
