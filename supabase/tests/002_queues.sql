@@ -57,7 +57,7 @@ select is(
 );
 select is(
   (select read_count from first_read),
-  1::bigint,
+  1::integer,
   'first delivery has read count one'
 );
 select is(
@@ -85,7 +85,7 @@ select is(
 );
 select is(
   (select read_count from second_read),
-  2::bigint,
+  2::integer,
   'redelivery increments read count'
 );
 select ok(
