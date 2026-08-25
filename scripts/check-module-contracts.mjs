@@ -152,6 +152,59 @@ function isPublicContract(filePath, providerName, modulesRoot) {
   )
 }
 
+function markdownHeadings(markdown) {
+  const headings = new Set()
+  let fence
+
+  for (const line of markdown.split(/\r?\n/u)) {
+    const fenceMatch = line.match(/^\s*(`{3,}|~{3,})/u)
+
+    if (fenceMatch) {
+      const marker = fenceMatch[1]
+      if (!fence) {
+        fence = marker
+      } else if (marker[0] === fence[0] && marker.length >= fence.length) {
+        fence = undefined
+      }
+      continue
+    }
+
+    if (fence) {
+      continue
+    }
+
+    const headingMatch = line.match(/^\s{0,3}#{1,6}\s+(.+?)\s*$/u)
+    if (headingMatch) {
+      headings.add(headingMatch[1].replace(/\s+#+\s*$/u, '').trim())
+    }
+  }
+
+  return headings
+}
+
+function unresolvedCrossModuleName(
+  specifier,
+  sourcePath,
+  modulesRoot,
+  moduleNames,
+) {
+  if (specifier.startsWith('.')) {
+    return moduleNameFor(
+      path.resolve(path.dirname(sourcePath), specifier),
+      modulesRoot,
+      moduleNames,
+    )
+  }
+
+  const normalizedSpecifier = specifier.replaceAll('\\', '/')
+  const moduleMatch = normalizedSpecifier.match(
+    /(?:^|\/)modules\/([^/]+)(?:\/|$)/u,
+  )
+  const moduleName = moduleMatch?.[1]
+
+  return moduleName && moduleNames.has(moduleName) ? moduleName : undefined
+}
+
 function checkReadmes(modulesRoot, moduleNames) {
   const errors = []
 
@@ -163,10 +216,9 @@ function checkReadmes(modulesRoot, moduleNames) {
       continue
     }
 
-    const readme = fs.readFileSync(readmePath, 'utf8')
+    const headings = markdownHeadings(fs.readFileSync(readmePath, 'utf8'))
     for (const section of requiredReadmeSections) {
-      const sectionPattern = new RegExp(`^#{1,6}\\s+${section}\\s*$`, 'mu')
-      if (!sectionPattern.test(readme)) {
+      if (!headings.has(section)) {
         errors.push(
           `${moduleName}: README.md is missing required section "${section}"`,
         )
@@ -214,6 +266,18 @@ function checkCrossModuleImports(modulesRoot, moduleNames, compilerOptions) {
         ).resolvedModule
 
         if (!resolution) {
+          const unresolvedProviderName = unresolvedCrossModuleName(
+            specifier,
+            sourcePath,
+            modulesRoot,
+            moduleNames,
+          )
+
+          if (unresolvedProviderName && unresolvedProviderName !== consumerName) {
+            report(
+              `${consumerName}: unresolved cross-module import "${specifier}"`,
+            )
+          }
           continue
         }
 

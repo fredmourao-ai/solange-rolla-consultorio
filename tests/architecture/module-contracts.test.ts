@@ -1,4 +1,5 @@
 import { spawnSync } from 'node:child_process'
+import fs from 'node:fs'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 
@@ -86,4 +87,34 @@ describe('module contracts', () => {
 
     expect(result.status, outputOf(result)).toBe(0)
   }, 30_000)
+
+  it('fails closed for an unresolved cross-module alias', () => {
+    const result = checkModules('unresolved-internal-import')
+
+    expect(result.status).not.toBe(0)
+    expect(outputOf(result)).toContain(
+      'consumer: unresolved cross-module import "@/modules/producer/missing"',
+    )
+  }, 30_000)
+
+  it('does not count headings inside fenced code blocks', () => {
+    const result = checkModules('fenced-section')
+
+    expect(result.status).not.toBe(0)
+    expect(outputOf(result)).toContain(
+      'alpha: README.md is missing required section "Proibições"',
+    )
+  }, 30_000)
+
+  it('runs architecture contracts inside the existing build gate', () => {
+    const workflow = fs.readFileSync(
+      path.join(repositoryRoot, '.github/workflows/ci.yml'),
+      'utf8',
+    )
+    const buildJob = workflow.split(/^  build:/mu)[1]
+
+    expect(buildJob).toBeDefined()
+    expect(buildJob).toContain('run: npm run arch:check')
+    expect(buildJob).toContain('run: npm run modules:check')
+  })
 })
