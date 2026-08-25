@@ -6,10 +6,10 @@ on:
       - feat/1-foundation-platform
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  task-2-red:
+  task-2-lock:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -20,22 +20,21 @@ jobs:
         with:
           node-version: 24.19.0
 
-      - name: Install dependencies and refresh candidate lockfile
+      - name: Install dependencies and refresh lockfile
         run: npm install --ignore-scripts
 
-      - name: Run environment contract test
+      - name: Persist lockfile if changed
+        run: |
+          if ! git diff --quiet -- package-lock.json; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add package-lock.json
+            git commit -m "chore: lock typed environment dependency [skip ci]"
+            git push origin HEAD:feat/1-foundation-platform
+          fi
+
+      - name: Verify environment tests
         run: npm test -- src/platform/env/schema.test.ts --run
 
-      - name: Capture candidate lockfile and audit
-        if: always()
-        run: npm audit --json > npm-audit.json || true
-
-      - name: Preserve Task 2 artifacts
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: task2-red-${{ github.sha }}
-          path: |
-            package-lock.json
-            npm-audit.json
-          if-no-files-found: error
+      - name: Dependency audit
+        run: npm audit --audit-level=high
