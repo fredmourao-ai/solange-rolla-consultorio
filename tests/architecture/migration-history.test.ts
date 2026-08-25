@@ -149,13 +149,91 @@ describe('migration history', () => {
   it('accepts a valid forward-only migration after unchanged base migrations', () => {
     const repository = createRepository()
     fs.writeFileSync(
-      path.join(repository, 'supabase/migrations/20260824000300_add_queue_metrics.sql'),
-      'select 1;\n',
+      path.join(repository, 'supabase/migrations/20260824000300_platform_add_queue_metrics.sql'),
+      '-- owners: platform\nselect 1;\n',
     )
 
     const result = checkMigrations(repository, { baseRef: 'migration-base' })
 
     expect(result.status, outputOf(result)).toBe(0)
+  })
+
+  it('requires a machine-readable owner declaration on new migrations', () => {
+    const repository = createRepository()
+    fs.writeFileSync(
+      path.join(repository, 'supabase/migrations/20260824000300_clinical.sql'),
+      'create schema clinical;\n',
+    )
+
+    const result = checkMigrations(repository, { baseRef: 'migration-base' })
+
+    expect(result.status).not.toBe(0)
+    expect(outputOf(result)).toContain(
+      '20260824000300_clinical.sql: missing "-- owners: clinical" declaration',
+    )
+  })
+
+  it('rejects owners that do not match the migration description prefix', () => {
+    const repository = createRepository()
+    fs.writeFileSync(
+      path.join(repository, 'supabase/migrations/20260824000300_clinical.sql'),
+      '-- owners: people\ncreate schema clinical;\n',
+    )
+
+    const result = checkMigrations(repository, { baseRef: 'migration-base' })
+
+    expect(result.status).not.toBe(0)
+    expect(outputOf(result)).toContain(
+      '20260824000300_clinical.sql: declared owners "people" do not match expected owners "clinical"',
+    )
+  })
+
+  it('requires a Task Contract marker for cross-module migrations', () => {
+    const repository = createRepository()
+    fs.writeFileSync(
+      path.join(
+        repository,
+        'supabase/migrations/20260824000300_bind_cancellation_legal_version.sql',
+      ),
+      '-- owners: appointments, forms\nselect 1;\n',
+    )
+
+    const result = checkMigrations(repository, { baseRef: 'migration-base' })
+
+    expect(result.status).not.toBe(0)
+    expect(outputOf(result)).toContain(
+      '20260824000300_bind_cancellation_legal_version.sql: cross-module migrations require "-- cross-module-task: #<issue>"',
+    )
+  })
+
+  it('accepts a cross-module migration with matching owners and Task Contract', () => {
+    const repository = createRepository()
+    fs.writeFileSync(
+      path.join(
+        repository,
+        'supabase/migrations/20260824000300_bind_cancellation_legal_version.sql',
+      ),
+      '-- owners: appointments, forms\n-- cross-module-task: #123\nselect 1;\n',
+    )
+
+    const result = checkMigrations(repository, { baseRef: 'migration-base' })
+
+    expect(result.status, outputOf(result)).toBe(0)
+  })
+
+  it('rejects an owner declaration hidden after executable SQL', () => {
+    const repository = createRepository()
+    fs.writeFileSync(
+      path.join(repository, 'supabase/migrations/20260824000300_clinical.sql'),
+      'select 1;\n-- owners: clinical\n',
+    )
+
+    const result = checkMigrations(repository, { baseRef: 'migration-base' })
+
+    expect(result.status).not.toBe(0)
+    expect(outputOf(result)).toContain(
+      '20260824000300_clinical.sql: missing "-- owners: clinical" declaration',
+    )
   })
 
   it('falls back to origin/main when a CI base-ref environment variable is empty', () => {

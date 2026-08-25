@@ -4,6 +4,34 @@ import path from 'node:path'
 import process from 'node:process'
 
 const migrationNamePattern = /^(?<timestamp>\d{14})_(?<description>[a-z][a-z0-9]*(?:_[a-z0-9]+)*)\.sql$/u
+const schemaOwners = new Set([
+  'appointments',
+  'audit',
+  'clinical',
+  'events',
+  'fiscal',
+  'forms',
+  'identity',
+  'messaging',
+  'payables',
+  'people',
+  'platform',
+  'receivables',
+  'reports',
+  'signatures',
+])
+const specialDescriptionOwners = new Map([
+  ['appointment_confirmation', ['appointments']],
+  ['bind_cancellation_legal_version', ['appointments', 'forms']],
+  ['capabilities', ['forms']],
+  ['document_jobs', ['signatures']],
+  ['extensions', ['platform']],
+  ['legal_terms', ['forms']],
+  ['payments', ['receivables']],
+  ['private_storage', ['platform']],
+  ['public_rate_limits', ['platform']],
+  ['queues', ['platform']],
+])
 
 function parseArguments(argumentsList) {
   const options = { baseRef: undefined }
@@ -101,6 +129,7 @@ function currentMigrations(directory, directoryPathspec) {
     }
 
     migrations.push({
+      description: match.groups.description,
       name: entry.name,
       path: `${directoryPathspec}/${entry.name}`,
       timestamp,
@@ -236,19 +265,103 @@ function validateBaseHistory(baseMigrations, migrations) {
   return errors
 }
 
+function expectedOwnersFor(description) {
+  const specialOwners = specialDescriptionOwners.get(description)
+  if (specialOwners) {
+    return specialOwners
+  }
+
+  const prefix = description.split('_', 1)[0]
+  return schemaOwners.has(prefix) ? [prefix] : undefined
+}
+
+function declaredOwnersFor(migration) {
+  const sql = fs.readFileSync(migration.path, 'utf8')
+  const headerLines = []
+
+  for (const line of sql.split(/\r?\n/u)) {
+    if (line.trim() === '' || line.startsWith('--')) {
+      headerLines.push(line)
+      continue
+    }
+    break
+  }
+
+  const header = headerLines.join('\n')
+  const declarations = [
+    ...header.matchAll(/^-- owners:\s*([^\r\n]+?)\s*$/gmu),
+  ]
+
+  if (declarations.length !== 1) {
+    return { header }
+  }
+
+  const owners = declarations[0][1]
+    .split(',')
+    .map((owner) => owner.trim())
+    .filter(Boolean)
+
+  return { header, owners: [...new Set(owners)].sort() }
+}
+
+function validateSchemaOwnership(baseMigrations, migrations) {
+  const errors = []
+  const basePaths = new Set(baseMigrations.map((migration) => migration.path))
+
+  for (const migration of migrations) {
+    if (basePaths.has(migration.path)) {
+      continue
+    }
+
+    const expectedOwners = expectedOwnersFor(migration.description)
+    if (!expectedOwners) {
+      errors.push(
+        `${migration.name}: description must start with a documented schema owner`,
+      )
+      continue
+    }
+
+    const expected = [...expectedOwners].sort()
+    const { header, owners } = declaredOwnersFor(migration)
+    if (!owners) {
+      errors.push(
+        `${migration.name}: missing "-- owners: ${expected.join(', ')}" declaration`,
+      )
+      continue
+    }
+
+    if (
+      owners.length !== expected.length ||
+      owners.some((owner, index) => owner !== expected[index])
+    ) {
+      errors.push(
+        `${migration.name}: declared owners "${owners.join(', ')}" do not match expected owners "${expected.join(', ')}"`,
+      )
+      continue
+    }
+
+    if (owners.length > 1 && !/^-- cross-module-task:\s*(?:#\d+|https:\/\/github\.com\/[^/]+\/[^/]+\/issues\/\d+)\s*$/mu.test(header)) {
+      errors.push(
+        `${migration.name}: cross-module migrations require "-- cross-module-task: #<issue>"`,
+      )
+    }
+  }
+
+  return errors
+}
+
 function main() {
   const options = parseArguments(process.argv.slice(2))
   const directory = migrationDirectory()
   const directoryPathspec = migrationDirectoryPathspec(directory)
   const baseCommit = resolveCommit(resolveBaseRef(options))
   const current = currentMigrations(directory, directoryPathspec)
+  const baseMigrations = baseMigrationBlobs(baseCommit, directoryPathspec)
   const errors = [
     ...current.errors,
     ...validateTimestampOrder(current.migrations),
-    ...validateBaseHistory(
-      baseMigrationBlobs(baseCommit, directoryPathspec),
-      current.migrations,
-    ),
+    ...validateBaseHistory(baseMigrations, current.migrations),
+    ...validateSchemaOwnership(baseMigrations, current.migrations),
   ]
 
   if (errors.length > 0) {

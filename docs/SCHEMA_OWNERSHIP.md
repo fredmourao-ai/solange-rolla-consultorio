@@ -10,6 +10,36 @@ owner in a SQL comment and follow the owner listed below. A module consumes
 another module's data through its public contract, documented view/read model,
 or an event. A foreign key does not grant write ownership.
 
+## Machine-Enforced Migration Header
+
+Every migration added after the Foundation baseline must begin with one
+machine-readable ownership declaration:
+
+```sql
+-- owners: people
+```
+
+The filename description starts with the owner (`people_add_preferences`) or
+uses one of the documented architectural aliases below. Multiple owners are
+sorted alphabetically and require the Task Contract issue:
+
+```sql
+-- owners: appointments, forms
+-- cross-module-task: #123
+```
+
+The migration checker grandfathers blobs already present in the base branch so
+an applied migration is never edited merely to add metadata.
+
+| Description alias | Enforced owner(s) |
+| --- | --- |
+| `extensions`, `queues`, `private_storage`, `public_rate_limits` | `platform` |
+| `capabilities`, `legal_terms` | `forms` |
+| `document_jobs` | `signatures` |
+| `payments` | `receivables` |
+| `appointment_confirmation` | `appointments` |
+| `bind_cancellation_legal_version` | `appointments`, `forms` plus cross-module Task Contract |
+
 ## Foundation Ownership
 
 | Schema or object | Owner | Boundary |
