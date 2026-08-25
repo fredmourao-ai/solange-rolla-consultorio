@@ -8,12 +8,12 @@ const dependencyCruiserCli = path.join(
   'node_modules/dependency-cruiser/bin/dependency-cruise.mjs',
 )
 
-function cruise(fixture: string) {
+function cruise(fixtures: string[]) {
   return spawnSync(
     process.execPath,
     [
       dependencyCruiserCli,
-      fixture,
+      ...fixtures,
       '--config',
       '.dependency-cruiser.cjs',
       '--output-type',
@@ -27,21 +27,33 @@ function cruise(fixture: string) {
 }
 
 describe('dependency boundaries', () => {
-  it('rejects a cross-module internal import for the named rule', () => {
-    const result = cruise(
+  it('rejects every forbidden dependency class for the named rule', () => {
+    const result = cruise([
       'tests/architecture/fixtures/forbidden-cross-module-import.ts',
-    )
+      'tests/architecture/fixtures/forbidden-future-module-import.ts',
+      'tests/architecture/fixtures/forbidden-domain-dependency.ts',
+      'tests/architecture/fixtures/forbidden-platform-dependency.ts',
+      'tests/architecture/fixtures/forbidden-shared-dependency.ts',
+      'tests/architecture/fixtures/forbidden-app-internal-import.ts',
+      'tests/architecture/fixtures/forbidden-cycle.ts',
+    ])
     const output = `${result.stdout}\n${result.stderr}`
 
     expect(result.status).not.toBe(0)
-    expect(output).toContain('cross-module-internal-import')
-  }, 30_000)
+    expect(output).toContain('cross-module-internal-import-from-appointments')
+    expect(output).toContain('cross-module-internal-import-from-future-module')
+    expect(output).toContain('domain-outer-layer-dependency')
+    expect(output).toContain('platform-does-not-depend-on-modules')
+    expect(output).toContain('shared-does-not-depend-on-modules')
+    expect(output).toContain('app-module-contracts-only')
+    expect(output).toContain('no-circular-dependencies')
+  }, 60_000)
 
   it('allows a cross-module import through public.ts', () => {
-    const result = cruise(
+    const result = cruise([
       'tests/architecture/fixtures/allowed-public-import.ts',
-    )
+    ])
 
     expect(result.status, `${result.stdout}\n${result.stderr}`).toBe(0)
-  }, 30_000)
+  }, 60_000)
 })
