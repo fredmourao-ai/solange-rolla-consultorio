@@ -20,9 +20,12 @@ Every environment receives its own values for `NEXT_PUBLIC_SUPABASE_URL`,
 `CLINICAL_ENCRYPTION_KEY_V*`, and provider credentials. Server-only values must
 never be exposed as `NEXT_PUBLIC_*` variables.
 
-Before deployment, run `npm run environment:check` with the target environment
-variables. A deployment pointing Preview/Staging at production or Production at
-staging fails closed.
+Before deployment, run the GitHub `Environment Gate` workflow (or
+`npm run environment:check` locally) with the target environment variables. A
+deployment pointing Preview/Staging at production, using an unknown Preview
+ref, or pointing Production at staging fails closed. The gate also verifies
+that the Supabase URL hostname matches the selected project ref and that the
+keys have the expected server/public prefixes.
 
 ## Provisioning status
 

@@ -24,8 +24,9 @@ domains are intentionally not connected at this stage.
 - Production starts empty, with no synthetic operational seed and live
   WhatsApp/NFS-e providers disabled.
 - Schema changes are applied only through reviewed forward-only migrations.
-- The environment assertion runs in CI and in deployment workflows before a
-  remote deployment is allowed.
+- The environment assertion runs in CI and in the manual GitHub
+  `Environment Gate` workflow before a remote deployment is allowed. The
+  workflow reads only the selected GitHub Environment's secrets and variables.
 
 ## Provisioning handoff
 

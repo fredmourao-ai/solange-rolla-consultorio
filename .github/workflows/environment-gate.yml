@@ -1,0 +1,50 @@
+name: Environment Gate
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: GitHub Environment to validate before deployment
+        required: true
+        type: choice
+        options:
+          - preview
+          - staging
+          - production
+
+permissions:
+  contents: read
+
+jobs:
+  pre-deploy:
+    name: Validate ${{ inputs.target }} isolation
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.target }}
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Use Node 24.19.0
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24.19.0
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Assert environment isolation
+        env:
+          APP_ENV: ${{ inputs.target }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+          SUPABASE_STAGING_PROJECT_REF: ${{ secrets.SUPABASE_STAGING_PROJECT_REF }}
+          SUPABASE_PRODUCTION_PROJECT_REF: ${{ secrets.SUPABASE_PRODUCTION_PROJECT_REF }}
+          SUPABASE_ALLOWED_PROJECT_REFS: ${{ secrets.SUPABASE_ALLOWED_PROJECT_REFS }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          WHATSAPP_LIVE_ENABLED: ${{ vars.WHATSAPP_LIVE_ENABLED }}
+          NFSE_LIVE_ENABLED: ${{ vars.NFSE_LIVE_ENABLED }}
+          GO_LIVE_APPROVED: ${{ vars.GO_LIVE_APPROVED }}
+        run: npm run environment:check
