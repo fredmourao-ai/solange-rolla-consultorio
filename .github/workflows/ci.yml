@@ -81,6 +81,12 @@ jobs:
         run: npm run arch:check
       - name: Module contracts
         run: npm run modules:check
+      - name: Environment isolation assertion
+        env:
+          APP_ENV: local
+          WHATSAPP_LIVE_ENABLED: false
+          NFSE_LIVE_ENABLED: false
+        run: npm run environment:check
 
   build:
     runs-on: ubuntu-latest
