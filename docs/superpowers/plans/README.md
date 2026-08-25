@@ -11,6 +11,7 @@ O índice define ordem, paralelismo, gates e dependências entre os subplanos.
 ## Subplanos v2
 
 - `2026-08-24-01-foundation-platform.md`
+- `2026-08-24-01a-platform-provisioning.md`
 - `2026-08-24-01b-ui-foundation.md`
 - `2026-08-24-01c-architecture-enforcement.md`
 - `2026-08-24-01d-environments-preview.md`
@@ -19,6 +20,7 @@ O índice define ordem, paralelismo, gates e dependências entre os subplanos.
 - `2026-08-24-03-appointments-forms-signatures.md`
 - `2026-08-24-03a-contract-terms.md`
 - `2026-08-24-03b-signed-documents.md`
+- `2026-08-24-03c-public-edge-security.md`
 - `2026-08-24-04-messaging-automations.md`
 - `2026-08-24-05-finance-events.md`
 - `2026-08-24-06-fiscal.md`
