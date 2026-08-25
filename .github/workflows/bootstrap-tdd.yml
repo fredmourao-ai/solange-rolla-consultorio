@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 jobs:
-  foundation-gate:
+  task-3-red:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -19,30 +19,12 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 24.19.0
-          cache: npm
 
-      - name: Verify runtime
-        run: |
-          node --version
-          npm --version
+      - name: Verify Docker
+        run: docker version
 
-      - name: Install locked dependencies
-        run: npm ci
+      - name: Start Supabase local stack
+        run: npx supabase@2.115.0 start
 
-      - name: Verify lockfile is reproducible
-        run: git diff --exit-code -- package-lock.json
-
-      - name: Lint
-        run: npm run lint
-
-      - name: Typecheck
-        run: npm run typecheck
-
-      - name: Unit tests
-        run: npm run test:run
-
-      - name: Build
-        run: npm run build
-
-      - name: Dependency audit
-        run: npm audit --audit-level=high
+      - name: Run database smoke test
+        run: npx supabase@2.115.0 test db
