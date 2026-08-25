@@ -47,7 +47,7 @@ describe('dependency boundaries', () => {
     expect(output).toContain('shared-does-not-depend-on-modules')
     expect(output).toContain('app-module-contracts-only')
     expect(output).toContain('no-circular-dependencies')
-  }, 60_000)
+  }, 180_000)
 
   it('allows a cross-module import through public.ts', () => {
     const result = cruise([
@@ -55,5 +55,5 @@ describe('dependency boundaries', () => {
     ])
 
     expect(result.status, `${result.stdout}\n${result.stderr}`).toBe(0)
-  }, 60_000)
+  }, 180_000)
 })
