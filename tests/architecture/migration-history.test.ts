@@ -459,6 +459,26 @@ describe('migration history', () => {
     expect(outputOf(result)).toContain('SQL contains unsupported or dynamic syntax')
   })
 
+  it('fails closed for unhandled PostgreSQL DDL objects', () => {
+    const repository = createRepository()
+    const migration = '20260824000300_platform_add_collation.sql'
+    fs.writeFileSync(
+      path.join(repository, 'supabase/migrations', migration),
+      '-- owners: platform\n-- task-contract: docs/task-contracts/collation.json\ncreate collation platform.test_collation (provider = icu, locale = \'und\');\n',
+    )
+    writeTaskContract(repository, 'collation.json', {
+      issue: 123,
+      migration,
+      objects: [{ name: 'platform.extensions', owner: 'platform' }],
+      owners: ['platform'],
+    })
+
+    const result = checkMigrations(repository, { baseRef: 'migration-base' })
+
+    expect(result.status).not.toBe(0)
+    expect(outputOf(result)).toContain('SQL contains unsupported or dynamic syntax')
+  })
+
   it('rejects removing an existing manifest owner', () => {
     const repository = createRepository()
     const manifest = {

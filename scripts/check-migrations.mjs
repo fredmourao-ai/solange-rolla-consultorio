@@ -394,17 +394,26 @@ function sqlObjects(migration) {
   const { tokens } = parsed
 
   const unsupportedObjectOperations = new Set([
+    'aggregate',
+    'collation',
+    'conversion',
     'database',
+    'domain',
+    'event',
     'function',
     'index',
     'materialized',
+    'operator',
     'policy',
     'procedure',
     'publication',
     'role',
+    'rule',
     'server',
+    'statistics',
     'subscription',
     'trigger',
+    'transform',
     'type',
     'user',
   ])
