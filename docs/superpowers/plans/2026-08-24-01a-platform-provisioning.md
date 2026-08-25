@@ -23,7 +23,6 @@
 
 **Files:**
 - Create: `docs/PLATFORM_RESOURCES.md`
-- Modify: `docs/ENVIRONMENTS.md` se já existir; caso contrário o plano de environments o cria em seguida
 
 **Interfaces:**
 - Produces nomes canônicos de resources e project refs não secretos.
@@ -39,7 +38,7 @@ Documentar owner da conta, finalidade de cada ambiente, região, data de criaç�
 - [ ] **Step 3: Commit**
 
 ```bash
-git add docs/PLATFORM_RESOURCES.md docs/ENVIRONMENTS.md
+git add docs/PLATFORM_RESOURCES.md
 git commit -m "docs: inventory isolated platform resources"
 ```
 
@@ -169,7 +168,7 @@ git commit -m "ops: configure isolated vercel environments"
 
 - [ ] **Step 1: Registrar categorias**
 
-Supabase URL/public key, service-role server-only, DB credential quando necessário, `CLINICAL_ENCRYPTION_KEY_V*`, WhatsApp, e-mail, NFS-e e webhooks.
+Supabase URL/public key, service-role server-only, DB credential quando necessário, `CLINICAL_ENCRYPTION_KEY_V*`, `RATE_LIMIT_HMAC_KEY`, WhatsApp, e-mail, NFS-e e secrets de assinatura de webhooks.
 
 - [ ] **Step 2: Isolamento**
 
