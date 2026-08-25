@@ -1,0 +1,9 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@*": ["modules/consumer/*"],
+      "@producer/*": ["modules/producer/*"]
+    }
+  }
+}

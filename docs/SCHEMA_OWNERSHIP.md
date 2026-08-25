@@ -1,0 +1,105 @@
+# Schema Ownership
+
+SQL migrations are the source of truth for the database schema. Every new
+migration must use the forward-only filename format
+`YYYYMMDDHHMMSS_description.sql`; a migration that has reached the base branch
+is immutable and is corrected only by a later migration.
+
+The migration that creates or materially changes an owned table must state the
+owner in a SQL comment and follow the owner listed below. A module consumes
+another module's data through its public contract, documented view/read model,
+or an event. A foreign key does not grant write ownership.
+
+## Machine-Enforced Migration Header
+
+Every migration added after the Foundation baseline must begin with one
+machine-readable ownership declaration:
+
+```sql
+-- owners: people
+-- task-contract: docs/task-contracts/123_people.json
+```
+
+The filename description starts with the owner (`people_add_preferences`) or
+uses one of the documented architectural aliases below. Multiple owners are
+sorted alphabetically and require the Task Contract issue:
+
+```sql
+-- owners: appointments, forms
+-- cross-module-task: docs/task-contracts/123_cancellation_legal.json
+```
+
+The migration checker grandfathers blobs already present in the base branch so
+an applied migration is never edited merely to add metadata.
+
+The referenced JSON follows `docs/templates/MIGRATION_TASK_CONTRACT.json` and
+is reviewed in the same PR. CI requires version 1, `status: approved`, a
+positive Issue number, the exact migration filename, matching owners, and at
+least one owned object per owner. Every object must exist in the
+machine-readable `docs/schema-ownership.json`; adding a new table therefore
+updates that manifest and this human-readable document in the same task.
+The checker extracts table, schema and extension references from SQL after
+removing comments and literals. References omitted from the contract fail;
+dynamic `EXECUTE` and unsupported dollar-quoted syntax fail closed for new
+migrations.
+
+| Description alias | Enforced owner(s) |
+| --- | --- |
+| `extensions`, `queues`, `private_storage`, `public_rate_limits` | `platform` |
+| `capabilities`, `legal_terms` | `forms` |
+| `document_jobs` | `signatures` |
+| `payments` | `receivables` |
+| `appointment_confirmation` | `appointments` |
+| `bind_cancellation_legal_version` | `appointments`, `forms` plus cross-module Task Contract |
+
+## Foundation Ownership
+
+| Schema or object | Owner | Boundary |
+| --- | --- | --- |
+| PostgreSQL extensions | `platform` | Foundation configuration only; domain modules do not alter extensions directly. |
+| `pgmq` schema and its queue tables | `platform` | Queue storage is private infrastructure, not an application API. |
+| `public.queue_send`, `public.queue_read`, `public.queue_archive`, `public.queue_requeue` | `platform` | The platform queue contract owns validation and access to PGMQ. Modules submit/consume envelope payloads through this contract. |
+| `messaging`, `automations`, `documents`, and `fiscal` queue names | `platform` | Queue transport and functions remain platform-owned; the named module owns the message kind and consumer behavior. |
+| `capabilities` | `forms` | Capability lifecycle is exposed through the forms/signatures public contracts; token hashes, never raw tokens, are persisted. |
+
+`automations` owns scheduler behavior and job creation, not the tables of the
+modules it invokes. It uses public contracts and the platform queue boundary.
+
+## Module Tables
+
+| Owner | Schema/table | Migration description prefix |
+| --- | --- | --- |
+| `identity` | `public.profiles` | `identity` |
+| `people` | `public.people`, `public.person_relationships` | `people` |
+| `appointments` | `public.services`, `public.cancellation_policies`, `public.appointments`, `public.appointment_status_history` | `appointments` |
+| `forms` | `public.form_templates`, `public.form_template_versions`, `public.form_submissions`, `public.form_submission_versions`, `public.legal_documents`, `public.legal_document_versions`, `public.legal_acceptances` | `forms`, `legal_terms` |
+| `signatures` | `public.signature_evidence`, `public.document_jobs` | `signatures`, `document_jobs` |
+| `receivables` | `public.receivables`, `public.payments`, `public.payment_refunds`, `public.receivable_adjustments` | `receivables`, `payments` |
+| `payables` | `public.vendors`, `public.payables`, `public.payable_payments`, `public.recurrence_rules` | `payables` |
+| `events` | `public.events`, `public.event_registrations`, `public.event_expenses` | `events` |
+| `messaging` | `public.message_templates`, `public.outbound_messages`, `public.message_attempts`, `public.inbox_events` | `messaging`, `appointment_confirmation` |
+| `fiscal` | `public.fiscal_profiles`, `public.fiscal_treatments`, `public.fiscal_documents`, `public.fiscal_attempts` | `fiscal` |
+| `audit` | `public.audit_events` | `audit` |
+| `reports` | `reports.*` views and read models only | `reports` |
+
+## Clinical Isolation
+
+The clinical schema is exclusively owned by `clinical`. Its tables are
+`clinical.records` and `clinical.attachments`, with clinical-private storage
+objects governed by the same owner. No other module, report, queue consumer,
+or administrative role may query, write, export, or replicate clinical
+content. Clinical migrations require the security/RLS review defined in
+`AGENTS.md`, including positive psychologist-owner and negative secretary,
+accounting, and anonymous tests.
+
+## Cross-Module Changes
+
+Changing a table owned by another module requires a cross-module Task Contract
+before the migration is written. The contract must name the table owner,
+consumer, public contract or event used, migration/rollback plan, and required
+reviewers. The table owner reviews every such migration; clinical changes also
+require security/RLS review, and financial or fiscal changes require the
+corresponding domain review.
+
+An ownership transfer, a new shared schema, or a change to the source of truth
+requires an ADR and an update to this document before implementation.
