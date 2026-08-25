@@ -1,0 +1,47 @@
+{
+  "name": "solange-rolla-consultorio",
+  "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "node": "24.19.0",
+    "npm": ">=11.17.0"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:e2e": "playwright test",
+    "supabase:start": "npx supabase@2.115.0 start",
+    "supabase:stop": "npx supabase@2.115.0 stop",
+    "supabase:reset": "npx supabase@2.115.0 db reset",
+    "supabase:test": "npx supabase@2.115.0 test db"
+  },
+  "dependencies": {
+    "@supabase/ssr": "0.12.5",
+    "@supabase/supabase-js": "2.112.4",
+    "next": "16.2.11",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.62.1",
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "eslint": "9.39.5",
+    "eslint-config-next": "16.2.11",
+    "typescript": "5.9.2",
+    "vitest": "4.1.11"
+  },
+  "overrides": {
+    "next@16.2.11": {
+      "postcss": "8.5.26",
+      "sharp": "0.35.3"
+    }
+  }
+}

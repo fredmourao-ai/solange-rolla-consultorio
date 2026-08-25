@@ -1,0 +1,2 @@
+-- Intentionally empty during platform bootstrap.
+-- Synthetic fixtures are added only when their owning domain schema exists.

@@ -1,0 +1,27 @@
+# dependencies
+node_modules/
+
+# next.js
+.next/
+out/
+
+# test artifacts
+playwright-report/
+test-results/
+coverage/
+
+# Supabase generated local state
+supabase/.temp/
+
+# environment and secrets
+.env
+.env.*
+!.env.example
+
+# local worktrees and scratch
+.worktrees/
+.superpowers/
+
+# system/editor
+.DS_Store
+*.log

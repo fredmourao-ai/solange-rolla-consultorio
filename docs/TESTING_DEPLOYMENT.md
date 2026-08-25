@@ -23,26 +23,39 @@
 
 ## 2. Pipeline de PR
 
-Checks obrigatórios planejados:
+Checks obrigatórios da Foundation:
 
 ```text
-install/lock integrity
 lint
 typecheck
-unit tests
+unit
+db
+build
+```
+
+Responsabilidades:
+- `lint`: ESLint sobre código versionado, excluindo artefatos gerados/transitórios;
+- `typecheck`: TypeScript strict sem emissão;
+- `unit`: Vitest, incluindo contratos de plataforma;
+- `db`: banco local limpo, migrations, seed, `db reset`, pgTAP e comparação de types Supabase gerados;
+- `build`: build Next.js reproduzível, integridade do lockfile e audit de dependências em severidade alta ou crítica.
+
+Os workflows usam Node `24.19.0`, `actions/checkout@v7`, `actions/setup-node@v7` e Supabase CLI `2.115.0`.
+
+Além desses gates mínimos, o projeto evolui para:
+
+```text
 domain state/policy tests
-migration apply from clean DB
 migration upgrade test
 RLS/authorization matrix
 integration tests
 contract tests
-Next.js build
 Playwright smoke
 secret scan
-security/dependency scan
+security scan
 ```
 
-Nem todo PR precisa de todo E2E, mas mudanças críticas disparam suíte correspondente.
+Nem todo PR precisa de todo E2E, mas mudanças críticas disparam a suíte correspondente.
 
 ## 3. Test pyramid
 
@@ -73,27 +86,38 @@ Fluxos de usuário essenciais e acessibilidade básica.
 
 Todo bug de produção/homologação deve ganhar teste que falha antes da correção.
 
-## 5. CI e branch protection
+## 5. CI e proteção de `main`
 
-Após o bootstrap CI:
+O ruleset de `main` somente pode ser ativado depois de os checks permanentes existirem e passarem em execução real de PR.
 
-- ativar ruleset para `main`;
+Requisitos do ruleset:
 - PR obrigatório;
-- required checks;
-- bloquear force push/deleção;
-- exigir branch atualizada quando checks dependerem de estado atual;
-- CODEOWNERS/review para áreas críticas quando houver revisor independente.
+- checks obrigatórios `lint`, `typecheck`, `unit`, `db`, `build`;
+- bloquear force-push;
+- bloquear deleção da branch;
+- exigir branch atualizada quando os checks dependerem do estado atual de `main`;
+- respeitar CODEOWNERS nas áreas de risco quando houver revisor independente disponível.
 
-## 6. Merge
+Não configurar nomes de checks hipotéticos. A proteção deve apontar apenas para checks que já foram observados com sucesso no GitHub Actions.
+
+## 6. Dependências
+
+Dependabot roda semanalmente para:
+- `npm`;
+- `github-actions`.
+
+Limite: no máximo 5 PRs abertos por ecossistema. Atualizações de major version ou mudanças em dependências críticas continuam exigindo revisão e todos os checks.
+
+## 7. Merge
 
 Preferir squash merge por Task Contract.
 
 Título final deve referenciar feature/fix e manter Issue vinculada.
 
-## 7. Deploy
+## 8. Deploy
 
 ### Preview
-Cada PR elegível gera preview sem dados reais.
+Cada PR elegível deve gerar preview isolado sem dados reais. Preview nunca recebe secret de produção nem provider live.
 
 ### Staging
 Merge em branch/fluxo de staging executa migrations e smoke.
@@ -104,9 +128,10 @@ Promoção somente quando:
 - migration revisada;
 - feature flags corretas;
 - backup recente/restore strategy conhecida;
-- smoke checklist definido.
+- smoke checklist definido;
+- security gate do dia do deploy aprovado.
 
-## 8. Migrations
+## 9. Migrations
 
 Deployment order:
 
@@ -117,13 +142,13 @@ Deployment order:
 
 Evitar migration destrutiva + código dependente no mesmo passo quando houver risco de rollback.
 
-## 9. Feature flags
+## 10. Feature flags
 
 Integrações live e comportamento de alto risco entram desativados por padrão.
 
 Flags devem ter owner e estratégia de remoção após estabilização.
 
-## 10. Smoke pós-deploy
+## 11. Smoke pós-deploy
 
 Verificar:
 - login/MFA;
@@ -137,7 +162,7 @@ Verificar:
 
 Produção não usa paciente real para smoke destrutivo.
 
-## 11. Observabilidade
+## 12. Observabilidade
 
 Mínimos:
 - taxa/latência/erros de API;
@@ -149,7 +174,7 @@ Mínimos:
 - autenticação/erros de autorização;
 - audit events para ações críticas.
 
-## 12. Backup/restore
+## 13. Backup/restore
 
 - backup gerenciado habilitado em produção;
 - política de dump lógico externo criptografado;
@@ -157,7 +182,7 @@ Mínimos:
 - registrar RPO/RTO real medido no teste;
 - atualizar runbook após cada exercício.
 
-## 13. Incidente
+## 14. Incidente
 
 Kill switches permitem desligar WhatsApp/e-mail/NFS-e sem tirar agenda/financeiro do ar.
 
@@ -169,10 +194,17 @@ Prioridade em incidente:
 5. corrigir e adicionar teste de regressão;
 6. postmortem.
 
-## 14. Compatibilidade de runtime
+## 15. Compatibilidade e security gate
 
-Bootstrap deve usar versão Node LTS suportada pelo Next.js escolhido e versão Next.js com patches de segurança vigentes na data do scaffold. Não congelar versão vulnerável por conveniência.
+Bootstrap usa versão Node suportada pelo Next.js escolhido e versão Next.js com patches de segurança vigentes na data de promoção.
 
-## 15. Definition of Done
+No dia de qualquer deploy de produção:
+1. confirmar versão suportada do Next.js;
+2. revisar advisories publicados desde o último deploy;
+3. executar audit de dependências;
+4. não promover se houver advisory crítico aplicável sem mitigação aprovada;
+5. upgrades de framework passam por CI completo e preview antes da promoção.
+
+## 16. Definition of Done
 
 Todo PR segue `docs/DEFINITION_OF_DONE.md`; CI verde é necessário, mas não suficiente.
