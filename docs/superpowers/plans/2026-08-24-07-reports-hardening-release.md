@@ -4,7 +4,7 @@
 
 **Goal:** Entregar dashboards/relatórios seguros e provar, por testes e operação, que o sistema pode ser homologado e promovido a produção sem dados reais durante o desenvolvimento.
 
-**Architecture:** `reports` consome read models públicos dos domínios administrativos/financeiros/fiscais e nunca depende de `clinical`. Hardening combina testes automáticos, restore drill, observabilidade, acessibilidade e checklist humano antes da produção.
+**Architecture:** `reports` consome read models públicos dos domínios administrativos/financeiros/fiscais e nunca depende de `clinical`. Hardening combina testes automáticos, restore drill, observabilidade, acessibilidade, privacidade operacional e checklist humano antes da produção.
 
 **Tech Stack:** PostgreSQL views/read models, Next.js, TypeScript, Vitest, Playwright, axe accessibility checks, GitHub Actions, Vercel, Supabase backups/logs.
 
@@ -16,6 +16,7 @@
 - Totais financeiros derivam das tabelas de lançamento, não de campos editáveis manualmente.
 - Production deploy exige checklist e backup/restore validados.
 - Dados de homologação são sintéticos e claramente identificados.
+- Nenhum pedido LGPD provoca hard-delete automático de dado clínico/fiscal sem avaliação de retenção/obrigação aplicável.
 
 ---
 
@@ -53,7 +54,7 @@ Cards simples com contagem e ação direta. Não exibir logs técnicos na tela p
 
 ```bash
 git add src/modules/reports src/app/'(protected)'/page.tsx
- git commit -m "feat: add daily attention dashboard"
+git commit -m "feat: add daily attention dashboard"
 ```
 
 ---
@@ -98,7 +99,7 @@ Totais exibidos na UI devem ser iguais aos totals exportados para o mesmo filtro
 
 ```bash
 git add src/modules/reports src/app/'(protected)'/relatorios
- git commit -m "feat: add operational and financial reports"
+git commit -m "feat: add operational and financial reports"
 ```
 
 ---
@@ -137,7 +138,7 @@ Definir thresholds operacionais: dead-letter >0, fiscal failed_final >0, worker 
 
 ```bash
 git add src/platform/observability src/app/api/health docs/TESTING_DEPLOYMENT.md
- git commit -m "feat: add privacy safe observability"
+git commit -m "feat: add privacy safe observability"
 ```
 
 ---
@@ -155,11 +156,11 @@ git add src/platform/observability src/app/api/health docs/TESTING_DEPLOYMENT.md
 
 - [ ] **Step 1: Fluxo consulta**
 
-E2E: criar Pessoa -> agendar -> emitir capability -> preencher formulário -> assinar -> confirmação -> marcar realizada -> registrar pagamento -> fiscal mock issued -> verificar relatório.
+E2E: criar Pessoa -> agendar -> emitir capability -> preencher formulário -> aceitar termos -> assinar -> confirmação -> marcar realizada -> registrar pagamento -> fiscal mock issued -> verificar relatório.
 
 - [ ] **Step 2: Fluxo falta/cancelamento**
 
-Cobrir cancelamento dentro do deadline = sem cobrança; fora do deadline = cobrança conforme policy; no-show = cobrança; isenção manual com motivo = balance zero/ajuste auditado.
+Cobrir cancelamento dentro do deadline = sem cobrança; fora do deadline = cobrança conforme policy; no-show = cobrança; isenção manual com motivo = balance zero/ajuste auditado. Fiscal de falta/cancelamento permanece em tratamento configurado, nunca é inferido do fluxo de consulta realizada.
 
 - [ ] **Step 3: Fluxo evento**
 
@@ -167,13 +168,13 @@ Criar evento -> inscrever Pessoa existente e nova -> registrar pagamento parcial
 
 - [ ] **Step 4: Reexecutar jobs**
 
-Executar workers/automations duas vezes e provar ausência de duplicação de mensagens, recebíveis, pagamentos e documentos fiscais.
+Executar workers/automations duas vezes e provar ausência de duplicação de mensagens, recebíveis, pagamentos, documentos assinados e documentos fiscais.
 
 - [ ] **Step 5: Commit**
 
 ```bash
 git add tests/e2e tests/fixtures
- git commit -m "test: cover canonical business lifecycles"
+git commit -m "test: cover canonical business lifecycles"
 ```
 
 ---
@@ -214,7 +215,7 @@ Medir páginas principais com dataset sintético representativo; estabelecer bud
 
 ```bash
 git add tests/e2e docs/SECURITY_PRIVACY.md docs/DEFINITION_OF_DONE.md
- git commit -m "test: harden security and accessibility"
+git commit -m "test: harden security and accessibility"
 ```
 
 ---
@@ -232,7 +233,7 @@ git add tests/e2e docs/SECURITY_PRIVACY.md docs/DEFINITION_OF_DONE.md
 
 - [ ] **Step 1: Documentar objetivos**
 
-Definir RPO/RTO operacional do MVP, responsáveis e frequência de teste. Valores devem ser aprovados antes do go-live; até lá, produção permanece bloqueada.
+Definir RPO/RTO operacional do MVP, responsáveis e frequência de teste. Valores são escolhidos e registrados nesta task antes do go-live; sem valores aprovados, checklist permanece `NO-GO`.
 
 - [ ] **Step 2: Restore drill**
 
@@ -250,12 +251,53 @@ Documentar rollback Vercel e compatibilidade backward/forward de migrations; mig
 
 ```bash
 git add docs/operations scripts/verify-backup-restore.sh
- git commit -m "docs: add disaster recovery runbooks"
+git commit -m "docs: add disaster recovery runbooks"
 ```
 
 ---
 
-### Task 7: Release Candidate e go-live gate
+### Task 7: Privacidade operacional e retenção
+
+**Files:**
+- Create: `docs/DATA_INVENTORY.md`
+- Create: `docs/operations/PRIVACY_REQUESTS.md`
+- Create: `docs/operations/DATA_RETENTION.md`
+- Modify: `docs/SECURITY_PRIVACY.md`
+- Modify: `docs/LEGAL_COMPLIANCE.md`
+
+**Interfaces:**
+- Produces mapa de categorias de dados, sistemas, finalidade/base a validar, acesso, retenção e procedimento de solicitação do titular.
+
+- [ ] **Step 1: Inventariar dados por classe**
+
+Mapear L0-L4 para tabelas/buckets/providers: cadastro, agenda, financeiro, fiscal, mensagens, formulários, assinaturas, clínico, audit e secrets. Para cada categoria registrar finalidade, owners, quem acessa, sistema de origem, destino externo e se contém dado sensível.
+
+- [ ] **Step 2: Definir retenção verificando normas vigentes**
+
+Revalidar fontes oficiais do CFP, LGPD/ANPD e obrigações fiscais aplicáveis na data da task. Registrar uma duração/regra explícita por categoria quando houver obrigação/política definida. Quando retenção depender de obrigação legal/defesa de direitos, registrar a condição de retenção e o evento que permite revisão/eliminação; não usar “guardar para sempre” como default.
+
+- [ ] **Step 3: Procedimento de pedido do titular**
+
+Documentar identificação segura do solicitante, protocolo, escopo, busca por Person ID, correção, acesso/cópia, oposição/revogação quando aplicável, análise de eliminação e resposta. Nunca enviar export clínico/fiscal a e-mail/WhatsApp sem canal seguro apropriado.
+
+- [ ] **Step 4: Eliminação/anonymização**
+
+Hard-delete só ocorre quando a matriz de retenção permitir e após backup/replicações/provider retention serem considerados. Registros clínicos/fiscais/assinados com obrigação de retenção ficam restritos/arquivados conforme base aplicável, não deletados automaticamente por UI.
+
+- [ ] **Step 5: Incidente**
+
+`INCIDENT_RESPONSE.md` deve incluir classificação, contenção, rotação de secrets, preservação de evidência, avaliação de dados pessoais afetados e fluxo de notificação conforme obrigação vigente.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add docs/DATA_INVENTORY.md docs/operations/PRIVACY_REQUESTS.md docs/operations/DATA_RETENTION.md docs/SECURITY_PRIVACY.md docs/LEGAL_COMPLIANCE.md
+git commit -m "docs: define privacy operations and retention"
+```
+
+---
+
+### Task 8: Release Candidate e go-live gate
 
 **Files:**
 - Create: `docs/operations/GO_LIVE_CHECKLIST.md`
@@ -267,28 +309,32 @@ git add docs/operations scripts/verify-backup-restore.sh
 
 - [ ] **Step 1: Checklist técnico**
 
-Exigir CI verde, E2E verde, DB tests, RLS matrix, secrets separados, MFA, live flags corretas, domains/TLS, health/alerts, restore drill e rollback testado.
+Exigir CI verde, E2E verde, DB tests, RLS matrix, secrets separados, MFA, security headers/rate limit, live flags corretas, domains/TLS, health/alerts, restore drill e rollback testado.
 
 - [ ] **Step 2: Checklist jurídico/fiscal**
 
-Exigir textos/termos revisados, política de cancelamento aprovada, emissor fiscal confirmado, NFS-e homologada, política de privacidade e documentação LGPD revisadas.
+Exigir `service_terms`, `cancellation_policy`, `truthfulness_declaration` e `privacy_notice` em versão production revisada; política de cancelamento aprovada; emissor fiscal confirmado; tratamento fiscal de cada origem live aprovado; NFS-e homologada; inventário/retention/LGPD revisados.
 
-- [ ] **Step 3: Checklist operacional**
+- [ ] **Step 3: Formulário real**
 
-Usuários/roles reais provisionados, treinamento, contato de suporte, export contábil validado, templates de mensagens revisados e nenhum dado sintético em produção.
+O formulário pré-consulta fornecido pela Solange deve ter sido transcrito para template versionado, cada pergunta classificada como administrativa/sensível, validações revisadas, termos vinculados e PDF final homologado com dados sintéticos. Sem esse formulário real aprovado, production fica `NO-GO` para o fluxo de consulta.
 
-- [ ] **Step 4: Security version gate**
+- [ ] **Step 4: Checklist operacional**
+
+Usuários/roles reais provisionados, MFA validado, treinamento, contato de suporte, export contábil validado, templates WhatsApp/e-mail revisados, canal de resposta/reagendamento testado e nenhum dado sintético em produção.
+
+- [ ] **Step 5: Security version gate**
 
 No dia do release, consultar advisories atuais de Next.js/Node/Supabase e atualizar antes da promoção se houver patch de segurança aplicável.
 
-- [ ] **Step 5: Rodar verificação final**
+- [ ] **Step 6: Rodar verificação final**
 
-Run: `npm run lint && npm run typecheck && npm run test:run && npm run supabase:test && npm run test:e2e && npm run build`
+Run: `npm run arch:check && npm run modules:check && npm run migrations:check && npm run lint && npm run typecheck && npm run test:run && npm run supabase:test && npm run test:e2e && npm run build`
 Expected: todos exit 0; anexar logs/resumo ao PR de release.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
 git add docs/operations docs/releases docs/PROJECT_MASTER_PLAN.md
- git commit -m "docs: define production go live gate"
+git commit -m "docs: define production go live gate"
 ```
