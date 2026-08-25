@@ -1,12 +1,12 @@
-# Data Model — v1
+# Data Model — v2
 
-Este é o modelo conceitual inicial. SQL/migrations concretas serão geradas task a task, preservando ownership por módulo.
+Este é o modelo conceitual alinhado à arquitetura v2. SQL/migrations concretas serão geradas task a task, preservando ownership por módulo.
 
 ## identity
 
 ### `profiles`
 - `user_id uuid PK/FK auth.users`
-- `role` enum: `psychologist_owner | secretary | accounting`
+- `role`: `psychologist_owner | secretary | accounting`
 - `display_name`
 - `active`
 - timestamps
@@ -17,9 +17,9 @@ Este é o modelo conceitual inicial. SQL/migrations concretas serão geradas tas
 - `id uuid PK`
 - `civil_name`
 - `preferred_name`
-- `cpf` normalizado/único quando informado
+- `cpf_normalized` único quando informado
 - `birth_date`
-- `email`
+- `email_normalized`
 - `phone_e164`
 - `preferred_channel`
 - `birthday_messages_enabled`
@@ -27,7 +27,7 @@ Este é o modelo conceitual inicial. SQL/migrations concretas serão geradas tas
 - timestamps
 
 ### `person_relationships`
-Relaciona responsável legal/financeiro/tomador quando diferente da pessoa atendida.
+Relaciona responsável legal, responsável financeiro e tomador fiscal quando diferente da pessoa atendida.
 
 ## appointments
 
@@ -42,6 +42,7 @@ Relaciona responsável legal/financeiro/tomador quando diferente da pessoa atend
 - antecedência em horas computáveis
 - weekdays excluídos
 - regras de cobrança configuráveis
+- `legal_document_version_id`
 - vigência
 
 ### `appointments`
@@ -61,33 +62,79 @@ Relaciona responsável legal/financeiro/tomador quando diferente da pessoa atend
 ### `appointment_status_history`
 Histórico append-only de transições.
 
-## forms/signatures
+## forms/signatures/legal terms
 
 ### `form_templates`
 - id/nome/tipo
-- versão
-- schema JSONB
+- classificação `administrative | sensitive`
 - ativo/vigência
+
+### `form_template_versions`
+- template/version
+- schema JSONB de perguntas/validações
+- created_at
 
 ### `form_submissions`
 - pessoa/agendamento/event registration
 - template + versão
-- answers JSONB
-- estado draft/submitted/signed
+- estado `draft | submitted | signed | superseded`
 - timestamps
 
+### `form_submission_versions`
+Para formulário administrativo: payload JSONB mínimo quando apropriado.
+
+Para formulário `sensitive`:
+- `answers_ciphertext`
+- `answers_iv`
+- `answers_auth_tag`
+- `key_version`
+- nenhum plaintext persistido
+
+O envelope usa a infraestrutura de criptografia L3 e AAD vinculado ao ID da versão.
+
+### `legal_documents`
+Documentos lógicos: `service_terms`, `cancellation_policy`, `truthfulness_declaration`, `privacy_notice`.
+
+### `legal_document_versions`
+- document id/key
+- version
+- content
+- content hash SHA-256
+- effective_from
+- supersedes_id opcional
+- flag/status de revisão/produção
+
+### `legal_acceptances`
+- person_id
+- legal_document_version_id
+- accepted_at
+- signature_evidence_id opcional
+- content_hash snapshot
+- channel/capability metadata sanitizada
+
 ### `signature_evidence`
-- submission_id
-- canonical_hash_sha256
-- declaration_version
+- submission/version
+- `canonical_hash_sha256`
+- declaration/legal versions incluídas no pacote assinado
 - typed_name
-- signature_asset_path opcional
+- signature_asset_path opcional em storage privado
 - signed_at
 - metadata técnica sanitizada
-- documento PDF path
+- document status/path privado
+
+### `document_jobs`
+Outbox idempotente para geração assíncrona de comprovantes assinados.
+- signature_evidence_id
+- kind
+- idempotency_key unique
+- status
+- dispatched_at
+- attempts
+- last_error_code
+- completed_at
 
 ### `capabilities`
-- token_hash
+- `token_hash`
 - purpose
 - subject ids
 - expires_at
@@ -102,9 +149,14 @@ Histórico append-only de transições.
 - source_type/source_id
 - original_amount_cents
 - due_at
-- status
-- balance_cents derivado de pagamentos/ajustes com invariantes de consistência
+- status `open | partial | paid | overdue | refund_due | refunded | voided`
 - timestamps
+
+Valores calculados por projection/query transacional, não editáveis diretamente:
+- `charge_amount_cents`: original + adjustments válidos
+- `net_paid_cents`: payments - refunds efetivados
+- `balance_cents`: valor ainda devido
+- `refund_due_cents`: valor recebido que deve ser devolvido após redução/zeragem do charge
 
 ### `payments`
 - receivable_id
@@ -112,10 +164,23 @@ Histórico append-only de transições.
 - paid_at
 - payment_method
 - external_reference opcional
+- idempotency_key unique
 - status
 
+### `payment_refunds`
+- payment_id
+- amount_cents
+- refunded_at
+- refund_method
+- reason
+- external_reference opcional
+- idempotency_key unique
+- actor
+
+Refund nunca apaga nem substitui o pagamento original; soma de refunds não pode exceder o payment.
+
 ### `receivable_adjustments`
-Desconto, isenção, estorno/ajuste e outras correções permitidas, sempre com motivo e ator.
+Desconto, `cancellation_waiver`, isenção e outras correções de charge permitidas, sempre com motivo, ator e valor. Ajuste não é refund e não altera histórico de caixa.
 
 ## payables
 
@@ -134,7 +199,7 @@ Cadastro simples de fornecedor.
 Baixa de despesa e comprovante privado.
 
 ### `recurrence_rules`
-Regra versionada para geração idempotente de despesas futuras.
+Regra versionada para geração idempotente de despesas futuras, incluindo política explícita para dia inexistente no mês (`last_day` quando configurado).
 
 ## events
 
@@ -155,7 +220,7 @@ Regra versionada para geração idempotente de despesas futuras.
 - attendance_status
 
 ### `event_expenses`
-Pode referenciar payable para cálculo de resultado.
+Referência a despesas/payables para cálculo de resultado.
 
 ## messaging
 
@@ -190,39 +255,46 @@ Append-only por tentativa, sem conteúdo sensível desnecessário.
 ## fiscal
 
 ### `fiscal_profiles`
-Dados do prestador versionados/configuráveis por ambiente.
+Dados do prestador versionados/configuráveis por ambiente e vigência.
+
+### `fiscal_treatments`
+Tratamento fiscal versionado por origem (`appointment_completed`, `appointment_late_cancellation`, `appointment_no_show`, `event_registration`, `other_service`), com regra de elegibilidade/emissão e habilitação live.
 
 ### `fiscal_documents`
 - source_type/source_id
 - payer/person
 - amount_cents
-- provider
+- provider/profile version
+- fiscal treatment/version
 - idempotency_key
 - external_id/protocol
 - status
 - issued_at/cancelled_at
-- xml_path/pdf_path
+- xml_path/pdf_path privados
 
 ### `fiscal_attempts`
 Histórico de integração sanitizado.
 
 ## clinical
 
-### `clinical_records`
+Tabelas clínicas vivem no schema `clinical`, fora da exposição direta padrão do API schema.
+
+### `clinical.records`
+- id
 - appointment_id
 - person_id
 - author_user_id
 - `ciphertext`
-- `nonce_or_iv`
-- `auth_tag` quando exigido pelo algoritmo
+- `iv`
+- `auth_tag`
 - `key_version`
 - created_at
 - supersedes_id opcional
 
-O texto clínico é criptografado no servidor antes da persistência conforme ADR-0006. Chaves nunca ficam no banco nem chegam ao browser.
+O texto clínico é criptografado no servidor antes da persistência. Chaves nunca ficam no banco nem chegam ao browser.
 
-### `clinical_attachments`
-Referência a objeto em bucket `clinical-private`, protegido por RLS. Criptografia adicional de arquivo pode ser adicionada sem alterar o contrato do módulo.
+### `clinical.attachments`
+Referência a objeto em bucket `clinical-private`, protegido por autorização reforçada e URLs assinadas curtas.
 
 Não permitir acesso de secretaria/contabilidade.
 
@@ -237,11 +309,11 @@ Não permitir acesso de secretaria/contabilidade.
 - metadata sanitizada
 - occurred_at
 
-Preferência append-only; nenhuma informação clínica bruta.
+Append-only; nenhuma informação clínica bruta.
 
 ## queue/platform
 
-Supabase Queues/PGMQ mantém mensagens duráveis. Tabelas de domínio não devem duplicar a fila; tabelas de attempts/delivery guardam histórico de negócio necessário.
+Supabase Queues/PGMQ mantém filas duráveis: `messaging`, `automations`, `documents`, `fiscal`. Tabelas de attempts/outbox registram estado de negócio necessário; PGMQ é transporte e não fonte de verdade do domínio.
 
 ## Convenções
 
@@ -253,3 +325,4 @@ Supabase Queues/PGMQ mantém mensagens duráveis. Tabelas de domínio não devem
 - unique constraints para idempotência e deduplicação.
 - `CHECK` constraints para invariantes simples.
 - RLS default-deny para tabelas expostas.
+- conteúdo L3 cifrado antes de persistir.
