@@ -5,7 +5,7 @@ select plan(18);
 select has_extension('pgmq', 'pgmq extension is enabled');
 
 select is(
-  (select array_agg(queue_name order by queue_name) from pgmq.list_queues()),
+  (select array_agg(queue_name::text order by queue_name::text) from pgmq.list_queues()),
   array['automations', 'documents', 'fiscal', 'messaging']::text[],
   'exactly the four foundation queues exist'
 );
