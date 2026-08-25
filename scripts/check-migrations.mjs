@@ -395,13 +395,17 @@ function sqlObjects(migration) {
 
   const unsupportedObjectOperations = new Set([
     'aggregate',
+    'access',
+    'cast',
     'collation',
     'conversion',
     'database',
     'domain',
     'event',
     'function',
+    'foreign',
     'index',
+    'language',
     'materialized',
     'operator',
     'policy',
@@ -412,6 +416,7 @@ function sqlObjects(migration) {
     'server',
     'statistics',
     'subscription',
+    'tablespace',
     'trigger',
     'transform',
     'type',
@@ -423,6 +428,7 @@ function sqlObjects(migration) {
     'reindex',
     'truncate',
     'vacuum',
+    'drop',
   ])
 
   for (let index = 0; index < tokens.length; index += 1) {

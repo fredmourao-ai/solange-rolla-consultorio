@@ -479,6 +479,26 @@ describe('migration history', () => {
     expect(outputOf(result)).toContain('SQL contains unsupported or dynamic syntax')
   })
 
+  it('fails closed for comma-separated DROP targets', () => {
+    const repository = createRepository()
+    const migration = '20260824000300_people_drop_cleanup.sql'
+    fs.writeFileSync(
+      path.join(repository, 'supabase/migrations', migration),
+      '-- owners: people\n-- task-contract: docs/task-contracts/drop.json\ndrop table public.people, clinical.records;\n',
+    )
+    writeTaskContract(repository, 'drop.json', {
+      issue: 123,
+      migration,
+      objects: [{ name: 'public.people', owner: 'people' }],
+      owners: ['people'],
+    })
+
+    const result = checkMigrations(repository, { baseRef: 'migration-base' })
+
+    expect(result.status).not.toBe(0)
+    expect(outputOf(result)).toContain('SQL contains unsupported or dynamic syntax')
+  })
+
   it('rejects removing an existing manifest owner', () => {
     const repository = createRepository()
     const manifest = {
