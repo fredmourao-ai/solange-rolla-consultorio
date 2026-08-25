@@ -47,6 +47,21 @@ jobs:
       - name: Run database smoke test
         run: npx supabase@2.115.0 test db
 
+      - name: Ensure postgres-meta image for type generation
+        run: |
+          image="public.ecr.aws/supabase/postgres-meta:v0.98.0"
+          delay=5
+          for attempt in 1 2 3 4 5; do
+            if docker image inspect "$image" >/dev/null 2>&1 || docker pull "$image"; then
+              exit 0
+            fi
+            if [ "$attempt" -eq 5 ]; then
+              exit 1
+            fi
+            sleep "$delay"
+            delay=$((delay * 2))
+          done
+
       - name: Verify generated database types are current
         run: |
           npx supabase@2.115.0 gen types typescript --local > /tmp/database-types.ts
