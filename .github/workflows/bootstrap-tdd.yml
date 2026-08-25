@@ -20,6 +20,9 @@ jobs:
         with:
           node-version: 24.19.0
 
+      - name: Require explicit Supabase project config
+        run: test -f supabase/config.toml
+
       - name: Verify Docker
         run: docker version
 
