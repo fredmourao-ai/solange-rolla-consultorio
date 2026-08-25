@@ -2,7 +2,7 @@
 
 Sistema privado para gestão de consultório, psicoterapia, eventos, formulários pré-atendimento, assinatura eletrônica simples, comunicação, financeiro e NFS-e.
 
-> Status: **arquitetura v2 aprovada; implementação ainda não iniciada**. Não usar com dados reais de pacientes antes da conclusão da segurança, homologação jurídica/fiscal e checklist de produção.
+> Status: **Foundation e architecture enforcement integrados; provisioning remoto e módulos de negócio ainda em execução**. Não usar com dados reais de pacientes antes da conclusão da segurança, homologação jurídica/fiscal e checklist de produção.
 
 ## Direção técnica
 
