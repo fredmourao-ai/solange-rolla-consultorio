@@ -6,10 +6,10 @@ on:
       - feat/1-foundation-platform
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  env-key-migration-red:
+  task-3-green:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -19,24 +19,12 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 24.19.0
-          cache: npm
 
-      - name: Install locked dependencies
-        run: npm ci
+      - name: Install dependencies and refresh lockfile
+        run: npm install --ignore-scripts
 
       - name: Verify current Supabase API-key contract
         run: npm test -- src/platform/env/schema.test.ts --run
-
-  task-3-red:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Use Node 24.19.0
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24.19.0
 
       - name: Require explicit Supabase project config
         run: test -f supabase/config.toml
@@ -47,5 +35,36 @@ jobs:
       - name: Start Supabase local stack
         run: npx supabase@2.115.0 start
 
+      - name: Rebuild database from migrations and seed
+        run: npx supabase@2.115.0 db reset
+
       - name: Run database smoke test
         run: npx supabase@2.115.0 test db
+
+      - name: Generate database types
+        run: npx supabase@2.115.0 gen types typescript --local > src/platform/supabase/types.ts
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm run test:run
+
+      - name: Build
+        run: npm run build
+
+      - name: Dependency audit
+        run: npm audit --audit-level=high
+
+      - name: Persist generated lockfile and database types
+        run: |
+          if ! git diff --quiet -- package-lock.json src/platform/supabase/types.ts; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add package-lock.json src/platform/supabase/types.ts
+            git commit -m "chore: lock supabase clients and generated types [skip ci]"
+            git push origin HEAD:feat/1-foundation-platform
+          fi

@@ -1,0 +1,3 @@
+-- Foundation extension baseline.
+-- No application extension is required yet. Durable queue support (pgmq)
+-- is introduced by the queue task in a separate forward-only migration.
