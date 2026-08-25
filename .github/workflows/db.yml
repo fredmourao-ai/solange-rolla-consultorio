@@ -1,48 +1,33 @@
-name: Bootstrap TDD
+name: Database
 
 on:
+  pull_request:
+    branches:
+      - main
   push:
     branches:
-      - feat/1-foundation-platform
+      - main
 
 permissions:
   contents: read
 
+concurrency:
+  group: db-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  task-4-contract-red:
+  db:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Use Node 24.19.0
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 24.19.0
           cache: npm
-
-      - name: Install locked dependencies
-        run: npm ci
-
-      - name: Run queue platform tests
-        run: npm test -- src/platform/queue --run
-
-  task-3-head-verification:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Use Node 24.19.0
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24.19.0
-          cache: npm
-
-      - name: Verify runtime
-        run: |
-          node --version
-          npm --version
 
       - name: Install locked dependencies
         run: npm ci
@@ -50,22 +35,19 @@ jobs:
       - name: Verify lockfile is reproducible
         run: git diff --exit-code -- package-lock.json
 
-      - name: Verify current Supabase API-key contract
-        run: npm test -- src/platform/env/schema.test.ts --run
-
       - name: Require explicit Supabase project config
         run: test -f supabase/config.toml
 
-      - name: Start local Postgres only
+      - name: Start local database
         run: npx supabase@2.115.0 db start
 
       - name: Rebuild database from migrations and seed
         run: npx supabase@2.115.0 db reset
 
-      - name: Run database smoke test
+      - name: Run pgTAP database tests
         run: npx supabase@2.115.0 test db
 
-      - name: Ensure postgres-meta image for type generation
+      - name: Ensure postgres-meta image for type verification
         run: |
           image="public.ecr.aws/supabase/postgres-meta:v0.98.0"
           delay=5
@@ -84,18 +66,3 @@ jobs:
         run: |
           npx supabase@2.115.0 gen types typescript --local > /tmp/database-types.ts
           diff -u src/platform/supabase/types.ts /tmp/database-types.ts
-
-      - name: Lint
-        run: npm run lint
-
-      - name: Typecheck
-        run: npm run typecheck
-
-      - name: Unit tests
-        run: npm run test:run
-
-      - name: Build
-        run: npm run build
-
-      - name: Dependency audit
-        run: npm audit --audit-level=high
