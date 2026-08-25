@@ -30,9 +30,15 @@
     "@types/node": "^24.0.0",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
-    "eslint": "^9.0.0",
+    "eslint": "9.39.5",
     "eslint-config-next": "16.2.11",
     "typescript": "5.9.2",
     "vitest": "4.1.11"
+  },
+  "overrides": {
+    "next@16.2.11": {
+      "postcss": "8.5.26",
+      "sharp": "0.35.3"
+    }
   }
 }
