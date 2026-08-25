@@ -10,6 +10,9 @@ playwright-report/
 test-results/
 coverage/
 
+# Supabase generated local state
+supabase/.temp/
+
 # environment and secrets
 .env
 .env.*
