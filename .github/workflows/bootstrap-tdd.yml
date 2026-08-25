@@ -24,8 +24,8 @@ jobs:
       - name: Install locked dependencies
         run: npm ci
 
-      - name: Run queue contract test
-        run: npm test -- src/platform/queue/queue.test.ts --run
+      - name: Run queue platform tests
+        run: npm test -- src/platform/queue --run
 
   task-3-head-verification:
     runs-on: ubuntu-latest
