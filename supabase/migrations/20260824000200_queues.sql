@@ -69,7 +69,7 @@ create or replace function public.queue_read(
 )
 returns table (
   id text,
-  read_count bigint,
+  read_count integer,
   enqueued_at timestamptz,
   visible_at timestamptz,
   message jsonb
