@@ -100,35 +100,43 @@ git commit -m "feat: protect public capability mutations"
 - Create: `supabase/migrations/20260824006200_public_rate_limits.sql`
 - Create: `supabase/tests/062_public_rate_limits.sql`
 - Create: `src/platform/security/rate-limit.ts`
+- Modify: `src/platform/env/schema.ts`
+- Modify: `src/platform/env/schema.test.ts`
+- Modify: `.env.example`
 - Test: `src/platform/security/rate-limit.test.ts`
 
 **Interfaces:**
 - Produces `consumeRateLimit({ scope, subjectKey, limit, windowSeconds }): RateLimitResult`.
+- Produces server-only `RATE_LIMIT_HMAC_KEY` validada como secret de alta entropia e diferente por ambiente.
 
-- [ ] **Step 1: Derivar chave sem IP bruto**
+- [ ] **Step 1: Registrar secret e validação**
+
+Adicionar `RATE_LIMIT_HMAC_KEY` ao server env e `.env.example` apenas como placeholder sintético. Em staging/production, exigir valor aleatório de pelo menos 32 bytes equivalente; nunca prefixar `NEXT_PUBLIC_`. Registrar a secret sem valor em `docs/operations/SECRETS.md` quando esse documento existir.
+
+- [ ] **Step 2: Derivar chave sem IP bruto**
 
 Quando IP estiver disponível, calcular `HMAC-SHA256(RATE_LIMIT_HMAC_KEY, normalized-network-identifier)` no servidor. Combinar com scope; não armazenar header/IP original.
 
-- [ ] **Step 2: Scopes iniciais**
+- [ ] **Step 3: Scopes iniciais**
 
 `capability_exchange`, `public_form_save`, `appointment_response`, `signature_submit`, `webhook_invalid_signature`. Limites devem ser conservadores e configuráveis; não bloquear preenchimento normal por idoso em rede instável.
 
-- [ ] **Step 3: Implementar store atômico**
+- [ ] **Step 4: Implementar store atômico**
 
 Postgres function/table com janela curta e upsert/lock atômico; registros expiram/limpam por cron. Se provider edge/WAF confiável estiver disponível, pode complementar, nunca ser única autorização.
 
-- [ ] **Step 4: Resposta**
+- [ ] **Step 5: Resposta**
 
 Exceder limite retorna 429 genérico e `Retry-After`; não informa se capability seria válida.
 
-- [ ] **Step 5: Testes**
+- [ ] **Step 6: Testes**
 
-N requests dentro do limite passam; N+1 falha; outra scope/subjectKey permanece independente; nenhum row contém IP bruto.
+N requests dentro do limite passam; N+1 falha; outra scope/subjectKey permanece independente; nenhum row contém IP bruto. Env test rejeita chave curta e qualquer tentativa de expô-la em client env.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
-git add supabase src/platform/security
+git add supabase src/platform/security src/platform/env .env.example
 git commit -m "feat: add privacy safe public rate limiting"
 ```
 
