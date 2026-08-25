@@ -1,13 +1,9 @@
 name: Bootstrap TDD
 
 on:
-  pull_request:
+  push:
     branches:
-      - main
-    types:
-      - opened
-      - synchronize
-      - reopened
+      - feat/1-foundation-platform
 
 permissions:
   contents: read
@@ -35,10 +31,16 @@ jobs:
       - name: Run Result contract test
         run: npm test -- src/shared/kernel/result.test.ts --run
 
-      - name: Preserve generated lockfile
+      - name: Capture dependency audit
+        if: always()
+        run: npm audit --json > npm-audit.json || true
+
+      - name: Preserve bootstrap artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: package-lock-${{ github.sha }}
-          path: package-lock.json
+          name: bootstrap-${{ github.sha }}
+          path: |
+            package-lock.json
+            npm-audit.json
           if-no-files-found: error
