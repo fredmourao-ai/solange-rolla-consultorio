@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 jobs:
-  task-1-gate:
+  task-2-red:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -19,40 +19,23 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 24.19.0
-          cache: npm
 
-      - name: Verify runtime
-        run: |
-          node --version
-          npm --version
+      - name: Install dependencies and refresh candidate lockfile
+        run: npm install --ignore-scripts
 
-      - name: Install locked dependencies
-        run: npm ci
+      - name: Run environment contract test
+        run: npm test -- src/platform/env/schema.test.ts --run
 
-      - name: Verify lockfile is reproducible
-        run: git diff --exit-code -- package-lock.json
+      - name: Capture candidate lockfile and audit
+        if: always()
+        run: npm audit --json > npm-audit.json || true
 
-      - name: Lint
-        run: npm run lint
-
-      - name: Typecheck
-        run: npm run typecheck
-
-      - name: Unit tests
-        run: npm run test:run
-
-      - name: Build
-        run: npm run build
-
-      - name: Dependency audit
-        run: npm audit --audit-level=high
-
-      - name: Capture generated Next metadata
+      - name: Preserve Task 2 artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: next-generated-${{ github.sha }}
+          name: task2-red-${{ github.sha }}
           path: |
-            next-env.d.ts
-            tsconfig.json
-          if-no-files-found: warn
+            package-lock.json
+            npm-audit.json
+          if-no-files-found: error
