@@ -499,6 +499,26 @@ describe('migration history', () => {
     expect(outputOf(result)).toContain('SQL contains unsupported or dynamic syntax')
   })
 
+  it('fails closed for unsupported DDL statement families', () => {
+    const repository = createRepository()
+    const migration = '20260824000300_platform_text_search.sql'
+    fs.writeFileSync(
+      path.join(repository, 'supabase/migrations', migration),
+      '-- owners: platform\n-- task-contract: docs/task-contracts/search.json\nselect * from pgmq.queue_metrics;\nalter system set work_mem = \'64MB\';\n',
+    )
+    writeTaskContract(repository, 'search.json', {
+      issue: 123,
+      migration,
+      objects: [{ name: 'pgmq.queue_metrics', owner: 'platform' }],
+      owners: ['platform'],
+    })
+
+    const result = checkMigrations(repository, { baseRef: 'migration-base' })
+
+    expect(result.status).not.toBe(0)
+    expect(outputOf(result)).toContain('SQL contains unsupported or dynamic syntax')
+  })
+
   it('rejects removing an existing manifest owner', () => {
     const repository = createRepository()
     const manifest = {

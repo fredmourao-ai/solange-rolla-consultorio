@@ -430,12 +430,29 @@ function sqlObjects(migration) {
     'vacuum',
     'drop',
   ])
+  const supportedDdlTargets = {
+    alter: new Set(['extension', 'schema', 'sequence', 'table', 'view']),
+    create: new Set(['extension', 'schema', 'sequence', 'table', 'view']),
+    drop: new Set(['extension', 'schema', 'sequence', 'table', 'view']),
+  }
 
   for (let index = 0; index < tokens.length; index += 1) {
     const token = tokens[index]
     if (token === 'execute') {
       parsed.unsupported = true
       continue
+    }
+    if (supportedDdlTargets[token]) {
+      let targetIndex = index + 1
+      while (['if', 'not', 'exists', 'or', 'replace', 'temporary', 'unlogged'].includes(tokens[targetIndex])) {
+        targetIndex += 1
+      }
+      if (!supportedDdlTargets[token].has(tokens[targetIndex])) {
+        parsed.unsupported = true
+      }
+    }
+    if (token === 'reassign') {
+      parsed.unsupported = true
     }
     if (unsupportedObjectOperations.has(token)) {
       parsed.unsupported = true
