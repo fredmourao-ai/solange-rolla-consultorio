@@ -1,6 +1,6 @@
 begin;
 
-select plan(17);
+select plan(18);
 
 select has_extension('pgmq', 'pgmq extension is enabled');
 
@@ -93,7 +93,7 @@ select ok(
   'processed message can be archived'
 );
 select is(
-  (select (pgmq.metrics('documents')).queue_length),
+  (select queue_length from pgmq.metrics('documents')),
   0::bigint,
   'archived message is no longer active'
 );
