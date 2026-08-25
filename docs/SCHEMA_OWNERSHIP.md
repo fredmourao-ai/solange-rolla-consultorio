@@ -38,6 +38,10 @@ positive Issue number, the exact migration filename, matching owners, and at
 least one owned object per owner. Every object must exist in the
 machine-readable `docs/schema-ownership.json`; adding a new table therefore
 updates that manifest and this human-readable document in the same task.
+The checker extracts table, schema and extension references from SQL after
+removing comments and literals. References omitted from the contract fail;
+dynamic `EXECUTE` and unsupported dollar-quoted syntax fail closed for new
+migrations.
 
 | Description alias | Enforced owner(s) |
 | --- | --- |

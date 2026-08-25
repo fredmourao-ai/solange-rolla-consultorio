@@ -169,7 +169,7 @@ describe('migration history', () => {
     const migration = '20260824000300_platform_add_queue_metrics.sql'
     fs.writeFileSync(
       path.join(repository, 'supabase/migrations', migration),
-      '-- owners: platform\n-- task-contract: docs/task-contracts/queue_metrics.json\nselect 1;\n',
+      '-- owners: platform\n-- task-contract: docs/task-contracts/queue_metrics.json\nselect * from pgmq.queue_metrics;\n',
     )
     writeTaskContract(repository, 'queue_metrics.json', {
       issue: 123,
@@ -237,7 +237,7 @@ describe('migration history', () => {
       '20260824000300_bind_cancellation_legal_version.sql'
     fs.writeFileSync(
       path.join(repository, 'supabase/migrations', migration),
-      '-- owners: appointments, forms\n-- cross-module-task: docs/task-contracts/cancellation_legal.json\nselect 1;\n',
+      '-- owners: appointments, forms\n-- cross-module-task: docs/task-contracts/cancellation_legal.json\nalter table public.cancellation_policies add column legal_document_version_id uuid;\nselect * from public.legal_document_versions;\n',
     )
     writeTaskContract(repository, 'cancellation_legal.json', {
       issue: 123,
@@ -310,6 +310,50 @@ describe('migration history', () => {
     expect(result.status).not.toBe(0)
     expect(outputOf(result)).toContain(
       'people.json: object "public.people" owner "clinical" is not a declared migration owner',
+    )
+  })
+
+  it('rejects SQL objects omitted from the Task Contract', () => {
+    const repository = createRepository()
+    const migration = '20260824000300_people_add_preferences.sql'
+    fs.writeFileSync(
+      path.join(repository, 'supabase/migrations', migration),
+      '-- owners: people\n-- task-contract: docs/task-contracts/people.json\nalter table public.people add column preferred_name text;\nselect * from clinical.records;\n',
+    )
+    writeTaskContract(repository, 'people.json', {
+      issue: 123,
+      migration,
+      objects: [{ name: 'public.people', owner: 'people' }],
+      owners: ['people'],
+    })
+
+    const result = checkMigrations(repository, { baseRef: 'migration-base' })
+
+    expect(result.status).not.toBe(0)
+    expect(outputOf(result)).toContain(
+      'people.json: SQL object "clinical.records" is missing from the contract',
+    )
+  })
+
+  it('fails closed for dynamic SQL in a new migration', () => {
+    const repository = createRepository()
+    const migration = '20260824000300_platform_add_runtime_policy.sql'
+    fs.writeFileSync(
+      path.join(repository, 'supabase/migrations', migration),
+      '-- owners: platform\n-- task-contract: docs/task-contracts/runtime.json\nDO $$ BEGIN EXECUTE \'select 1\'; END $$;\n',
+    )
+    writeTaskContract(repository, 'runtime.json', {
+      issue: 123,
+      migration,
+      objects: [{ name: 'platform.functions', owner: 'platform' }],
+      owners: ['platform'],
+    })
+
+    const result = checkMigrations(repository, { baseRef: 'migration-base' })
+
+    expect(result.status).not.toBe(0)
+    expect(outputOf(result)).toContain(
+      `${migration}: SQL contains unsupported or dynamic syntax`,
     )
   })
 

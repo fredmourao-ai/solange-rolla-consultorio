@@ -31,6 +31,9 @@
   "objects": {
     "clinical.attachments": "clinical",
     "clinical.records": "clinical",
+    "clinical.__schema__": "clinical",
+    "platform.extensions": "platform",
+    "platform.functions": "platform",
     "pgmq.queue_metrics": "platform",
     "public.appointment_status_history": "appointments",
     "public.appointments": "appointments",

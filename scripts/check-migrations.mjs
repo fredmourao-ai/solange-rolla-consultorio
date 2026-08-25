@@ -284,6 +284,152 @@ function declaredOwnersFor(migration) {
   return { header, owners: [...new Set(owners)].sort() }
 }
 
+function sqlTokens(sql) {
+  const tokens = []
+  let unsupported = false
+  let index = 0
+
+  while (index < sql.length) {
+    if (/\s/u.test(sql[index])) {
+      index += 1
+      continue
+    }
+    if (sql.startsWith('--', index)) {
+      const end = sql.indexOf('\n', index + 2)
+      index = end === -1 ? sql.length : end + 1
+      continue
+    }
+    if (sql.startsWith('/*', index)) {
+      const end = sql.indexOf('*/', index + 2)
+      if (end === -1) {
+        unsupported = true
+        break
+      }
+      index = end + 2
+      continue
+    }
+    if (sql[index] === "'") {
+      index += 1
+      while (index < sql.length) {
+        if (sql[index] === "'" && sql[index + 1] === "'") {
+          index += 2
+          continue
+        }
+        if (sql[index] === "'") {
+          index += 1
+          break
+        }
+        index += 1
+      }
+      continue
+    }
+    if (sql[index] === '"') {
+      let identifier = ''
+      index += 1
+      while (index < sql.length) {
+        if (sql[index] === '"' && sql[index + 1] === '"') {
+          identifier += '"'
+          index += 2
+          continue
+        }
+        if (sql[index] === '"') {
+          index += 1
+          break
+        }
+        identifier += sql[index]
+        index += 1
+      }
+      tokens.push(identifier.toLowerCase())
+      continue
+    }
+
+    const dollarTag = sql.slice(index).match(/^\$[a-z_][a-z0-9_]*\$|^\$\$/iu)
+    if (dollarTag) {
+      const tag = dollarTag[0]
+      const bodyStart = index + tag.length
+      const bodyEnd = sql.indexOf(tag, bodyStart)
+      if (bodyEnd === -1) {
+        unsupported = true
+        break
+      }
+      const nested = sqlTokens(sql.slice(bodyStart, bodyEnd))
+      tokens.push(...nested.tokens)
+      unsupported ||= nested.unsupported
+      index = bodyEnd + tag.length
+      continue
+    }
+
+    const word = sql.slice(index).match(/^[a-z_][a-z0-9_$]*/iu)
+    if (word) {
+      tokens.push(word[0].toLowerCase())
+      index += word[0].length
+      continue
+    }
+
+    tokens.push(sql[index])
+    index += 1
+  }
+
+  return { tokens, unsupported }
+}
+
+function objectFromTokens(tokens, startIndex) {
+  let index = startIndex
+  while (['if', 'not', 'exists', 'only', 'table', 'view', 'sequence'].includes(tokens[index])) {
+    index += 1
+  }
+  const first = tokens[index]
+  if (!first || !/^[a-z_][a-z0-9_$]*$/u.test(first)) {
+    return undefined
+  }
+  if (tokens[index + 1] === '.' && /^[a-z_][a-z0-9_$]*$/u.test(tokens[index + 2] ?? '')) {
+    return `${first}.${tokens[index + 2]}`
+  }
+  return `public.${first}`
+}
+
+function sqlObjects(migration) {
+  const parsed = sqlTokens(fs.readFileSync(migration.path, 'utf8'))
+  const objects = new Set()
+  const { tokens } = parsed
+
+  for (let index = 0; index < tokens.length; index += 1) {
+    const token = tokens[index]
+    if (token === 'execute') {
+      parsed.unsupported = true
+      continue
+    }
+    if (token === 'extension') {
+      objects.add('platform.extensions')
+      continue
+    }
+    if (token === 'schema') {
+      const schemaName = tokens[index + 1]
+      if (schemaName) {
+        objects.add(
+          schemaName === 'clinical' ? 'clinical.__schema__' : `public.${schemaName}`,
+        )
+      }
+      continue
+    }
+    if (['table', 'view', 'sequence', 'into', 'update', 'from', 'join', 'references'].includes(token)) {
+      const object = objectFromTokens(tokens, index + 1)
+      if (object) {
+        objects.add(object)
+      }
+      continue
+    }
+    if (token === 'on' && !['conflict', 'delete', 'update'].includes(tokens[index + 1])) {
+      const object = objectFromTokens(tokens, index + 1)
+      if (object) {
+        objects.add(object)
+      }
+    }
+  }
+
+  return { objects, unsupported: parsed.unsupported }
+}
+
 function validateTaskContract(migration, owners, header) {
   const errors = []
   const marker = owners.length > 1 ? 'cross-module-task' : 'task-contract'
@@ -332,6 +478,11 @@ function validateTaskContract(migration, owners, header) {
     errors.push(`${contractName}: migration must be "${migration.name}"`)
   }
 
+  const extracted = sqlObjects(migration)
+  if (extracted.unsupported) {
+    errors.push(`${migration.name}: SQL contains unsupported or dynamic syntax`)
+  }
+
   const contractOwners = Array.isArray(contract.owners)
     ? [...new Set(contract.owners)].sort()
     : []
@@ -351,6 +502,22 @@ function validateTaskContract(migration, owners, header) {
 
   const representedOwners = new Set()
   const seenObjects = new Set()
+  const declaredObjectNames = new Set(
+    Array.isArray(contract.objects)
+      ? contract.objects.map((object) => object?.name).filter(Boolean)
+      : [],
+  )
+  for (const objectName of extracted.objects) {
+    if (!objectOwners.has(objectName)) {
+      errors.push(
+        `${migration.name}: SQL references unregistered object "${objectName}"`,
+      )
+    } else if (!declaredObjectNames.has(objectName)) {
+      errors.push(
+        `${contractName}: SQL object "${objectName}" is missing from the contract`,
+      )
+    }
+  }
   for (const object of contract.objects) {
     const objectName = object?.name
     const objectOwner = object?.owner
@@ -368,6 +535,12 @@ function validateTaskContract(migration, owners, header) {
       continue
     }
     seenObjects.add(objectName)
+
+    if (!extracted.objects.has(objectName)) {
+      errors.push(
+        `${contractName}: declared object "${objectName}" is not referenced by the migration SQL`,
+      )
+    }
 
     if (!owners.includes(objectOwner)) {
       errors.push(
