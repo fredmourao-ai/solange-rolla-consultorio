@@ -13,6 +13,14 @@ const validServerEnv = {
 }
 
 describe('server environment contract', () => {
+  it('accepts preview as an explicit environment', () => {
+    expect(parseServerEnv({ ...validServerEnv, APP_ENV: 'preview' }).APP_ENV).toBe('preview')
+  })
+
+  it.each(['', 'prod', 'development', 'unknown'])('rejects invalid APP_ENV value %j', (APP_ENV) => {
+    expect(() => parseServerEnv({ ...validServerEnv, APP_ENV })).toThrow(/APP_ENV/)
+  })
+
   it('rejects missing server secrets', () => {
     expect(() => parseServerEnv({})).toThrow(/SUPABASE_SECRET_KEY/)
   })

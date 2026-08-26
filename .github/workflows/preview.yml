@@ -1,0 +1,57 @@
+name: Preview
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  preview:
+    if: ${{ vars.SUPABASE_BRANCHING_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    environment: preview
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Use Node 24.19.0
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24.19.0
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Verify synthetic seed
+        run: npm run seed:check
+
+      - name: Validate preview isolation
+        env:
+          APP_ENV: preview
+          GITHUB_EVENT_NUMBER: ${{ github.event.pull_request.number }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          SUPABASE_BRANCHING_ENABLED: ${{ vars.SUPABASE_BRANCHING_ENABLED }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+          SUPABASE_STAGING_PROJECT_REF: ${{ secrets.SUPABASE_STAGING_PROJECT_REF }}
+          SUPABASE_PRODUCTION_PROJECT_REF: ${{ secrets.SUPABASE_PRODUCTION_PROJECT_REF }}
+          SUPABASE_ALLOWED_PROJECT_REFS: ${{ secrets.SUPABASE_ALLOWED_PROJECT_REFS }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          VERCEL_URL: ${{ vars.VERCEL_URL }}
+          WHATSAPP_LIVE_ENABLED: ${{ vars.WHATSAPP_LIVE_ENABLED }}
+          NFSE_LIVE_ENABLED: ${{ vars.NFSE_LIVE_ENABLED }}
+        run: |
+          npm run environment:check
+          node scripts/preview-env.mjs
+
+      - name: Preview contract
+        run: |
+          echo "Preview branch must be created from repository migrations and synthetic seed."
+          echo "Platform cleanup is responsible for deleting the ephemeral branch after PR closure."

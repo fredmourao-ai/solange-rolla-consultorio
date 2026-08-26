@@ -1,0 +1,74 @@
+name: Staging Promote
+
+on:
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: Full commit SHA already reviewed and approved for staging
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: staging
+  cancel-in-progress: false
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    environment: staging
+    timeout-minutes: 30
+    steps:
+      - name: Checkout selected revision
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.commit_sha }}
+          fetch-depth: 0
+
+      - name: Verify selected revision
+        env:
+          STAGING_COMMIT_SHA: ${{ inputs.commit_sha }}
+        run: test "$(git rev-parse HEAD)" = "$STAGING_COMMIT_SHA"
+
+      - name: Use Node 24.19.0
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24.19.0
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Verify synthetic seed
+        run: npm run seed:check
+
+      - name: Validate serialized staging promotion
+        env:
+          APP_ENV: staging
+          STAGING_COMMIT_SHA: ${{ inputs.commit_sha }}
+          STAGING_PROMOTION_APPROVED: ${{ vars.STAGING_PROMOTION_APPROVED }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_STAGING_PROJECT_REF }}
+          SUPABASE_STAGING_PROJECT_REF: ${{ secrets.SUPABASE_STAGING_PROJECT_REF }}
+          SUPABASE_PRODUCTION_PROJECT_REF: ${{ secrets.SUPABASE_PRODUCTION_PROJECT_REF }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          WHATSAPP_LIVE_ENABLED: ${{ vars.WHATSAPP_LIVE_ENABLED }}
+          NFSE_LIVE_ENABLED: ${{ vars.NFSE_LIVE_ENABLED }}
+        run: |
+          npm run environment:check
+          node scripts/staging-lock.mjs
+
+      - name: Apply forward migrations
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: npx supabase@2.115.0 db push --db-url "$SUPABASE_DB_URL"
+
+      - name: Staging smoke contract
+        env:
+          STAGING_APP_URL: ${{ vars.STAGING_APP_URL }}
+        run: |
+          test -n "$STAGING_APP_URL"
+          curl --fail --silent --show-error --retry 3 "$STAGING_APP_URL/api/health"

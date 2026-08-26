@@ -18,6 +18,7 @@
     "modules:check": "node scripts/check-module-contracts.mjs",
     "migrations:check": "node scripts/check-migrations.mjs",
     "environment:check": "node scripts/assert-environment.mjs",
+    "seed:check": "node scripts/verify-synthetic-seed.mjs",
     "test:e2e": "playwright test",
     "supabase:start": "npx supabase@2.115.0 start",
     "supabase:stop": "npx supabase@2.115.0 stop",

@@ -119,8 +119,18 @@ Título final deve referenciar feature/fix e manter Issue vinculada.
 ### Preview
 Cada PR elegível deve gerar preview isolado sem dados reais. Preview nunca recebe secret de produção nem provider live.
 
+O workflow de preview só é habilitado quando `SUPABASE_BRANCHING_ENABLED=true`
+está configurado no GitHub Environment. Sem Branching, o CI usa banco local
+descartável e o staging compartilhado é promovido somente de forma serializada.
+
+O seed é validado por `npm run seed:check` antes de qualquer reset ou bootstrap.
+
 ### Staging
 Merge em branch/fluxo de staging executa migrations e smoke.
+
+A promoção manual usa o workflow `Staging Promote`, o grupo de concorrência
+exclusivo `staging`, um commit SHA completo e `supabase db push`. `db reset` é
+proibido nesse ambiente.
 
 ### Production
 Promoção somente quando:

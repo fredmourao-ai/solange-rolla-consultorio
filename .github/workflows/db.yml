@@ -40,6 +40,9 @@ jobs:
       - name: Require explicit Supabase project config
         run: test -f supabase/config.toml
 
+      - name: Verify synthetic seed
+        run: npm run seed:check
+
       - name: Migration history
         env:
           MIGRATION_BASE_REF: ${{ github.event.pull_request.base.sha || github.event.before }}
