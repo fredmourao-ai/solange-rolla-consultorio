@@ -402,6 +402,9 @@ function sqlObjects(migration) {
     'public.on',
     'public.public',
     'public.to',
+    'public.)',
+    'public.jsonb',
+    'public.or',
   ])
   const recordObject = (object) => {
     if (!object || object.startsWith('auth.') || ignoredExternalOrPseudoObjects.has(object)) return
@@ -457,6 +460,7 @@ function sqlObjects(migration) {
       continue
     }
     if (token === 'schema') {
+      if (!['create', 'alter'].includes(tokens[index - 1])) continue
       const schemaName = tokens[index + 1]
       if (schemaName) {
         const objectName = schemaName === 'clinical' ? 'clinical.__schema__' : `public.${schemaName}`

@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "status": "approved",
+  "issue": 3,
+  "migration": "20260824010000_signatures.sql",
+  "owners": ["forms", "signatures"],
+  "objects": [
+    {"name": "public.form_submission_versions", "owner": "forms"},
+    {"name": "public.signature_evidence", "owner": "signatures"},
+    {"name": "public.document_jobs", "owner": "signatures"}
+  ]
+}
