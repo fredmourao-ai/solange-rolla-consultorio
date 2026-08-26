@@ -2,7 +2,7 @@
 
 Sistema privado para gestão de consultório, psicoterapia, eventos, formulários pré-atendimento, assinatura eletrônica simples, comunicação, financeiro e NFS-e.
 
-> Status: **Foundation e architecture enforcement integrados; provisioning remoto e módulos de negócio ainda em execução**. Não usar com dados reais de pacientes antes da conclusão da segurança, homologação jurídica/fiscal e checklist de produção.
+> Status: **foundation, architecture enforcement e platform provisioning integrados; UI foundation entregue nesta branch**. Os módulos de negócio, segurança operacional, homologação e checklist de produção ainda estão em execução. Não usar com dados reais de pacientes.
 
 ## Direção técnica
 
