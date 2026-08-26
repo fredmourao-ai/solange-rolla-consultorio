@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "status": "approved",
+  "issue": 2,
+  "migration": "20260824001000_identity.sql",
+  "owners": ["identity"],
+  "objects": [
+    {"name": "public.profiles", "owner": "identity"}
+  ]
+}

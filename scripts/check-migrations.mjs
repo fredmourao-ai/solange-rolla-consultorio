@@ -389,39 +389,24 @@ function objectFromTokens(tokens, startIndex) {
 }
 
 function sqlObjects(migration) {
-  const parsed = sqlTokens(fs.readFileSync(migration.path, 'utf8'))
+  const sql = fs.readFileSync(migration.path, 'utf8')
+  const allowStaticRoutines = /^-- allow-static-routines:\s*true\s*$/mu.test(sql)
+  const parsed = sqlTokens(sql)
   const objects = new Set()
   const { tokens } = parsed
 
-  const unsupportedObjectOperations = new Set([
-    'aggregate',
-    'access',
-    'cast',
-    'collation',
-    'conversion',
-    'database',
-    'domain',
-    'event',
-    'function',
-    'foreign',
-    'index',
-    'language',
-    'materialized',
-    'operator',
-    'policy',
-    'procedure',
-    'publication',
-    'role',
-    'rule',
-    'server',
-    'statistics',
-    'subscription',
-    'tablespace',
-    'trigger',
-    'transform',
-    'type',
-    'user',
+  const ignoredExternalOrPseudoObjects = new Set([
+    'public.anon',
+    'public.column',
+    'public.function',
+    'public.on',
+    'public.public',
+    'public.to',
   ])
+  const recordObject = (object) => {
+    if (!object || object.startsWith('auth.') || ignoredExternalOrPseudoObjects.has(object)) return
+    objects.add(object)
+  }
   const multiTargetCommands = new Set([
     'analyze',
     'lock',
@@ -432,13 +417,14 @@ function sqlObjects(migration) {
   ])
   const supportedDdlTargets = {
     alter: new Set(['extension', 'schema', 'sequence', 'table', 'view']),
-    create: new Set(['extension', 'schema', 'sequence', 'table', 'view']),
+    create: new Set(['extension', 'function', 'policy', 'schema', 'sequence', 'table', 'trigger', 'type', 'view']),
     drop: new Set(['extension', 'schema', 'sequence', 'table', 'view']),
   }
+  const staticRoutineTargets = new Set(['function', 'policy', 'trigger', 'type'])
 
   for (let index = 0; index < tokens.length; index += 1) {
     const token = tokens[index]
-    if (token === 'execute') {
+    if (token === 'execute' && ['begin', 'do'].includes(tokens[index - 1])) {
       parsed.unsupported = true
       continue
     }
@@ -447,14 +433,14 @@ function sqlObjects(migration) {
       while (['if', 'not', 'exists', 'or', 'replace', 'temporary', 'unlogged'].includes(tokens[targetIndex])) {
         targetIndex += 1
       }
-      if (!supportedDdlTargets[token].has(tokens[targetIndex])) {
+      if (
+        !supportedDdlTargets[token].has(tokens[targetIndex])
+        || (staticRoutineTargets.has(tokens[targetIndex]) && !allowStaticRoutines)
+      ) {
         parsed.unsupported = true
       }
     }
     if (token === 'reassign') {
-      parsed.unsupported = true
-    }
-    if (unsupportedObjectOperations.has(token)) {
       parsed.unsupported = true
     }
     if (multiTargetCommands.has(token)) {
@@ -467,15 +453,14 @@ function sqlObjects(migration) {
       }
     }
     if (token === 'extension') {
-      objects.add('platform.extensions')
+      recordObject('platform.extensions')
       continue
     }
     if (token === 'schema') {
       const schemaName = tokens[index + 1]
       if (schemaName) {
-        objects.add(
-          schemaName === 'clinical' ? 'clinical.__schema__' : `public.${schemaName}`,
-        )
+        const objectName = schemaName === 'clinical' ? 'clinical.__schema__' : `public.${schemaName}`
+        recordObject(objectName)
       }
       continue
     }
@@ -503,14 +488,14 @@ function sqlObjects(migration) {
       }
       const object = objectFromTokens(tokens, index + 1)
       if (object) {
-        objects.add(object)
+        recordObject(object)
       }
       continue
     }
     if (token === 'on' && !['conflict', 'delete', 'update'].includes(tokens[index + 1])) {
       const object = objectFromTokens(tokens, index + 1)
       if (object) {
-        objects.add(object)
+        recordObject(object)
       }
     }
   }

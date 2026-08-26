@@ -34,12 +34,161 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      people: {
+        Row: {
+          birth_date: string
+          birthday_messages_enabled: boolean
+          civil_name: string
+          cpf_normalized: string | null
+          created_at: string
+          email_normalized: string | null
+          fiscal_address: Json
+          id: string
+          phone_e164: string | null
+          preferred_channel: string
+          preferred_name: string | null
+          updated_at: string
+        }
+        Insert: {
+          birth_date: string
+          birthday_messages_enabled?: boolean
+          civil_name: string
+          cpf_normalized?: string | null
+          created_at?: string
+          email_normalized?: string | null
+          fiscal_address?: Json
+          id?: string
+          phone_e164?: string | null
+          preferred_channel?: string
+          preferred_name?: string | null
+          updated_at?: string
+        }
+        Update: {
+          birth_date?: string
+          birthday_messages_enabled?: boolean
+          civil_name?: string
+          cpf_normalized?: string | null
+          created_at?: string
+          email_normalized?: string | null
+          fiscal_address?: Json
+          id?: string
+          phone_e164?: string | null
+          preferred_channel?: string
+          preferred_name?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      person_relationships: {
+        Row: {
+          created_at: string
+          id: string
+          person_id: string
+          related_person_id: string
+          relationship_kind: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          person_id: string
+          related_person_id: string
+          relationship_kind: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          person_id?: string
+          related_person_id?: string
+          relationship_kind?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "person_relationships_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "accounting_people_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_relationships_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_relationships_related_person_id_fkey"
+            columns: ["related_person_id"]
+            isOneToOne: false
+            referencedRelation: "accounting_people_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_relationships_related_person_id_fkey"
+            columns: ["related_person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          active: boolean
+          created_at: string
+          display_name: string
+          role: Database["public"]["Enums"]["app_role"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          display_name: string
+          role: Database["public"]["Enums"]["app_role"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          display_name?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
-      [_ in never]: never
+      accounting_people_view: {
+        Row: {
+          civil_name: string | null
+          cpf_normalized: string | null
+          fiscal_address: Json | null
+          id: string | null
+        }
+        Insert: {
+          civil_name?: string | null
+          cpf_normalized?: string | null
+          fiscal_address?: Json | null
+          id?: string | null
+        }
+        Update: {
+          civil_name?: string | null
+          cpf_normalized?: string | null
+          fiscal_address?: Json | null
+          id?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
+      current_aal: { Args: never; Returns: string }
+      current_app_role: {
+        Args: never
+        Returns: Database["public"]["Enums"]["app_role"]
+      }
       queue_archive: {
         Args: { p_message_id: string; p_queue_name: string }
         Returns: boolean
@@ -76,7 +225,7 @@ export type Database = {
       }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "psychologist_owner" | "secretary" | "accounting"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -206,7 +355,9 @@ export const Constants = {
     Enums: {},
   },
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["psychologist_owner", "secretary", "accounting"],
+    },
   },
 } as const
 

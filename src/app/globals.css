@@ -127,6 +127,16 @@ textarea {
 .mobile-nav { display: none; }
 .page-header { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-4); margin-bottom: var(--space-8); }
 .page-header h1 { margin: 0; font-size: 2rem; line-height: 1.15; }
+
+.auth-page { min-height: 100vh; display: grid; place-items: center; padding: 2rem; background: var(--surface-muted); }
+.auth-panel { width: min(100%, 28rem); padding: 2rem; background: var(--surface); border: 1px solid var(--border); box-shadow: 0 16px 40px rgb(40 37 34 / 20%); }
+.auth-panel h1 { margin: 0 0 1.5rem; font-size: 1.8rem; }
+.auth-form { display: grid; gap: .5rem; }
+.auth-form label { font-size: .875rem; font-weight: 600; }
+.auth-form input { min-height: 2.75rem; padding: .5rem .75rem; border: 1px solid var(--border); border-radius: .25rem; }
+.auth-form button { min-height: 2.75rem; margin-top: .75rem; border: 0; border-radius: .25rem; background: var(--primary); color: white; font-weight: 700; cursor: pointer; }
+.auth-form button:disabled { opacity: .65; cursor: wait; }
+.auth-form [role='alert'] { margin: .5rem 0 0; color: var(--danger); font-size: .875rem; }
 .page-header p { margin: var(--space-2) 0 0; color: var(--muted); }
 
 .dialog-backdrop { position: fixed; inset: 0; display: grid; place-items: center; padding: var(--space-4); background: rgb(40 37 34 / 50%); }

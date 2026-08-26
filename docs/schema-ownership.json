@@ -36,6 +36,7 @@
     "platform.functions": "platform",
     "pgmq.queue_metrics": "platform",
     "public.appointment_status_history": "appointments",
+    "public.accounting_people_view": "people",
     "public.appointments": "appointments",
     "public.audit_events": "audit",
     "public.cancellation_policies": "appointments",
