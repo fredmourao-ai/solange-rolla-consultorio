@@ -714,6 +714,91 @@ export type Database = {
         }
         Relationships: []
       }
+      payment_refunds: {
+        Row: {
+          actor_id: string
+          amount_cents: number
+          external_reference: string | null
+          id: string
+          idempotency_key: string
+          method: string
+          payment_id: string
+          reason: string
+          refunded_at: string
+        }
+        Insert: {
+          actor_id: string
+          amount_cents: number
+          external_reference?: string | null
+          id?: string
+          idempotency_key: string
+          method: string
+          payment_id: string
+          reason: string
+          refunded_at?: string
+        }
+        Update: {
+          actor_id?: string
+          amount_cents?: number
+          external_reference?: string | null
+          id?: string
+          idempotency_key?: string
+          method?: string
+          payment_id?: string
+          reason?: string
+          refunded_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_refunds_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payments: {
+        Row: {
+          actor_id: string
+          amount_cents: number
+          external_reference: string | null
+          id: string
+          idempotency_key: string
+          method: string
+          paid_at: string
+          receivable_id: string
+        }
+        Insert: {
+          actor_id: string
+          amount_cents: number
+          external_reference?: string | null
+          id?: string
+          idempotency_key: string
+          method: string
+          paid_at?: string
+          receivable_id: string
+        }
+        Update: {
+          actor_id?: string
+          amount_cents?: number
+          external_reference?: string | null
+          id?: string
+          idempotency_key?: string
+          method?: string
+          paid_at?: string
+          receivable_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_receivable_id_fkey"
+            columns: ["receivable_id"]
+            isOneToOne: false
+            referencedRelation: "receivables"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       people: {
         Row: {
           birth_date: string
@@ -1214,4 +1299,3 @@ export const Constants = {
     },
   },
 } as const
-
