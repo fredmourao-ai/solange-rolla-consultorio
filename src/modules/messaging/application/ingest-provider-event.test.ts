@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { expect, it } from 'vitest'
 import { ingestProviderEvent } from './ingest-provider-event'
 
 it('deduplicates provider events before processing', async () => {
