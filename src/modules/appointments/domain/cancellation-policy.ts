@@ -99,7 +99,7 @@ export function calculateCancellationDeadline(
 
   const local = localParts(startsAt)
   const remainingDays = policy.countableHours / 24
-  let candidate = new Date(Date.UTC(local.year, local.month - 1, local.day))
+  const candidate = new Date(Date.UTC(local.year, local.month - 1, local.day))
   let consumedDays = 0
 
   while (consumedDays < remainingDays) {
