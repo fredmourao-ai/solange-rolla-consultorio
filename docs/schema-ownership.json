@@ -28,6 +28,7 @@
     "legal_terms": ["forms"],
     "forms_legal_terms": ["forms", "people"],
     "payments": ["receivables"],
+    "people_receivables": ["people", "receivables"],
     "private_storage": ["platform"],
     "public_rate_limits": ["platform"],
     "queues": ["platform"]
