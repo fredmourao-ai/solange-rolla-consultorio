@@ -1,6 +1,6 @@
 begin;
 
-select plan(10);
+select plan(9);
 
 select has_table('public', 'people', 'people table exists');
 select has_table('public', 'person_relationships', 'person relationships table exists');
@@ -12,7 +12,7 @@ insert into public.people (id, civil_name, birth_date, cpf_normalized, fiscal_ad
 values ('10000000-0000-0000-0000-000000000001', 'Teste Pessoa', '1990-01-01', '52998224725', '{"city":"Teste"}');
 
 set local role anon;
-select is((select count(*)::int from public.people), 0, 'anonymous cannot read people');
+select throws_ok($$ select count(*) from public.people $$, '42501', null, 'anonymous cannot read people');
 reset role;
 
 set local role authenticated;

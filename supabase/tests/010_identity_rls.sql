@@ -1,6 +1,6 @@
 begin;
 
-select plan(12);
+select plan(15);
 
 select has_table('public', 'profiles', 'profiles table exists');
 select has_column('public', 'profiles', 'role', 'profiles exposes role');
@@ -10,6 +10,12 @@ select has_function('public', 'current_aal', 'current_aal helper exists');
 select ok((select relrowsecurity from pg_class where oid = 'public.profiles'::regclass), 'profiles has RLS enabled');
 select ok((select relforcerowsecurity from pg_class where oid = 'public.profiles'::regclass), 'profiles forces RLS');
 
+insert into auth.users (id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data)
+values
+  ('00000000-0000-0000-0000-000000000001', 'authenticated', 'authenticated', 'owner@example.test', 'synthetic-password', now(), '{}', '{}'),
+  ('00000000-0000-0000-0000-000000000002', 'authenticated', 'authenticated', 'secretary@example.test', 'synthetic-password', now(), '{}', '{}'),
+  ('00000000-0000-0000-0000-000000000003', 'authenticated', 'authenticated', 'accounting@example.test', 'synthetic-password', now(), '{}', '{}');
+
 insert into public.profiles (user_id, role, display_name)
 values
   ('00000000-0000-0000-0000-000000000001', 'psychologist_owner', 'Teste Owner'),
@@ -17,7 +23,7 @@ values
   ('00000000-0000-0000-0000-000000000003', 'accounting', 'Teste Accounting');
 
 set local role anon;
-select is((select count(*)::int from public.profiles), 0, 'anonymous cannot read profiles');
+select throws_ok($$ select count(*) from public.profiles $$, '42501', null, 'anonymous cannot read profiles');
 reset role;
 
 set local role authenticated;
