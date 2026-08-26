@@ -333,6 +333,24 @@ export type Database = {
           },
         ]
       }
+      expense_categories: {
+        Row: {
+          active: boolean
+          id: string
+          name: string
+        }
+        Insert: {
+          active?: boolean
+          id?: string
+          name: string
+        }
+        Update: {
+          active?: boolean
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
       form_submission_versions: {
         Row: {
           answers: Json | null
@@ -714,6 +732,117 @@ export type Database = {
         }
         Relationships: []
       }
+      payable_payments: {
+        Row: {
+          actor_id: string
+          amount_cents: number
+          id: string
+          idempotency_key: string
+          method: string
+          paid_at: string
+          payable_id: string
+          receipt_path: string | null
+        }
+        Insert: {
+          actor_id: string
+          amount_cents: number
+          id?: string
+          idempotency_key: string
+          method: string
+          paid_at?: string
+          payable_id: string
+          receipt_path?: string | null
+        }
+        Update: {
+          actor_id?: string
+          amount_cents?: number
+          id?: string
+          idempotency_key?: string
+          method?: string
+          paid_at?: string
+          payable_id?: string
+          receipt_path?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payable_payments_payable_id_fkey"
+            columns: ["payable_id"]
+            isOneToOne: false
+            referencedRelation: "payables"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payables: {
+        Row: {
+          amount_cents: number
+          category_id: string
+          competence: string
+          created_at: string
+          description: string
+          due_date: string
+          id: string
+          idempotency_key: string
+          paid_cents: number
+          receipt_path: string | null
+          recurrence_rule_id: string | null
+          status: string
+          vendor_id: string
+        }
+        Insert: {
+          amount_cents: number
+          category_id: string
+          competence: string
+          created_at?: string
+          description: string
+          due_date: string
+          id?: string
+          idempotency_key: string
+          paid_cents?: number
+          receipt_path?: string | null
+          recurrence_rule_id?: string | null
+          status?: string
+          vendor_id: string
+        }
+        Update: {
+          amount_cents?: number
+          category_id?: string
+          competence?: string
+          created_at?: string
+          description?: string
+          due_date?: string
+          id?: string
+          idempotency_key?: string
+          paid_cents?: number
+          receipt_path?: string | null
+          recurrence_rule_id?: string | null
+          status?: string
+          vendor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payables_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "expense_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payables_recurrence_rule_id_fkey"
+            columns: ["recurrence_rule_id"]
+            isOneToOne: false
+            referencedRelation: "recurrence_rules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payables_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payment_refunds: {
         Row: {
           actor_id: string
@@ -1024,6 +1153,60 @@ export type Database = {
           },
         ]
       }
+      recurrence_rules: {
+        Row: {
+          active: boolean
+          amount_cents: number
+          category_id: string
+          created_at: string
+          day_of_month: number
+          description: string
+          id: string
+          month_end_fallback: string
+          start_date: string
+          vendor_id: string
+        }
+        Insert: {
+          active?: boolean
+          amount_cents: number
+          category_id: string
+          created_at?: string
+          day_of_month: number
+          description: string
+          id?: string
+          month_end_fallback?: string
+          start_date: string
+          vendor_id: string
+        }
+        Update: {
+          active?: boolean
+          amount_cents?: number
+          category_id?: string
+          created_at?: string
+          day_of_month?: number
+          description?: string
+          id?: string
+          month_end_fallback?: string
+          start_date?: string
+          vendor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recurrence_rules_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "expense_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurrence_rules_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       services: {
         Row: {
           active: boolean
@@ -1097,6 +1280,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      vendors: {
+        Row: {
+          created_at: string
+          document_normalized: string | null
+          id: string
+          legal_name: string
+        }
+        Insert: {
+          created_at?: string
+          document_normalized?: string | null
+          id?: string
+          legal_name: string
+        }
+        Update: {
+          created_at?: string
+          document_normalized?: string | null
+          id?: string
+          legal_name?: string
+        }
+        Relationships: []
       }
     }
     Views: {
