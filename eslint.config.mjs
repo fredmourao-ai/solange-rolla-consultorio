@@ -5,7 +5,7 @@ import nextTs from 'eslint-config-next/typescript'
 const clientServerImportSources = [
   /^server-only$/,
   /^(?:@\/|(?:\.{1,2}\/)+(?:src\/)?)platform\/env\/server(?:-only)?(?:\/.*)?$/,
-  /^(?:@\/|(?:\.{1,2}\/)+(?:src\/)?)platform\/crypto\/(?:keys|server)(?:\/.*)?$/,
+  /^(?:@\/|(?:\.{1,2}\/)+(?:src\/)?)platform\/crypto(?:\/.*)?$/,
   /^(?:@\/|(?:\.{1,2}\/)+(?:src\/)?)platform\/supabase\/(?:service-role|admin)(?:\/.*)?$/,
 ]
 

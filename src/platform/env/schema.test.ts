@@ -8,6 +8,7 @@ const validServerEnv = {
   APP_URL: 'http://localhost:3000',
   APP_ENV: 'test',
   CLINICAL_ENCRYPTION_KEY_V1: 'test-encryption-key',
+  CLINICAL_ENCRYPTION_ACTIVE_VERSION: '1',
   WHATSAPP_LIVE_ENABLED: 'false',
   NFSE_LIVE_ENABLED: 'true',
 }
