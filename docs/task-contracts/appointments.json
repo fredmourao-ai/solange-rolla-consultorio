@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "status": "approved",
+  "issue": 3,
+  "migration": "20260824003000_appointments.sql",
+  "owners": ["appointments", "people"],
+  "objects": [
+    {"name": "public.people", "owner": "people"},
+    {"name": "public.services", "owner": "appointments"},
+    {"name": "public.cancellation_policies", "owner": "appointments"},
+    {"name": "public.appointments", "owner": "appointments"},
+    {"name": "public.appointment_status_history", "owner": "appointments"}
+  ]
+}
