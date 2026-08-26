@@ -17,6 +17,7 @@
     "signatures"
   ],
   "descriptionAliases": {
+    "appointments": ["appointments", "people"],
     "appointment_confirmation": ["appointments"],
     "bind_cancellation_legal_version": ["appointments", "forms"],
     "capabilities": ["forms"],
@@ -37,6 +38,10 @@
     "pgmq.queue_metrics": "platform",
     "public.appointment_status_history": "appointments",
     "public.accounting_people_view": "people",
+    "public.appointment_status_history": "appointments",
+    "public.appointments": "appointments",
+    "public.cancellation_policies": "appointments",
+    "public.capabilities": "forms",
     "public.appointments": "appointments",
     "public.audit_events": "audit",
     "public.cancellation_policies": "appointments",
@@ -67,6 +72,7 @@
     "public.people": "people",
     "public.person_relationships": "people",
     "public.profiles": "identity",
+    "public.services": "appointments",
     "storage.buckets": "platform",
     "storage.objects": "platform",
     "public.receivable_adjustments": "receivables",

@@ -1,0 +1,27 @@
+begin;
+
+select plan(9);
+
+select has_table('public', 'services', 'services table exists');
+select has_table('public', 'cancellation_policies', 'cancellation policies table exists');
+select has_table('public', 'appointments', 'appointments table exists');
+select has_table('public', 'appointment_status_history', 'appointment status history table exists');
+select ok((select relrowsecurity from pg_class where oid = 'public.appointments'::regclass), 'appointments has RLS enabled');
+select ok((select relrowsecurity from pg_class where oid = 'public.appointment_status_history'::regclass), 'status history has RLS enabled');
+
+insert into public.cancellation_policies (policy_version, countable_hours, excluded_weekdays, business_timezone, late_cancellation_charge_enabled, no_show_charge_enabled, effective_from)
+values (1, 48, '[0,6]', 'America/Sao_Paulo', true, true, now());
+insert into public.services (name, duration_minutes, price_cents)
+values ('Consulta sintética', 50, 10000);
+
+set local role anon;
+select throws_ok($$ select count(*) from public.appointments $$, '42501', null, 'anonymous cannot read appointments');
+reset role;
+
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-000000000003","aal":"aal2","role":"authenticated"}', true);
+select is((select count(*)::int from public.services), 0, 'accounting cannot read services');
+select throws_ok($$ insert into public.appointments (person_id, service_id, starts_at, ends_at, policy_version, cancellation_deadline_at, business_timezone, cancellation_policy_snapshot) values ('10000000-0000-0000-0000-000000000001', (select id from public.services limit 1), now(), now() + interval '1 hour', 1, now(), 'America/Sao_Paulo', '{}') $$, '42501', null, 'accounting cannot create appointments');
+
+select * from finish();
+rollback;
