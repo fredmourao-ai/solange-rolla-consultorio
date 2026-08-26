@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "status": "approved",
+  "issue": 3,
+  "migration": "20260826002000_bind_cancellation_legal_version.sql",
+  "owners": ["appointments", "forms"],
+  "objects": [
+    {"name": "public.cancellation_policies", "owner": "appointments"},
+    {"name": "public.legal_document_versions", "owner": "forms"},
+    {"name": "public.legal_documents", "owner": "forms"}
+  ]
+}
