@@ -839,6 +839,106 @@ export type Database = {
         }
         Relationships: []
       }
+      receivable_adjustments: {
+        Row: {
+          actor_id: string
+          adjustment_cents: number
+          created_at: string
+          id: string
+          reason: string
+          receivable_id: string
+        }
+        Insert: {
+          actor_id: string
+          adjustment_cents: number
+          created_at?: string
+          id?: string
+          reason: string
+          receivable_id: string
+        }
+        Update: {
+          actor_id?: string
+          adjustment_cents?: number
+          created_at?: string
+          id?: string
+          reason?: string
+          receivable_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "receivable_adjustments_receivable_id_fkey"
+            columns: ["receivable_id"]
+            isOneToOne: false
+            referencedRelation: "receivables"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      receivables: {
+        Row: {
+          created_at: string
+          id: string
+          idempotency_key: string
+          original_amount_cents: number
+          payer_person_id: string
+          person_id: string
+          source_id: string
+          source_type: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          idempotency_key: string
+          original_amount_cents: number
+          payer_person_id: string
+          person_id: string
+          source_id: string
+          source_type: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          idempotency_key?: string
+          original_amount_cents?: number
+          payer_person_id?: string
+          person_id?: string
+          source_id?: string
+          source_type?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "receivables_payer_person_id_fkey"
+            columns: ["payer_person_id"]
+            isOneToOne: false
+            referencedRelation: "accounting_people_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receivables_payer_person_id_fkey"
+            columns: ["payer_person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receivables_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "accounting_people_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receivables_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       services: {
         Row: {
           active: boolean
