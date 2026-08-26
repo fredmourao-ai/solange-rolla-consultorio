@@ -1,0 +1,12 @@
+begin;
+select plan(8);
+select has_table('public', 'vendors', 'vendors exists');
+select has_table('public', 'expense_categories', 'categories exist');
+select has_table('public', 'recurrence_rules', 'recurrence rules exist');
+select has_table('public', 'payables', 'payables exist');
+select has_table('public', 'payable_payments', 'payable payments exist');
+select ok((select count(*) >= 15 from public.expense_categories), 'expense categories are seeded');
+select has_column('public', 'payables', 'receipt_path', 'payable stores private receipt path');
+select has_column('public', 'payable_payments', 'idempotency_key', 'payments are idempotent');
+select * from finish();
+rollback;

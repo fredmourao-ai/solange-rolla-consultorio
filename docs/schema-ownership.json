@@ -68,6 +68,7 @@
     "public.outbound_messages": "messaging",
     "public.payable_payments": "payables",
     "public.payables": "payables",
+    "public.expense_categories": "payables",
     "public.payment_refunds": "receivables",
     "public.payments": "receivables",
     "public.people": "people",
