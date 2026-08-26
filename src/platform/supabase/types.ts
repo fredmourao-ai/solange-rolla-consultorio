@@ -418,6 +418,127 @@ export type Database = {
         }
         Relationships: []
       }
+      legal_acceptances: {
+        Row: {
+          accepted_at: string
+          capability_id: string | null
+          channel: string
+          content_hash_sha256: string
+          document_version_id: string
+          id: string
+          person_id: string
+        }
+        Insert: {
+          accepted_at?: string
+          capability_id?: string | null
+          channel: string
+          content_hash_sha256: string
+          document_version_id: string
+          id?: string
+          person_id: string
+        }
+        Update: {
+          accepted_at?: string
+          capability_id?: string | null
+          channel?: string
+          content_hash_sha256?: string
+          document_version_id?: string
+          id?: string
+          person_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "legal_acceptances_document_version_id_fkey"
+            columns: ["document_version_id"]
+            isOneToOne: false
+            referencedRelation: "legal_document_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "legal_acceptances_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "accounting_people_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "legal_acceptances_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      legal_document_versions: {
+        Row: {
+          content: string
+          content_hash_sha256: string
+          created_at: string
+          document_id: string
+          effective_from: string
+          id: string
+          is_draft: boolean
+          supersedes_id: string | null
+          version: number
+        }
+        Insert: {
+          content: string
+          content_hash_sha256: string
+          created_at?: string
+          document_id: string
+          effective_from: string
+          id?: string
+          is_draft?: boolean
+          supersedes_id?: string | null
+          version: number
+        }
+        Update: {
+          content?: string
+          content_hash_sha256?: string
+          created_at?: string
+          document_id?: string
+          effective_from?: string
+          id?: string
+          is_draft?: boolean
+          supersedes_id?: string | null
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "legal_document_versions_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "legal_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "legal_document_versions_supersedes_id_fkey"
+            columns: ["supersedes_id"]
+            isOneToOne: false
+            referencedRelation: "legal_document_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      legal_documents: {
+        Row: {
+          created_at: string
+          id: string
+          key: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          key: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          key?: string
+        }
+        Relationships: []
+      }
       people: {
         Row: {
           birth_date: string

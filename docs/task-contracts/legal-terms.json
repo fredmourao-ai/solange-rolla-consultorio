@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "status": "approved",
+  "issue": 3,
+  "migration": "20260826001000_forms_legal_terms.sql",
+  "owners": ["forms", "people"],
+  "objects": [
+    {"name": "public.legal_documents", "owner": "forms"},
+    {"name": "public.legal_document_versions", "owner": "forms"},
+    {"name": "public.legal_acceptances", "owner": "forms"},
+    {"name": "public.people", "owner": "people"}
+  ]
+}
