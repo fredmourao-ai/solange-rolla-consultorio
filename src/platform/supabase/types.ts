@@ -34,6 +34,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      appointment_confirmations: {
+        Row: {
+          appointment_id: string
+          capability_id: string | null
+          id: string
+          responded_at: string | null
+          response: string | null
+          sent_at: string
+        }
+        Insert: {
+          appointment_id: string
+          capability_id?: string | null
+          id?: string
+          responded_at?: string | null
+          response?: string | null
+          sent_at?: string
+        }
+        Update: {
+          appointment_id?: string
+          capability_id?: string | null
+          id?: string
+          responded_at?: string | null
+          response?: string | null
+          sent_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointment_confirmations_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointment_confirmations_capability_id_fkey"
+            columns: ["capability_id"]
+            isOneToOne: false
+            referencedRelation: "capabilities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       appointment_status_history: {
         Row: {
           appointment_id: string
