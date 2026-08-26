@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "status": "approved",
+  "issue": 2,
+  "migration": "20260824002500_audit.sql",
+  "owners": ["audit"],
+  "objects": [
+    {"name": "public.audit_events", "owner": "audit"}
+  ]
+}
