@@ -4,3 +4,5 @@ export { assertAdministrativePayload, MESSAGE_CHANNELS, type MessageChannel, typ
 export { renderTemplate, MESSAGE_TEMPLATE_KEYS, type MessageTemplate, type MessageTemplateKey } from './domain/template'
 export { renderVersionedTemplate, type TemplateRepository } from './application/render-template'
 export { createMockProvider, type MessagingProvider, type ProviderDeliveryResult, type ProviderMessage } from './infrastructure/mock-provider'
+export { processMessage, type MessageAttemptRepository, type RetryQueue } from './application/process-message'
+export { ingestProviderEvent, type ProviderEventRepository } from './application/ingest-provider-event'
