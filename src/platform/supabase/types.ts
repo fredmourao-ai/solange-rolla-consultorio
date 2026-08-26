@@ -34,10 +34,30 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      profiles: {
+        Row: { active: boolean; created_at: string; display_name: string; role: Database['public']['Enums']['app_role']; updated_at: string; user_id: string }
+        Insert: { active?: boolean; created_at?: string; display_name: string; role: Database['public']['Enums']['app_role']; updated_at?: string; user_id: string }
+        Update: { active?: boolean; created_at?: string; display_name?: string; role?: Database['public']['Enums']['app_role']; updated_at?: string; user_id?: string }
+        Relationships: []
+      }
+      people: {
+        Row: { id: string; civil_name: string; preferred_name: string | null; cpf_normalized: string | null; birth_date: string; email_normalized: string | null; phone_e164: string | null; preferred_channel: string; birthday_messages_enabled: boolean; fiscal_address: Json; created_at: string; updated_at: string }
+        Insert: { id?: string; civil_name: string; preferred_name?: string | null; cpf_normalized?: string | null; birth_date: string; email_normalized?: string | null; phone_e164?: string | null; preferred_channel?: string; birthday_messages_enabled?: boolean; fiscal_address?: Json; created_at?: string; updated_at?: string }
+        Update: { id?: string; civil_name?: string; preferred_name?: string | null; cpf_normalized?: string | null; birth_date?: string; email_normalized?: string | null; phone_e164?: string | null; preferred_channel?: string; birthday_messages_enabled?: boolean; fiscal_address?: Json; created_at?: string; updated_at?: string }
+        Relationships: []
+      }
+      person_relationships: {
+        Row: { id: string; person_id: string; related_person_id: string; relationship_kind: string; created_at: string }
+        Insert: { id?: string; person_id: string; related_person_id: string; relationship_kind: string; created_at?: string }
+        Update: { id?: string; person_id?: string; related_person_id?: string; relationship_kind?: string; created_at?: string }
+        Relationships: []
+      }
     }
     Views: {
-      [_ in never]: never
+      accounting_people_view: {
+        Row: { id: string; civil_name: string; cpf_normalized: string | null; fiscal_address: Json }
+        Relationships: []
+      }
     }
     Functions: {
       queue_archive: {
@@ -74,9 +94,17 @@ export type Database = {
         }
         Returns: string
       }
+      current_aal: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      current_app_role: {
+        Args: Record<PropertyKey, never>
+        Returns: Database['public']['Enums']['app_role']
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: 'accounting' | 'psychologist_owner' | 'secretary'
     }
     CompositeTypes: {
       [_ in never]: never
@@ -209,4 +237,3 @@ export const Constants = {
     Enums: {},
   },
 } as const
-

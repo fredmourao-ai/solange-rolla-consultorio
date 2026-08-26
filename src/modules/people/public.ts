@@ -1,0 +1,6 @@
+export { isValidCpf, normalizeCpf } from './domain/cpf'
+export { normalizeEmail, normalizePhoneE164BR } from './domain/normalize'
+export type { Person, PersonId, PreferredChannel } from './domain/person'
+export { createPerson } from './application/create-person'
+export { findPotentialDuplicates, matchDuplicate } from './application/find-duplicates'
+export type { CreatePersonInput, PersonRepository } from './application/create-person'

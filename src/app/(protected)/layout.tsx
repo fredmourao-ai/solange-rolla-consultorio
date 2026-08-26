@@ -1,7 +1,11 @@
 import type { ReactNode } from 'react'
+import { redirect } from 'next/navigation'
+import { getStaffSession } from '@/modules/identity/public'
 import { AppShell } from '@/shared/ui/app-shell'
 
-export default function ProtectedLayout({ children }: { children: ReactNode }) {
-  // Identity/Auth supplies the server-side session and MFA guard in the next V2 task.
-  return <AppShell>{children}</AppShell>
+export default async function ProtectedLayout({ children }: { children: ReactNode }) {
+  const session = await getStaffSession()
+  if (!session && process.env.APP_ENV === 'production') redirect('/login')
+
+  return <AppShell role={session?.role ?? 'staff'}>{children}</AppShell>
 }

@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "status": "approved",
+  "issue": 2,
+  "migration": "20260824002000_people.sql",
+  "owners": ["people"],
+  "objects": [
+    {"name": "public.accounting_people_view", "owner": "people"},
+    {"name": "public.people", "owner": "people"},
+    {"name": "public.person_relationships", "owner": "people"}
+  ]
+}
