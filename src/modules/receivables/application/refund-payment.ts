@@ -1,0 +1,3 @@
+import { applyRefund, type Payment, type PaymentMethod } from '../domain/payment'
+export type RefundRepository = { insert(input: { paymentId: string; amountCents: number; method: PaymentMethod; reason: string; idempotencyKey: string }): Promise<Payment> }
+export async function refundPayment(input: { payment: Payment; amountCents: number; method: PaymentMethod; reason: string; idempotencyKey: string }, repository: RefundRepository): Promise<Payment> { const next = applyRefund(input.payment, input.amountCents); if (!input.reason.trim()) throw new Error('REFUND_REASON_REQUIRED'); return repository.insert({ paymentId: input.payment.id, amountCents: input.amountCents, method: input.method, reason: input.reason, idempotencyKey: input.idempotencyKey }).then(() => next) }

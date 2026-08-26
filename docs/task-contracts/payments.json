@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "status": "approved",
+  "issue": 5,
+  "migration": "20260826010000_payments.sql",
+  "owners": ["receivables"],
+  "objects": [
+    {"name": "public.payments", "owner": "receivables"},
+    {"name": "public.payment_refunds", "owner": "receivables"},
+    {"name": "public.receivables", "owner": "receivables"}
+  ]
+}
