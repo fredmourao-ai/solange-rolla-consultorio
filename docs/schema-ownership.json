@@ -18,6 +18,7 @@
   ],
   "descriptionAliases": {
     "appointments": ["appointments", "people"],
+    "appointments_confirmation": ["appointments", "forms"],
     "signatures": ["forms", "signatures"],
     "appointment_confirmation": ["appointments"],
     "bind_cancellation_legal_version": ["appointments", "forms"],
@@ -40,6 +41,7 @@
     "pgmq.queue_metrics": "platform",
     "public.accounting_people_view": "people",
     "public.appointment_status_history": "appointments",
+    "public.appointment_confirmations": "appointments",
     "public.appointments": "appointments",
     "public.cancellation_policies": "appointments",
     "public.capabilities": "forms",

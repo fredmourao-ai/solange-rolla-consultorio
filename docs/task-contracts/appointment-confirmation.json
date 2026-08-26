@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "status": "approved",
+  "issue": 4,
+  "migration": "20260826004000_appointments_confirmation.sql",
+  "owners": ["appointments", "forms"],
+  "objects": [
+    {"name": "public.appointment_confirmations", "owner": "appointments"},
+    {"name": "public.appointments", "owner": "appointments"},
+    {"name": "public.capabilities", "owner": "forms"}
+  ]
+}
