@@ -34,6 +34,115 @@ export type Database = {
   }
   public: {
     Tables: {
+      appointment_status_history: {
+        Row: {
+          appointment_id: string
+          changed_by_user_id: string
+          created_at: string
+          from_status: string | null
+          id: string
+          to_status: string
+        }
+        Insert: {
+          appointment_id: string
+          changed_by_user_id: string
+          created_at?: string
+          from_status?: string | null
+          id?: string
+          to_status: string
+        }
+        Update: {
+          appointment_id?: string
+          changed_by_user_id?: string
+          created_at?: string
+          from_status?: string | null
+          id?: string
+          to_status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointment_status_history_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      appointments: {
+        Row: {
+          business_timezone: string
+          cancellation_deadline_at: string
+          cancellation_policy_snapshot: Json
+          created_at: string
+          ends_at: string
+          id: string
+          person_id: string
+          policy_version: number
+          service_id: string
+          starts_at: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          business_timezone: string
+          cancellation_deadline_at: string
+          cancellation_policy_snapshot: Json
+          created_at?: string
+          ends_at: string
+          id?: string
+          person_id: string
+          policy_version: number
+          service_id: string
+          starts_at: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          business_timezone?: string
+          cancellation_deadline_at?: string
+          cancellation_policy_snapshot?: Json
+          created_at?: string
+          ends_at?: string
+          id?: string
+          person_id?: string
+          policy_version?: number
+          service_id?: string
+          starts_at?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointments_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "accounting_people_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_policy_version_fkey"
+            columns: ["policy_version"]
+            isOneToOne: false
+            referencedRelation: "cancellation_policies"
+            referencedColumns: ["policy_version"]
+          },
+          {
+            foreignKeyName: "appointments_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_events: {
         Row: {
           action: string
@@ -64,6 +173,248 @@ export type Database = {
           entity_type?: string
           id?: string
           metadata?: Json
+        }
+        Relationships: []
+      }
+      cancellation_policies: {
+        Row: {
+          business_timezone: string
+          countable_hours: number
+          created_at: string
+          effective_from: string
+          excluded_weekdays: Json
+          id: string
+          late_cancellation_charge_enabled: boolean
+          no_show_charge_enabled: boolean
+          policy_version: number
+        }
+        Insert: {
+          business_timezone: string
+          countable_hours: number
+          created_at?: string
+          effective_from: string
+          excluded_weekdays: Json
+          id?: string
+          late_cancellation_charge_enabled: boolean
+          no_show_charge_enabled: boolean
+          policy_version: number
+        }
+        Update: {
+          business_timezone?: string
+          countable_hours?: number
+          created_at?: string
+          effective_from?: string
+          excluded_weekdays?: Json
+          id?: string
+          late_cancellation_charge_enabled?: boolean
+          no_show_charge_enabled?: boolean
+          policy_version?: number
+        }
+        Relationships: []
+      }
+      capabilities: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          purpose: string
+          revoked_at: string | null
+          subject_id: string
+          subject_type: string
+          token_hash: string
+          used_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          id?: string
+          purpose: string
+          revoked_at?: string | null
+          subject_id: string
+          subject_type: string
+          token_hash: string
+          used_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          purpose?: string
+          revoked_at?: string | null
+          subject_id?: string
+          subject_type?: string
+          token_hash?: string
+          used_at?: string | null
+        }
+        Relationships: []
+      }
+      document_jobs: {
+        Row: {
+          created_at: string
+          id: string
+          idempotency_key: string
+          signature_evidence_id: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          idempotency_key: string
+          signature_evidence_id: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          idempotency_key?: string
+          signature_evidence_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_jobs_signature_evidence_id_fkey"
+            columns: ["signature_evidence_id"]
+            isOneToOne: false
+            referencedRelation: "signature_evidence"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      form_submission_versions: {
+        Row: {
+          answers: Json | null
+          answers_auth_tag: string | null
+          answers_ciphertext: string | null
+          answers_iv: string | null
+          created_at: string
+          id: string
+          key_version: number | null
+          submission_id: string
+          submitted_at: string | null
+          version: number
+        }
+        Insert: {
+          answers?: Json | null
+          answers_auth_tag?: string | null
+          answers_ciphertext?: string | null
+          answers_iv?: string | null
+          created_at?: string
+          id?: string
+          key_version?: number | null
+          submission_id: string
+          submitted_at?: string | null
+          version: number
+        }
+        Update: {
+          answers?: Json | null
+          answers_auth_tag?: string | null
+          answers_ciphertext?: string | null
+          answers_iv?: string | null
+          created_at?: string
+          id?: string
+          key_version?: number | null
+          submission_id?: string
+          submitted_at?: string | null
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "form_submission_versions_submission_id_fkey"
+            columns: ["submission_id"]
+            isOneToOne: false
+            referencedRelation: "form_submissions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      form_submissions: {
+        Row: {
+          created_at: string
+          id: string
+          status: string
+          subject_id: string
+          template_version_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          status?: string
+          subject_id: string
+          template_version_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          status?: string
+          subject_id?: string
+          template_version_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "form_submissions_template_version_id_fkey"
+            columns: ["template_version_id"]
+            isOneToOne: false
+            referencedRelation: "form_template_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      form_template_versions: {
+        Row: {
+          created_at: string
+          data_classification: string
+          id: string
+          schema: Json
+          template_id: string
+          version: number
+        }
+        Insert: {
+          created_at?: string
+          data_classification: string
+          id?: string
+          schema: Json
+          template_id: string
+          version: number
+        }
+        Update: {
+          created_at?: string
+          data_classification?: string
+          id?: string
+          schema?: Json
+          template_id?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "form_template_versions_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "form_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      form_templates: {
+        Row: {
+          active_version: number
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          active_version?: number
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          active_version?: number
+          created_at?: string
+          id?: string
+          name?: string
         }
         Relationships: []
       }
@@ -191,6 +542,80 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      services: {
+        Row: {
+          active: boolean
+          created_at: string
+          duration_minutes: number
+          id: string
+          name: string
+          price_cents: number
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          duration_minutes: number
+          id?: string
+          name: string
+          price_cents: number
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          duration_minutes?: number
+          id?: string
+          name?: string
+          price_cents?: number
+        }
+        Relationships: []
+      }
+      signature_evidence: {
+        Row: {
+          canonical_hash_sha256: string
+          declaration_version: string
+          document_status: string
+          id: string
+          metadata: Json
+          signature_asset_path: string | null
+          signed_at: string
+          source: string
+          submission_version_id: string
+          typed_name: string
+        }
+        Insert: {
+          canonical_hash_sha256: string
+          declaration_version: string
+          document_status?: string
+          id?: string
+          metadata?: Json
+          signature_asset_path?: string | null
+          signed_at?: string
+          source: string
+          submission_version_id: string
+          typed_name: string
+        }
+        Update: {
+          canonical_hash_sha256?: string
+          declaration_version?: string
+          document_status?: string
+          id?: string
+          metadata?: Json
+          signature_asset_path?: string | null
+          signed_at?: string
+          source?: string
+          submission_version_id?: string
+          typed_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "signature_evidence_submission_version_id_fkey"
+            columns: ["submission_version_id"]
+            isOneToOne: false
+            referencedRelation: "form_submission_versions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
