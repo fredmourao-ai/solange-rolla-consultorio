@@ -14,7 +14,8 @@ insert into auth.users (id, aud, role, email, encrypted_password, email_confirme
 values
   ('00000000-0000-0000-0000-000000000001', 'authenticated', 'authenticated', 'owner@example.test', 'synthetic-password', now(), '{}', '{}'),
   ('00000000-0000-0000-0000-000000000002', 'authenticated', 'authenticated', 'secretary@example.test', 'synthetic-password', now(), '{}', '{}'),
-  ('00000000-0000-0000-0000-000000000003', 'authenticated', 'authenticated', 'accounting@example.test', 'synthetic-password', now(), '{}', '{}');
+  ('00000000-0000-0000-0000-000000000003', 'authenticated', 'authenticated', 'accounting@example.test', 'synthetic-password', now(), '{}', '{}'),
+  ('00000000-0000-0000-0000-000000000004', 'authenticated', 'authenticated', 'managed@example.test', 'synthetic-password', now(), '{}', '{}');
 
 insert into public.profiles (user_id, role, display_name)
 values

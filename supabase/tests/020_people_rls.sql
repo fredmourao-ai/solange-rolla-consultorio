@@ -8,6 +8,11 @@ select has_view('public', 'accounting_people_view', 'accounting view exists');
 select ok((select relrowsecurity from pg_class where oid = 'public.people'::regclass), 'people has RLS enabled');
 select ok((select relrowsecurity from pg_class where oid = 'public.person_relationships'::regclass), 'relationships have RLS enabled');
 
+insert into auth.users (id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data)
+values ('00000000-0000-0000-0000-000000000002', 'authenticated', 'authenticated', 'secretary@example.test', 'synthetic-password', now(), '{}', '{}');
+insert into public.profiles (user_id, role, display_name)
+values ('00000000-0000-0000-0000-000000000002', 'secretary', 'Teste Secretary');
+
 insert into public.people (id, civil_name, birth_date, cpf_normalized, fiscal_address)
 values ('10000000-0000-0000-0000-000000000001', 'Teste Pessoa', '1990-01-01', '52998224725', '{"city":"Teste"}');
 
