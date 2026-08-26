@@ -429,6 +429,30 @@ export type Database = {
         }
         Relationships: []
       }
+      inbox_events: {
+        Row: {
+          id: string
+          payload: Json
+          provider: string
+          provider_event_id: string
+          received_at: string
+        }
+        Insert: {
+          id?: string
+          payload: Json
+          provider: string
+          provider_event_id: string
+          received_at?: string
+        }
+        Update: {
+          id?: string
+          payload?: Json
+          provider?: string
+          provider_event_id?: string
+          received_at?: string
+        }
+        Relationships: []
+      }
       legal_acceptances: {
         Row: {
           accepted_at: string
@@ -547,6 +571,104 @@ export type Database = {
           created_at?: string
           id?: string
           key?: string
+        }
+        Relationships: []
+      }
+      message_attempts: {
+        Row: {
+          attempt_number: number
+          created_at: string
+          error_code: string | null
+          id: string
+          outbound_message_id: string
+          provider_status: string | null
+        }
+        Insert: {
+          attempt_number: number
+          created_at?: string
+          error_code?: string | null
+          id?: string
+          outbound_message_id: string
+          provider_status?: string | null
+        }
+        Update: {
+          attempt_number?: number
+          created_at?: string
+          error_code?: string | null
+          id?: string
+          outbound_message_id?: string
+          provider_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_attempts_outbound_message_id_fkey"
+            columns: ["outbound_message_id"]
+            isOneToOne: false
+            referencedRelation: "outbound_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      message_templates: {
+        Row: {
+          active: boolean
+          body: string
+          channel: string
+          id: string
+          key: string
+          version: number
+        }
+        Insert: {
+          active?: boolean
+          body: string
+          channel: string
+          id?: string
+          key: string
+          version: number
+        }
+        Update: {
+          active?: boolean
+          body?: string
+          channel?: string
+          id?: string
+          key?: string
+          version?: number
+        }
+        Relationships: []
+      }
+      outbound_messages: {
+        Row: {
+          channel: string
+          created_at: string
+          dispatched_at: string | null
+          id: string
+          idempotency_key: string
+          payload: Json
+          recipient: string
+          status: string
+          template_key: string
+        }
+        Insert: {
+          channel: string
+          created_at?: string
+          dispatched_at?: string | null
+          id?: string
+          idempotency_key: string
+          payload: Json
+          recipient: string
+          status?: string
+          template_key: string
+        }
+        Update: {
+          channel?: string
+          created_at?: string
+          dispatched_at?: string | null
+          id?: string
+          idempotency_key?: string
+          payload?: Json
+          recipient?: string
+          status?: string
+          template_key?: string
         }
         Relationships: []
       }
