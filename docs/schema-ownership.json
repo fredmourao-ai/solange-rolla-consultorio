@@ -67,6 +67,8 @@
     "public.people": "people",
     "public.person_relationships": "people",
     "public.profiles": "identity",
+    "storage.buckets": "platform",
+    "storage.objects": "platform",
     "public.receivable_adjustments": "receivables",
     "public.receivables": "receivables",
     "public.recurrence_rules": "payables",
