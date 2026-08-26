@@ -7,6 +7,7 @@ type SignSubmissionInput = {
   source: 'patient_capability' | 'staff'
   answers: Record<string, unknown>
   idempotencyKey: string
+  acceptedLegalDocuments: Array<{ id: string; version: number; contentHash: string }>
 }
 
 type Evidence = {
@@ -28,9 +29,11 @@ export async function signSubmission(
   repository: SignatureRepository,
 ): Promise<{ evidence: { id: string } & Evidence; job: { id: string; idempotencyKey: string; signatureEvidenceId: string } }> {
   if (!input.typedName.trim()) throw new Error('INVALID_TYPED_NAME')
+  if (input.acceptedLegalDocuments.length === 0) throw new Error('LEGAL_ACCEPTANCE_REQUIRED')
   const canonicalHashSha256 = hashCanonical({
     declarationVersion: input.declarationVersion,
     answers: input.answers,
+    acceptedLegalDocuments: input.acceptedLegalDocuments,
   })
   const evidence = await repository.createEvidence({
     submissionVersionId: input.submissionVersionId,
