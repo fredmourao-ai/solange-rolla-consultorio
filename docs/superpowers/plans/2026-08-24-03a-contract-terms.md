@@ -35,7 +35,7 @@
 - Produces `LegalDocumentVersion { id, key, version, contentHash, effectiveFrom, supersedesId? }`.
 - Chaves iniciais: `service_terms`, `cancellation_policy`, `truthfulness_declaration`, `privacy_notice`.
 
-- [ ] **Step 1: Testar imutabilidade/versionamento**
+- [x] **Step 1: Testar imutabilidade/versionamento**
 
 ```ts
 it('keeps a previously accepted version unchanged after a new version is activated', () => {
@@ -45,15 +45,15 @@ it('keeps a previously accepted version unchanged after a new version is activat
 })
 ```
 
-- [ ] **Step 2: Migration**
+- [x] **Step 2: Migration**
 
 Criar `legal_documents`, `legal_document_versions`, `legal_acceptances`. `legal_document_versions.content` é texto administrativo/legal, não conteúdo clínico; registrar SHA-256 do conteúdo e vigência. UPDATE/DELETE de versão já aceita deve ser bloqueado.
 
-- [ ] **Step 3: Aceite**
+- [x] **Step 3: Aceite**
 
 `legal_acceptances` registra person, document/version, accepted_at, signature evidence/ref quando aplicável, channel/capability id sanitizado e content hash. Unique lógico evita duplicação acidental da mesma versão/pessoa.
 
-- [ ] **Step 4: RLS**
+- [x] **Step 4: RLS**
 
 Owner pode administrar versões ainda não usadas; secretary pode visualizar status de aceite e iniciar envio; paciente por capability acessa somente documento ligado ao seu fluxo; accounting não precisa de conteúdo integral por padrão.
 
