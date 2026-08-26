@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { enqueueMessage } from './enqueue-message'
+import type { OutboundMessage } from '../domain/message'
 
 describe('messaging outbox', () => {
   it('returns the existing logical message for the same idempotency key', async () => {
-    const stored = new Map<string, any>()
+    const stored = new Map<string, OutboundMessage>()
     const repo = {
       findByIdempotencyKey: async (key: string) => stored.get(key) ?? null,
-      insert: async (message: any) => { const value = { id: 'message-1', status: 'queued', ...message }; stored.set(message.idempotencyKey, value); return value },
+      insert: async (message: Omit<OutboundMessage, 'id' | 'status'>) => { const value: OutboundMessage = { id: 'message-1', status: 'queued', ...message }; stored.set(message.idempotencyKey, value); return value },
     }
     const input = { idempotencyKey: 'appointment:123:confirmation', channel: 'email' as const, recipient: 'x@example.test', templateKey: 'appointment_confirmation', payload: { preferredName: 'Paciente' } }
     const first = await enqueueMessage(input, repo)
