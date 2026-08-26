@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "status": "approved",
+  "issue": 5,
+  "migration": "20260826005000_people_receivables.sql",
+  "owners": ["people", "receivables"],
+  "objects": [
+    {"name": "public.receivables", "owner": "receivables"},
+    {"name": "public.receivable_adjustments", "owner": "receivables"},
+    {"name": "public.people", "owner": "people"}
+  ]
+}
