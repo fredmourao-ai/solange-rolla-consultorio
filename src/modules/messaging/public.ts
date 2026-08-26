@@ -1,3 +1,6 @@
 export { enqueueMessage, type EnqueueMessageInput, type MessageRepository } from './application/enqueue-message'
 export { dispatchOutbox, type OutboxRepository } from './application/dispatch-outbox'
 export { assertAdministrativePayload, MESSAGE_CHANNELS, type MessageChannel, type OutboundMessage } from './domain/message'
+export { renderTemplate, MESSAGE_TEMPLATE_KEYS, type MessageTemplate, type MessageTemplateKey } from './domain/template'
+export { renderVersionedTemplate, type TemplateRepository } from './application/render-template'
+export { createMockProvider, type MessagingProvider, type ProviderDeliveryResult, type ProviderMessage } from './infrastructure/mock-provider'
