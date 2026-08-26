@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyRefund, recordPayment, type Payment } from './payment'
+import { applyRefund, recordPayment } from './payment'
 
 describe('payments and refunds', () => {
   it('supports partial payments and rejects over-refund', () => {
