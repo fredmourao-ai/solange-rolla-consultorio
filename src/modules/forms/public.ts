@@ -9,6 +9,7 @@ export {
 export { saveDraft } from './application/save-draft'
 export { getActiveLegalDocument } from './application/get-active-legal-document'
 export { recordLegalAcceptance } from './application/accept-legal-document'
+export { LegalTermsStep } from './ui/legal-terms-step'
 export {
   LEGAL_DOCUMENT_KEYS,
   acceptLegalDocument,
