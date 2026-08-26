@@ -1,10 +1,10 @@
 begin;
 
-select plan(10);
+select plan(7);
 
 select has_table('public', 'audit_events', 'audit events table exists');
 select ok((select relrowsecurity from pg_class where oid = 'public.audit_events'::regclass), 'audit events has RLS enabled');
-select has_index('public', 'audit_events_entity_idx', 'audit entity index exists');
+select ok(exists(select 1 from pg_indexes where schemaname = 'public' and indexname = 'audit_events_entity_idx'), 'audit entity index exists');
 
 insert into auth.users (id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data)
 values
