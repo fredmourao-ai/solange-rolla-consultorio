@@ -185,6 +185,7 @@ export type Database = {
           excluded_weekdays: Json
           id: string
           late_cancellation_charge_enabled: boolean
+          legal_document_version_id: string | null
           no_show_charge_enabled: boolean
           policy_version: number
         }
@@ -196,6 +197,7 @@ export type Database = {
           excluded_weekdays: Json
           id?: string
           late_cancellation_charge_enabled: boolean
+          legal_document_version_id?: string | null
           no_show_charge_enabled: boolean
           policy_version: number
         }
@@ -207,10 +209,19 @@ export type Database = {
           excluded_weekdays?: Json
           id?: string
           late_cancellation_charge_enabled?: boolean
+          legal_document_version_id?: string | null
           no_show_charge_enabled?: boolean
           policy_version?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "cancellation_policies_legal_document_version_id_fkey"
+            columns: ["legal_document_version_id"]
+            isOneToOne: false
+            referencedRelation: "legal_document_versions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       capabilities: {
         Row: {
