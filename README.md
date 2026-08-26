@@ -2,7 +2,7 @@
 
 Sistema privado para gestão de consultório, psicoterapia, eventos, formulários pré-atendimento, assinatura eletrônica simples, comunicação, financeiro e NFS-e.
 
-> Status: **foundation, architecture enforcement e platform provisioning integrados; UI foundation entregue nesta branch**. Os módulos de negócio, segurança operacional, homologação e checklist de produção ainda estão em execução. Não usar com dados reais de pacientes.
+> Status: **foundation, architecture enforcement, platform provisioning e UI foundation integrados; estratégia de ambientes isolados implementada**. Os módulos de negócio, segurança operacional, homologação e checklist de produção ainda estão em execução. Não usar com dados reais de pacientes.
 
 ## Direção técnica
 
@@ -43,6 +43,7 @@ Arquitetura: **monólito modular orientado a domínio**, PostgreSQL/Supabase com
 - [Jurídico, CFP e política de cobrança](docs/LEGAL_COMPLIANCE.md)
 - [Integrações externas](docs/INTEGRATIONS.md)
 - [Testes, deploy e operação](docs/TESTING_DEPLOYMENT.md)
+- [Ambientes isolados](docs/ENVIRONMENTS.md)
 - [Referências pesquisadas](docs/REFERENCES.md)
 - [Spec arquitetura multiagente v2](docs/superpowers/specs/2026-08-24-multiagent-architecture-design.md)
 - [Spec funcional inicial](docs/superpowers/specs/2026-08-24-solange-rolla-consultorio-design.md)

@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "status": "bootstrap-empty",
+  "allowedEmailDomains": ["example.test"],
+  "syntheticPhonePrefixes": ["+55119999"],
+  "forbiddenPatterns": [
+    "service_role",
+    "sb_secret_",
+    "sk_live_",
+    "whsec_",
+    "production.supabase.co"
+  ],
+  "tables": []
+}

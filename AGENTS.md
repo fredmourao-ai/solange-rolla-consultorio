@@ -213,3 +213,12 @@ Nenhum agente pode declarar tarefa concluída antes de cumprir `docs/DEFINITION_
 ## 17. Regra de ouro
 
 **Se uma mudança facilita o código mas reduz segurança, auditabilidade, isolamento de módulo ou clareza histórica, a mudança está errada.**
+
+## 18. Isolamento de ambientes
+
+- `APP_ENV` aceita somente `local`, `test`, `preview`, `staging` e `production`.
+- Local, CI e preview usam exclusivamente dados sintéticos verificados por `npm run seed:check`.
+- Production nunca é usada para desenvolvimento, preview ou teste.
+- Preview exige projeto/branch Supabase dedicado; staging é compartilhado e serializado.
+- Promoção para staging ocorre somente pelo workflow manual com `concurrency: staging`, commit SHA explícito e migrations forward-only.
+- Providers live permanecem desativados fora de production.
