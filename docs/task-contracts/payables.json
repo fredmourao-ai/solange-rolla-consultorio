@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "status": "approved",
+  "issue": 5,
+  "migration": "20260826011000_payables.sql",
+  "owners": ["payables"],
+  "objects": [
+    {"name": "public.vendors", "owner": "payables"},
+    {"name": "public.expense_categories", "owner": "payables"},
+    {"name": "public.recurrence_rules", "owner": "payables"},
+    {"name": "public.payables", "owner": "payables"},
+    {"name": "public.payable_payments", "owner": "payables"}
+  ]
+}
