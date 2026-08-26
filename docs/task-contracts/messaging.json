@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "status": "approved",
+  "issue": 4,
+  "migration": "20260826003000_messaging.sql",
+  "owners": ["messaging"],
+  "objects": [
+    {"name": "public.message_templates", "owner": "messaging"},
+    {"name": "public.outbound_messages", "owner": "messaging"},
+    {"name": "public.message_attempts", "owner": "messaging"},
+    {"name": "public.inbox_events", "owner": "messaging"}
+  ]
+}
