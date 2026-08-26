@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "status": "approved",
+  "issue": 2,
+  "migration": "20260824002600_private_storage.sql",
+  "owners": ["platform"],
+  "objects": [
+    {"name": "storage.buckets", "owner": "platform"},
+    {"name": "storage.objects", "owner": "platform"}
+  ]
+}
