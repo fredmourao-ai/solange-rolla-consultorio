@@ -9,8 +9,12 @@ select has_table('public', 'appointment_status_history', 'appointment status his
 select ok((select relrowsecurity from pg_class where oid = 'public.appointments'::regclass), 'appointments has RLS enabled');
 select ok((select relrowsecurity from pg_class where oid = 'public.appointment_status_history'::regclass), 'status history has RLS enabled');
 
-insert into public.cancellation_policies (policy_version, countable_hours, excluded_weekdays, business_timezone, late_cancellation_charge_enabled, no_show_charge_enabled, effective_from)
-values (1, 48, '[0,6]', 'America/Sao_Paulo', true, true, now());
+insert into public.legal_documents (id, key)
+values ('20000000-0000-0000-0000-000000000001', 'cancellation_policy');
+insert into public.legal_document_versions (document_id, version, content, content_hash_sha256, effective_from, is_draft)
+values ('20000000-0000-0000-0000-000000000001', 1, 'Synthetic cancellation policy', repeat('a', 64), now(), false);
+insert into public.cancellation_policies (policy_version, countable_hours, excluded_weekdays, business_timezone, late_cancellation_charge_enabled, no_show_charge_enabled, effective_from, legal_document_version_id)
+values (1, 48, '[0,6]', 'America/Sao_Paulo', true, true, now(), (select id from public.legal_document_versions where document_id = '20000000-0000-0000-0000-000000000001'));
 insert into public.services (name, duration_minutes, price_cents)
 values ('Consulta sintética', 50, 10000);
 
