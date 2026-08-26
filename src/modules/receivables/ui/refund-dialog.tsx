@@ -1,0 +1,1 @@
+export function RefundDialog({ refundableCents }: { refundableCents: number }) { return <form><label>Valor do reembolso (centavos)<input name="amountCents" type="number" min="1" max={refundableCents} required /></label><label>Motivo<input name="reason" required /></label><button type="submit">Registrar reembolso</button></form> }

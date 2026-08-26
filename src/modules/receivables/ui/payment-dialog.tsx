@@ -1,0 +1,1 @@
+export function PaymentDialog({ balanceCents }: { balanceCents: number }) { return <form><label>Valor recebido (centavos)<input name="amountCents" type="number" min="1" max={balanceCents} required /></label><button type="submit">Registrar pagamento</button></form> }
