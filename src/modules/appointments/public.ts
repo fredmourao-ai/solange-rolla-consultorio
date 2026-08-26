@@ -20,3 +20,4 @@ export {
   type AppointmentStatusRepository,
 } from './application/change-appointment-status'
 export { listCalendar, type CalendarRepository } from './application/list-calendar'
+export { cancellationPolicyCopy, type CancellationPolicyCopy } from './domain/policy-copy'
