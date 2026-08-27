@@ -20,3 +20,6 @@ CPF/CNPJ e artefatos XML/PDF sao tratados somente server-side e armazenados em b
 
 ## Proibições
 Nao emitir em producao sem gate fiscal e `NFSE_LIVE_ENABLED`; nao assumir tratamento de falta igual ao de consulta realizada; nao chamar provider dentro de transacao financeira; nao expor documentos por link publico permanente; nao acessar conteudo clinico.
+
+## Operacao
+Elegibilidade retorna blockers sanitizados e separa `ready`, `review` e `not_ready`. Requests usam a chave composta por origem, perfil e tratamento para preservar snapshots e idempotencia. O provider mock e exclusivo de desenvolvimento, testes e homologacao controlada; nenhum identificador sintetico representa uma NFS-e real.
