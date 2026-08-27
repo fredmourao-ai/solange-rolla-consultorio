@@ -34,23 +34,23 @@
 **Interfaces:**
 - Produces `AttentionItem { kind, severity, entityId, title, dueAt?, actionHref }`.
 
-- [ ] **Step 1: Testar agregação sem Clinical**
+- [x] **Step 1: Testar agregação sem Clinical**
 
 Fixture inclui consulta sem confirmação, formulário pendente, assinatura pendente, recebível vencido, payable vencendo, NFS-e pendente, reagendamento e aniversário. Esperar um item de cada tipo e nenhum conteúdo clínico.
 
-- [ ] **Step 2: Implementar queries por contratos públicos/read views**
+- [x] **Step 2: Implementar queries por contratos públicos/read views**
 
 Não importar repositories internos de módulos. Cada módulo expõe query/read model mínimo em `public.ts`.
 
-- [ ] **Step 3: Prioridade**
+- [x] **Step 3: Prioridade**
 
 `critical`: falha de segurança/fiscal definitiva; `high`: pagamentos vencidos/reagendamento; `normal`: formulários, confirmações, aniversário. Prioridade é operacional e configurável, não diagnóstico clínico.
 
-- [ ] **Step 4: UI**
+- [x] **Step 4: UI**
 
 Cards simples com contagem e ação direta. Não exibir logs técnicos na tela principal.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/modules/reports src/app/'(protected)'/page.tsx
