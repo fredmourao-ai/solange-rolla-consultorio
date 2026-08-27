@@ -20,3 +20,6 @@ Não acessa conteúdo clínico.
 
 ## Proibições
 Não cria cadastro paralelo, não mistura presença com pagamento e não acessa infraestrutura de outro módulo.
+
+## Financeiro
+O resumo financeiro de eventos é derivado dos contratos públicos de `receivables` e `payables`; inscrições não duplicam pagamentos, refunds ou despesas.
