@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "status": "approved",
+  "issue": 6,
+  "migration": "20260826015000_fiscal_artifacts.sql",
+  "owners": ["fiscal"],
+  "objects": [
+    {"name": "public.fiscal_documents", "owner": "fiscal"},
+    {"name": "public.fiscal_cancellation_events", "owner": "fiscal"}
+  ]
+}

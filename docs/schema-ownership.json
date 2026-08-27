@@ -54,6 +54,7 @@
     "public.event_registrations": "events",
     "public.events": "events",
     "public.fiscal_attempts": "fiscal",
+    "public.fiscal_cancellation_events": "fiscal",
     "public.fiscal_documents": "fiscal",
     "public.fiscal_profiles": "fiscal",
     "public.fiscal_treatments": "fiscal",
