@@ -231,23 +231,23 @@ git commit -m "test: harden security and accessibility"
 **Interfaces:**
 - Produces runbook reprodutível e evidência de restore em staging isolado.
 
-- [ ] **Step 1: Documentar objetivos**
+- [x] **Step 1: Documentar objetivos**
 
 Definir RPO/RTO operacional do MVP, responsáveis e frequência de teste. Valores são escolhidos e registrados nesta task antes do go-live; sem valores aprovados, checklist permanece `NO-GO`.
 
-- [ ] **Step 2: Restore drill**
+- [x] **Step 2: Restore drill**
 
 Restaurar backup/snapshot em projeto/ambiente isolado de staging, validar migrations/schema, contagens sintéticas, RLS e capacidade de login. Nunca restaurar sobre production para teste.
 
-- [ ] **Step 3: Testar chaves**
+- [x] **Step 3: Testar chaves**
 
 Em restore, confirmar que envelopes L3 só decriptam quando secret version correspondente é fornecido; backup do banco sozinho não revela plaintext.
 
-- [ ] **Step 4: Rollback app**
+- [x] **Step 4: Rollback app**
 
 Documentar rollback Vercel e compatibilidade backward/forward de migrations; migration destrutiva exige expand/contract em releases distintas.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add docs/operations scripts/verify-backup-restore.sh
