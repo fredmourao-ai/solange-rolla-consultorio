@@ -568,6 +568,60 @@ export type Database = {
           },
         ]
       }
+      fiscal_cancellation_events: {
+        Row: {
+          completed_at: string | null
+          fiscal_document_id: string
+          id: string
+          idempotency_key: string
+          provider_protocol: string | null
+          reason: string
+          requested_at: string
+          requested_by: string
+          status: string
+          substitute_document_id: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          fiscal_document_id: string
+          id?: string
+          idempotency_key: string
+          provider_protocol?: string | null
+          reason: string
+          requested_at?: string
+          requested_by: string
+          status?: string
+          substitute_document_id?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          fiscal_document_id?: string
+          id?: string
+          idempotency_key?: string
+          provider_protocol?: string | null
+          reason?: string
+          requested_at?: string
+          requested_by?: string
+          status?: string
+          substitute_document_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fiscal_cancellation_events_fiscal_document_id_fkey"
+            columns: ["fiscal_document_id"]
+            isOneToOne: false
+            referencedRelation: "fiscal_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fiscal_cancellation_events_substitute_document_id_fkey"
+            columns: ["substitute_document_id"]
+            isOneToOne: false
+            referencedRelation: "fiscal_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fiscal_documents: {
         Row: {
           amount_cents: number
@@ -578,7 +632,9 @@ export type Database = {
           idempotency_key: string
           issued_at: string | null
           payer_person_id: string
+          pdf_byte_length: number | null
           pdf_path: string | null
+          pdf_sha256: string | null
           person_id: string
           profile_id: string
           profile_version: number
@@ -590,7 +646,9 @@ export type Database = {
           treatment_id: string
           treatment_version: number
           updated_at: string
+          xml_byte_length: number | null
           xml_path: string | null
+          xml_sha256: string | null
         }
         Insert: {
           amount_cents: number
@@ -601,7 +659,9 @@ export type Database = {
           idempotency_key: string
           issued_at?: string | null
           payer_person_id: string
+          pdf_byte_length?: number | null
           pdf_path?: string | null
+          pdf_sha256?: string | null
           person_id: string
           profile_id: string
           profile_version: number
@@ -613,7 +673,9 @@ export type Database = {
           treatment_id: string
           treatment_version: number
           updated_at?: string
+          xml_byte_length?: number | null
           xml_path?: string | null
+          xml_sha256?: string | null
         }
         Update: {
           amount_cents?: number
@@ -624,7 +686,9 @@ export type Database = {
           idempotency_key?: string
           issued_at?: string | null
           payer_person_id?: string
+          pdf_byte_length?: number | null
           pdf_path?: string | null
+          pdf_sha256?: string | null
           person_id?: string
           profile_id?: string
           profile_version?: number
@@ -636,7 +700,9 @@ export type Database = {
           treatment_id?: string
           treatment_version?: number
           updated_at?: string
+          xml_byte_length?: number | null
           xml_path?: string | null
+          xml_sha256?: string | null
         }
         Relationships: [
           {

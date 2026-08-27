@@ -46,3 +46,21 @@ export type {
   RequestNfseInput,
 } from './application/request-nfse'
 export { MockNfseProvider } from './infrastructure/mock-nfse-provider'
+export { requestFiscalCancellation } from './application/cancel-fiscal-document'
+export type {
+  FiscalCancellationEvent,
+  FiscalCancellationInput,
+  FiscalCancellationResult,
+} from './application/cancel-fiscal-document'
+export { storeFiscalArtifact } from './application/store-fiscal-artifacts'
+export type {
+  FiscalArtifact,
+  FiscalArtifactMediaType,
+  FiscalArtifactStorage,
+  StoreFiscalArtifactInput,
+} from './application/store-fiscal-artifacts'
+export { enqueueFiscalDocumentReady } from './application/enqueue-fiscal-document-ready'
+export type {
+  FiscalDocumentReadyInput,
+  FiscalDocumentReadyQueue,
+} from './application/enqueue-fiscal-document-ready'
