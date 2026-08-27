@@ -327,7 +327,7 @@ Usuários/roles reais provisionados, MFA validado, treinamento, contato de supor
 
 No dia do release, consultar advisories atuais de Next.js/Node/Supabase e atualizar antes da promoção se houver patch de segurança aplicável.
 
-- [ ] **Step 6: Rodar verificação final**
+- [x] **Step 6: Rodar verificação final**
 
 Run: `npm run arch:check && npm run modules:check && npm run migrations:check && npm run lint && npm run typecheck && npm run test:run && npm run supabase:test && npm run test:e2e && npm run build`
 Expected: todos exit 0; anexar logs/resumo ao PR de release.
