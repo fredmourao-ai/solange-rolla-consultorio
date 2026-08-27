@@ -11,6 +11,7 @@ select has_column('public', 'fiscal_documents', 'idempotency_key', 'documents ar
 select has_column('public', 'fiscal_documents', 'treatment_version', 'documents snapshot treatment');
 select has_column('public', 'fiscal_documents', 'xml_path', 'xml uses private artifact reference');
 select has_column('public', 'fiscal_documents', 'pdf_path', 'pdf uses private artifact reference');
+select has_column('public', 'fiscal_attempts', 'correlation_id', 'provider attempts are correlated');
 select ok((select count(*) from public.fiscal_treatments) = 5, 'all fiscal source kinds are explicit');
 select ok((select count(*) from pg_policies where schemaname = 'public' and tablename = 'fiscal_documents') = 1, 'documents have one restricted policy');
 select ok((select relrowsecurity from pg_class where oid = 'public.fiscal_documents'::regclass), 'documents enable RLS');
