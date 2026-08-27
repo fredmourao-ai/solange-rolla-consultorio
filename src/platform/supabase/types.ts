@@ -333,6 +333,176 @@ export type Database = {
           },
         ]
       }
+      event_expenses: {
+        Row: {
+          amount_cents: number
+          created_at: string
+          description: string
+          event_id: string
+          id: string
+          paid_at: string | null
+        }
+        Insert: {
+          amount_cents: number
+          created_at?: string
+          description: string
+          event_id: string
+          id?: string
+          paid_at?: string | null
+        }
+        Update: {
+          amount_cents?: number
+          created_at?: string
+          description?: string
+          event_id?: string
+          id?: string
+          paid_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_expenses_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_registration_status_history: {
+        Row: {
+          actor_id: string | null
+          changed_at: string
+          id: string
+          registration_id: string
+          status: string
+        }
+        Insert: {
+          actor_id?: string | null
+          changed_at?: string
+          id?: string
+          registration_id: string
+          status: string
+        }
+        Update: {
+          actor_id?: string | null
+          changed_at?: string
+          id?: string
+          registration_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_registration_status_history_registration_id_fkey"
+            columns: ["registration_id"]
+            isOneToOne: false
+            referencedRelation: "event_registrations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_registrations: {
+        Row: {
+          attendance_status: string
+          created_at: string
+          event_id: string
+          id: string
+          person_id: string
+          price_cents: number
+          status: string
+        }
+        Insert: {
+          attendance_status?: string
+          created_at?: string
+          event_id: string
+          id?: string
+          person_id: string
+          price_cents: number
+          status: string
+        }
+        Update: {
+          attendance_status?: string
+          created_at?: string
+          event_id?: string
+          id?: string
+          person_id?: string
+          price_cents?: number
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_registrations_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_registrations_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "accounting_people_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_registrations_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      events: {
+        Row: {
+          capacity: number
+          created_at: string
+          default_price_cents: number
+          description: string | null
+          ends_at: string
+          id: string
+          location: string | null
+          modality: string
+          required_form_template_id: string | null
+          starts_at: string
+          status: string
+          timezone: string
+          title: string
+          type: string
+        }
+        Insert: {
+          capacity: number
+          created_at?: string
+          default_price_cents: number
+          description?: string | null
+          ends_at: string
+          id?: string
+          location?: string | null
+          modality: string
+          required_form_template_id?: string | null
+          starts_at: string
+          status?: string
+          timezone: string
+          title: string
+          type: string
+        }
+        Update: {
+          capacity?: number
+          created_at?: string
+          default_price_cents?: number
+          description?: string | null
+          ends_at?: string
+          id?: string
+          location?: string | null
+          modality?: string
+          required_form_template_id?: string | null
+          starts_at?: string
+          status?: string
+          timezone?: string
+          title?: string
+          type?: string
+        }
+        Relationships: []
+      }
       expense_categories: {
         Row: {
           active: boolean
