@@ -1809,11 +1809,6 @@ export type Database = {
       }
     }
     Functions: {
-      current_aal: { Args: never; Returns: string }
-      current_app_role: {
-        Args: never
-        Returns: Database["public"]["Enums"]["app_role"]
-      }
       create_clinical_record: {
         Args: {
           p_appointment_id: string
@@ -1824,7 +1819,7 @@ export type Database = {
           p_key_version: number
           p_person_id: string
           p_record_id: string
-          p_supersedes_id?: string | null
+          p_supersedes_id?: string
         }
         Returns: {
           appointment_id: string
@@ -1838,6 +1833,11 @@ export type Database = {
           person_id: string
           supersedes_id: string
         }[]
+      }
+      current_aal: { Args: never; Returns: string }
+      current_app_role: {
+        Args: never
+        Returns: Database["public"]["Enums"]["app_role"]
       }
       get_clinical_record_envelope: {
         Args: { record_id: string }

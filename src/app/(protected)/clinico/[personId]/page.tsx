@@ -32,7 +32,7 @@ async function createClinicalRecordAction(formData: FormData) {
         p_iv: input.iv,
         p_auth_tag: input.authTag,
         p_key_version: input.keyVersion,
-        p_supersedes_id: input.supersedesId ?? null,
+        ...(input.supersedesId ? { p_supersedes_id: input.supersedesId } : {}),
       })
       const record = data?.[0]
       if (error || !record) throw new Error('CLINICAL_RECORD_CREATE_FAILED')
