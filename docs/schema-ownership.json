@@ -19,6 +19,7 @@
   "descriptionAliases": {
     "appointments": ["appointments", "people"],
     "appointments_confirmation": ["appointments", "forms"],
+    "capability_exchange": ["forms"],
     "signatures": ["forms", "signatures"],
     "appointment_confirmation": ["appointments"],
     "bind_cancellation_legal_version": ["appointments", "forms"],
@@ -95,6 +96,8 @@
     "public.recurrence_rules": "payables",
     "public.vendors": "payables",
     "public.public_rate_limits": "platform",
-    "public.consume_public_rate_limit": "platform"
+    "public.consume_public_rate_limit": "platform",
+    "public.exchange_capability": "forms",
+    "public.capabilities": "forms"
   }
 }
