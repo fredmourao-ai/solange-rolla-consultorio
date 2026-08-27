@@ -54,4 +54,18 @@ describe('save sensitive form draft', () => {
       crypto: { encrypt: async () => ({ alg: 'A256GCM' as const, keyVersion: 1, iv: 'iv', ciphertext: 'cipher', authTag: 'tag' }), decrypt: async () => '' },
     })).rejects.toThrow('invalid form answers')
   })
+
+  it('rejects a patient draft without a bound public action context', async () => {
+    await expect(saveDraft({
+      submissionId: '00000000-0000-0000-0000-000000000001',
+      templateVersionId: '00000000-0000-0000-0000-000000000002',
+      classification: 'sensitive',
+      source: 'patient_capability',
+      answers: { notes: 'sentinel' },
+      template,
+    }, {
+      repository: { save: async () => ({}) },
+      crypto: { encrypt: async () => ({ alg: 'A256GCM' as const, keyVersion: 1, iv: 'iv', ciphertext: 'cipher', authTag: 'tag' }), decrypt: async () => '' },
+    })).rejects.toThrow('PUBLIC_ACTION_CONTEXT_REQUIRED')
+  })
 })

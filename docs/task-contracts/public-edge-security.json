@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "status": "approved",
+  "issue": 3,
+  "migration": "20260827004000_public_rate_limits.sql",
+  "owners": ["platform"],
+  "objects": [
+    {"name": "public.public_rate_limits", "owner": "platform"},
+    {"name": "public.consume_public_rate_limit", "owner": "platform"}
+  ]
+}

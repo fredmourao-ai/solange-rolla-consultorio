@@ -1,5 +1,6 @@
 import type { EncryptedEnvelope, SensitiveDataCrypto } from '../../../platform/crypto/types'
 import { validateAnswers, type FormClassification } from '../domain/form-schema'
+import { assertPublicActionSubject, type PublicActionContext } from '../../../platform/security/public-action'
 
 type SaveDraftInput = {
   submissionId: string
@@ -7,6 +8,8 @@ type SaveDraftInput = {
   classification: FormClassification
   answers: Record<string, unknown>
   template: Parameters<typeof validateAnswers>[0]
+  source?: 'patient_capability' | 'staff'
+  publicActionContext?: PublicActionContext
 }
 
 type DraftRepository = {
@@ -22,6 +25,7 @@ export async function saveDraft(
   input: SaveDraftInput,
   dependencies: SaveDraftDependencies,
 ): Promise<Record<string, unknown>> {
+  if (input.source === 'patient_capability') assertPublicActionSubject(input.publicActionContext, 'public_form_save', input.submissionId)
   if (validateAnswers(input.template, input.answers).length > 0) {
     throw new Error('invalid form answers')
   }

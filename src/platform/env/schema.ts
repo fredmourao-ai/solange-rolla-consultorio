@@ -16,6 +16,7 @@ export const serverEnvSchema = z.object({
   APP_ENV: z.enum(['local', 'test', 'preview', 'staging', 'production']),
   CLINICAL_ENCRYPTION_KEY_V1: z.string().min(1),
   CLINICAL_ENCRYPTION_ACTIVE_VERSION: z.string().regex(/^\d+$/),
+  RATE_LIMIT_HMAC_KEY: z.string().min(32),
   WHATSAPP_LIVE_ENABLED: explicitBoolean,
   NFSE_LIVE_ENABLED: explicitBoolean,
 })
