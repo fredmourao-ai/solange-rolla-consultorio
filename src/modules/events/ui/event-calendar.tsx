@@ -1,0 +1,1 @@
+export function EventCalendar({ events }: { events: Array<{ id: string; title: string; startsAt: string }> }) { return <ul aria-label="Agenda de eventos">{events.map((event) => <li key={event.id}>{event.title} <time dateTime={event.startsAt}>{event.startsAt}</time></li>)}</ul> }
