@@ -9,6 +9,7 @@ const validServerEnv = {
   APP_ENV: 'test',
   CLINICAL_ENCRYPTION_KEY_V1: 'test-encryption-key',
   CLINICAL_ENCRYPTION_ACTIVE_VERSION: '1',
+  RATE_LIMIT_HMAC_KEY: 'a'.repeat(32),
   WHATSAPP_LIVE_ENABLED: 'false',
   NFSE_LIVE_ENABLED: 'true',
 }

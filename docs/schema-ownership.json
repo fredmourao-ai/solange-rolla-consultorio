@@ -93,6 +93,8 @@
     "public.receivable_adjustments": "receivables",
     "public.receivables": "receivables",
     "public.recurrence_rules": "payables",
-    "public.vendors": "payables"
+    "public.vendors": "payables",
+    "public.public_rate_limits": "platform",
+    "public.consume_public_rate_limit": "platform"
   }
 }

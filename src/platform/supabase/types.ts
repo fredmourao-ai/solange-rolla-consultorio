@@ -1535,6 +1535,30 @@ export type Database = {
         }
         Relationships: []
       }
+      public_rate_limits: {
+        Row: {
+          expires_at: string
+          rate_key: string
+          request_count: number
+          scope: string
+          window_started_at: string
+        }
+        Insert: {
+          expires_at: string
+          rate_key: string
+          request_count: number
+          scope: string
+          window_started_at: string
+        }
+        Update: {
+          expires_at?: string
+          rate_key?: string
+          request_count?: number
+          scope?: string
+          window_started_at?: string
+        }
+        Relationships: []
+      }
       receivable_adjustments: {
         Row: {
           actor_id: string
@@ -1809,6 +1833,19 @@ export type Database = {
       }
     }
     Functions: {
+      consume_public_rate_limit: {
+        Args: {
+          p_limit: number
+          p_rate_key: string
+          p_scope: string
+          p_window_seconds: number
+        }
+        Returns: {
+          allowed: boolean
+          remaining: number
+          retry_after_seconds: number
+        }[]
+      }
       create_clinical_record: {
         Args: {
           p_appointment_id: string

@@ -9,6 +9,7 @@ describe('sign submission', () => {
       declarationVersion: 'terms-2026-01',
       typedName: 'Paciente Fictício',
       source: 'patient_capability',
+      publicActionContext: { origin: 'https://app.test', capabilitySessionId: 'session-1', purpose: 'sign_submission', subjectId: 'version-1' },
       answers: { clinical_note: 'SENSITIVE_SENTINEL' },
       idempotencyKey: 'sign:version-1',
       acceptedLegalDocuments: [
@@ -31,7 +32,7 @@ describe('sign submission', () => {
   it('rejects signing when a required legal document was not accepted', async () => {
     await expect(signSubmission({
       submissionVersionId: 'version-1', declarationVersion: 'terms-2026-01', typedName: 'Paciente',
-      source: 'patient_capability', answers: {}, idempotencyKey: 'sign:version-2', acceptedLegalDocuments: [],
+      source: 'patient_capability', publicActionContext: { origin: 'https://app.test', capabilitySessionId: 'session-1', purpose: 'sign_submission', subjectId: 'version-1' }, answers: {}, idempotencyKey: 'sign:version-2', acceptedLegalDocuments: [],
     }, { createEvidence: async () => { throw new Error('must not persist') }, enqueueDocument: async () => { throw new Error('must not enqueue') } })).rejects.toThrow('LEGAL_ACCEPTANCE_REQUIRED')
   })
 })

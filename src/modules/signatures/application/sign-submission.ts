@@ -1,4 +1,5 @@
 import { hashCanonical } from '../domain/hash'
+import { assertPublicActionSubject, type PublicActionContext } from '../../../platform/security/public-action'
 
 type SignSubmissionInput = {
   submissionVersionId: string
@@ -8,6 +9,7 @@ type SignSubmissionInput = {
   answers: Record<string, unknown>
   idempotencyKey: string
   acceptedLegalDocuments: Array<{ id: string; version: number; contentHash: string }>
+  publicActionContext?: PublicActionContext
 }
 
 type Evidence = {
@@ -29,6 +31,7 @@ export async function signSubmission(
   repository: SignatureRepository,
 ): Promise<{ evidence: { id: string } & Evidence; job: { id: string; idempotencyKey: string; signatureEvidenceId: string } }> {
   if (!input.typedName.trim()) throw new Error('INVALID_TYPED_NAME')
+  if (input.source === 'patient_capability') assertPublicActionSubject(input.publicActionContext, 'sign_submission', input.submissionVersionId)
   if (input.acceptedLegalDocuments.length === 0) throw new Error('LEGAL_ACCEPTANCE_REQUIRED')
   const canonicalHashSha256 = hashCanonical({
     declarationVersion: input.declarationVersion,
