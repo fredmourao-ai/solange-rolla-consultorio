@@ -218,3 +218,20 @@ No dia de qualquer deploy de produção:
 ## 16. Definition of Done
 
 Todo PR segue `docs/DEFINITION_OF_DONE.md`; CI verde é necessário, mas não suficiente.
+
+## 17. Observabilidade operacional
+
+Requests e jobs devem carregar um `correlation_id` opaco, sem CPF, telefone ou
+qualquer identificador clínico. O logger estruturado redige chaves de risco e
+contatos antes de escrever no log técnico; audit log continua sendo o registro
+de ações relevantes e não depende de `console.log`.
+
+O endpoint `/api/health` retorna somente versão, ambiente, estado booleano de
+configuração e correlation ID. Nunca retorna URL de banco, token, secret,
+payload de provider ou dados pessoais.
+
+Os thresholds operacionais do MVP estão em
+`src/platform/observability/metrics.ts`: qualquer dead-letter ou falha fiscal
+definitiva exige alerta, backlog com mais de 300 segundos exige investigação,
+falha de health exige alerta e restore com mais de 90 dias exige novo drill.
+O destino de alertas é configurado fora do código.

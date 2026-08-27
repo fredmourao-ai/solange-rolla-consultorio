@@ -118,23 +118,23 @@ git commit -m "feat: add operational and financial reports"
 - Produces logs estruturados com `correlation_id`, `event`, `module`, `status`, sem PII sensível.
 - Produces `/api/health` sem detalhes de secrets/data.
 
-- [ ] **Step 1: Testar redaction**
+- [x] **Step 1: Testar redaction**
 
 Bloquear keys/patterns `cpf`, `token`, `secret`, `authorization`, `answers`, `clinical`, `notes`, e-mail/telefone completos quando desnecessários.
 
-- [ ] **Step 2: Correlation IDs**
+- [x] **Step 2: Correlation IDs**
 
 Toda request/worker job recebe correlation id propagado para audit/attempts; nunca usar CPF como correlation.
 
-- [ ] **Step 3: Health**
+- [x] **Step 3: Health**
 
 Responder somente app version, env name e estados booleanos essenciais; não expor database URL/provider tokens.
 
-- [ ] **Step 4: Alertas**
+- [x] **Step 4: Alertas**
 
 Definir thresholds operacionais: dead-letter >0, fiscal failed_final >0, worker backlog envelhecido, health failure, restore overdue. Destino de alerta configurado fora do código.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/platform/observability src/app/api/health docs/TESTING_DEPLOYMENT.md
