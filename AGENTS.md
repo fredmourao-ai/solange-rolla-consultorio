@@ -234,5 +234,14 @@ Nenhum agente pode declarar tarefa concluída antes de cumprir `docs/DEFINITION_
 - Local, CI e preview usam exclusivamente dados sintéticos verificados por `npm run seed:check`.
 - Production nunca é usada para desenvolvimento, preview ou teste.
 - Preview exige projeto/branch Supabase dedicado; staging é compartilhado e serializado.
-- Promoção para staging ocorre somente pelo workflow manual com `concurrency: staging`, commit SHA explícito e migrations forward-only.
+- Promoção para staging ocorre pelo workflow canônico, com `concurrency: staging`, commit SHA explícito e migrations forward-only; após CI verde em `main`, a promoção pode ser disparada automaticamente pelo gate aprovado.
 - Providers live permanecem desativados fora de production.
+
+## 19. Política obrigatória de PR, gate, merge e bloqueios
+
+- Toda tarefa finalizada deve terminar em PR validado e merge; não deixar PR pronta aberta sem motivo técnico comprovado.
+- Se qualquer check, lint, teste, gate, conflito ou Action falhar: investigar causa raiz, corrigir, revalidar e repetir até ficar verde. É proibido contornar falha com bypass, `|| true`, `exit 0`, force merge ou desativação de proteção.
+- Gate verde autoriza merge automático somente para PR do próprio repositório e depois de todos os checks canônicos aplicáveis passarem.
+- Bloqueio aparentemente externo não encerra a tarefa. Investigar solução segura em configuração, credencial, permissão, serviço, ambiente, provider ou infraestrutura antes de classificar como inconclusivo.
+- Depois do merge, verificar os Actions do SHA resultante. CI verde em `main` deve acionar automaticamente a promoção canônica de staging; produção continua sujeita aos gates de ambiente e às proteções clínicas/fiscais vigentes.
+- Nunca automatizar aprovação que reduza RLS, MFA/AAL2, isolamento de ambiente, proteção de dados clínicos, idempotência financeira/fiscal ou feature flags live.
