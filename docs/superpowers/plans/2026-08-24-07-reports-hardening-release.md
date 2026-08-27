@@ -75,27 +75,27 @@ git commit -m "feat: add daily attention dashboard"
 **Interfaces:**
 - Produces relatórios por período e timezone; exports preservam filtros e totalizadores.
 
-- [ ] **Step 1: Testar financeiro**
+- [x] **Step 1: Testar financeiro**
 
 Validar recebido, a receber, overdue, despesas pagas/a pagar, resultado realizado/projetado e breakdown por forma de pagamento usando centavos inteiros.
 
-- [ ] **Step 2: Testar agenda/eventos**
+- [x] **Step 2: Testar agenda/eventos**
 
 Consultas: realizadas, canceladas dentro/fora, faltas. Eventos: inscritos, presentes, ausentes, recebido, pendente, despesas, resultado.
 
-- [ ] **Step 3: Fiscal**
+- [x] **Step 3: Fiscal**
 
 Listar issued/pending/failed/cancelled e pagamentos/serviços elegíveis sem documento. Não exportar secrets/protocol payload bruto.
 
-- [ ] **Step 4: CSV/XLSX/PDF**
+- [x] **Step 4: CSV/XLSX/PDF**
 
 CSV UTF-8 com BOM opcional para Excel; XLSX com colunas tipadas; PDF somente resumo/relatório formatado. Não gerar documentos clínicos nessa camada.
 
-- [ ] **Step 5: Teste de equivalência**
+- [x] **Step 5: Teste de equivalência**
 
 Totais exibidos na UI devem ser iguais aos totals exportados para o mesmo filtro.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/modules/reports src/app/'(protected)'/relatorios
