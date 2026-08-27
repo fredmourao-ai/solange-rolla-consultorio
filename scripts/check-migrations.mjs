@@ -433,7 +433,7 @@ function sqlObjects(migration) {
     }
     if (supportedDdlTargets[token]) {
       let targetIndex = index + 1
-      while (['if', 'not', 'exists', 'or', 'replace', 'temporary', 'unlogged'].includes(tokens[targetIndex])) {
+      while (['if', 'not', 'exists', 'or', 'replace', 'temporary', 'unlogged', 'unique'].includes(tokens[targetIndex])) {
         targetIndex += 1
       }
       if (

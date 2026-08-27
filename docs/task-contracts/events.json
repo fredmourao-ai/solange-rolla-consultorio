@@ -1,0 +1,1 @@
+{"version":1,"status":"approved","issue":5,"migration":"20260826012000_events.sql","owners":["events","people"],"objects":[{"name":"public.events","owner":"events"},{"name":"public.event_registrations","owner":"events"},{"name":"public.event_registration_status_history","owner":"events"},{"name":"public.event_expenses","owner":"events"},{"name":"public.people","owner":"people"}]}
