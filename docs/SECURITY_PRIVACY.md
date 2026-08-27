@@ -136,3 +136,18 @@ Antes do go-live deve existir runbook contendo:
 - LGPD — Lei 13.709/2018.
 - ANPD — Guia de Segurança da Informação para Agentes de Tratamento de Pequeno Porte.
 - Supabase RLS/MFA/Security docs.
+## Hardening operacional
+
+O CI mantém testes negativos para anônimo, capability malformada e navegação
+clínica, além da matriz de autorização no banco. Rotas administrativas não
+podem incluir conteúdo clínico, ciphertext, respostas, CPF completo ou
+diagnóstico em tela, exportação ou log.
+
+O baseline de acessibilidade usa axe nas rotas administrativas e bloqueia
+violações `critical` e `serious`. O fluxo mobile é verificado em viewport de
+390x844 com zoom de 200%, foco visível e alvos de toque de pelo menos 44px.
+
+Budgets de performance do MVP: resposta de rota administrativa em até 2s em
+dataset sintético representativo, nenhuma consulta N+1 conhecida e fila sem
+backlog acima do threshold operacional documentado. Medições reais devem ser
+anexadas ao checklist de homologação antes do go-live.

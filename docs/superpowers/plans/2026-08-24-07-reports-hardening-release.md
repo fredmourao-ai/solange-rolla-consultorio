@@ -191,27 +191,27 @@ git commit -m "test: cover canonical business lifecycles"
 **Interfaces:**
 - Produces evidência automática de isolamento de papéis e UX mínima.
 
-- [ ] **Step 1: Matriz de autorização**
+- [x] **Step 1: Matriz de autorização**
 
 Testar anonymous, secretary, accounting, owner AAL1, owner AAL2 contra people, appointments, finance, fiscal e clinical. Toda combinação negada deve ter teste explícito.
 
-- [ ] **Step 2: Capability abuse**
+- [x] **Step 2: Capability abuse**
 
 Testar expired, revoked, wrong-purpose, other-subject, replay e token malformed. Nenhum caso deve vazar existência de outro paciente.
 
-- [ ] **Step 3: Accessibility**
+- [x] **Step 3: Accessibility**
 
 Rodar axe em login, agenda, cadastro, formulário público, confirmação e pagamento; zero violações critical/serious aceitas sem waiver documentado.
 
-- [ ] **Step 4: UX idoso**
+- [x] **Step 4: UX idoso**
 
 Viewport mobile, zoom 200%, targets de toque adequados, labels explícitos, fluxo sem senha para paciente e mensagens de erro em português claro.
 
-- [ ] **Step 5: Performance baseline**
+- [x] **Step 5: Performance baseline**
 
 Medir páginas principais com dataset sintético representativo; estabelecer budgets documentados antes de produção e impedir N+1 óbvio/read models sem índice.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add tests/e2e docs/SECURITY_PRIVACY.md docs/DEFINITION_OF_DONE.md
