@@ -4,7 +4,7 @@ select has_table('public', 'events', 'events exists');
 select has_table('public', 'event_registrations', 'registrations exist');
 select has_table('public', 'event_registration_status_history', 'status history exists');
 select has_table('public', 'event_expenses', 'event expenses exist');
-select has_index('public', 'event_registrations_active_person', 'active registrations are unique');
+select has_index('public', 'event_registrations', 'event_registrations_active_person', 'active registrations are unique');
 select has_column('public', 'events', 'default_price_cents', 'event price uses cents');
 select has_column('public', 'event_registrations', 'attendance_status', 'attendance is separate');
 select has_column('public', 'event_expenses', 'amount_cents', 'event expenses use cents');
