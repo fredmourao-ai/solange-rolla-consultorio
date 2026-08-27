@@ -568,6 +568,60 @@ export type Database = {
           },
         ]
       }
+      fiscal_cancellation_events: {
+        Row: {
+          completed_at: string | null
+          fiscal_document_id: string
+          id: string
+          idempotency_key: string
+          provider_protocol: string | null
+          reason: string
+          requested_at: string
+          requested_by: string
+          status: string
+          substitute_document_id: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          fiscal_document_id: string
+          id?: string
+          idempotency_key: string
+          provider_protocol?: string | null
+          reason: string
+          requested_at?: string
+          requested_by: string
+          status?: string
+          substitute_document_id?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          fiscal_document_id?: string
+          id?: string
+          idempotency_key?: string
+          provider_protocol?: string | null
+          reason?: string
+          requested_at?: string
+          requested_by?: string
+          status?: string
+          substitute_document_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fiscal_cancellation_events_fiscal_document_id_fkey"
+            columns: ["fiscal_document_id"]
+            isOneToOne: false
+            referencedRelation: "fiscal_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fiscal_cancellation_events_substitute_document_id_fkey"
+            columns: ["substitute_document_id"]
+            isOneToOne: false
+            referencedRelation: "fiscal_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fiscal_documents: {
         Row: {
           amount_cents: number
@@ -691,60 +745,6 @@ export type Database = {
             columns: ["treatment_id"]
             isOneToOne: false
             referencedRelation: "fiscal_treatments"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      fiscal_cancellation_events: {
-        Row: {
-          completed_at: string | null
-          fiscal_document_id: string
-          id: string
-          idempotency_key: string
-          provider_protocol: string | null
-          reason: string
-          requested_at: string
-          requested_by: string
-          status: string
-          substitute_document_id: string | null
-        }
-        Insert: {
-          completed_at?: string | null
-          fiscal_document_id: string
-          id?: string
-          idempotency_key: string
-          provider_protocol?: string | null
-          reason: string
-          requested_at?: string
-          requested_by: string
-          status?: string
-          substitute_document_id?: string | null
-        }
-        Update: {
-          completed_at?: string | null
-          fiscal_document_id?: string
-          id?: string
-          idempotency_key?: string
-          provider_protocol?: string | null
-          reason?: string
-          requested_at?: string
-          requested_by?: string
-          status?: string
-          substitute_document_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "fiscal_cancellation_events_fiscal_document_id_fkey"
-            columns: ["fiscal_document_id"]
-            isOneToOne: false
-            referencedRelation: "fiscal_documents"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fiscal_cancellation_events_substitute_document_id_fkey"
-            columns: ["substitute_document_id"]
-            isOneToOne: false
-            referencedRelation: "fiscal_documents"
             referencedColumns: ["id"]
           },
         ]
