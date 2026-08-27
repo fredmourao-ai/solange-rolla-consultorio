@@ -26,4 +26,5 @@ create policy clinical_records_owner_aal2 on clinical.records
   with check (public.current_app_role() = 'psychologist_owner' and public.current_aal() = 'aal2');
 
 revoke all on clinical.records from anon;
+grant usage on schema clinical to authenticated;
 grant select, insert on clinical.records to authenticated;

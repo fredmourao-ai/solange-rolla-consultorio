@@ -499,6 +499,11 @@ function sqlObjects(migration) {
       }
       continue
     }
+    if (token === 'on' && tokens[index + 1] === 'schema') {
+      const schemaName = tokens[index + 2]
+      if (schemaName) recordObject(schemaName === 'clinical' ? 'clinical.__schema__' : `public.${schemaName}`)
+      continue
+    }
     if (token === 'on' && !['conflict', 'delete', 'update'].includes(tokens[index + 1])) {
       const object = objectFromTokens(tokens, index + 1)
       if (object) {
