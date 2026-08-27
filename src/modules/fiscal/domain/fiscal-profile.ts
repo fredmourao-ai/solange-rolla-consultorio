@@ -8,6 +8,7 @@ export type FiscalProfile = {
   serviceCode: string
   taxRegime: string
   effectiveFrom: string
+  effectiveUntil?: string
   fiscalAddress?: Record<string, string>
   active?: boolean
 }
@@ -18,6 +19,7 @@ export type FiscalProfileValidation =
 
 export function validateForLiveIssuance(
   profile: FiscalProfile,
+  at: Date = new Date(),
 ): FiscalProfileValidation {
   const requiredValues = [
     profile.issuerDocument,
@@ -29,7 +31,12 @@ export function validateForLiveIssuance(
 
   if (
     !['individual', 'company'].includes(profile.issuerKind) ||
-    requiredValues.some((value) => typeof value !== 'string' || !value.trim())
+    requiredValues.some((value) => typeof value !== 'string' || !value.trim()) ||
+    profile.active === false ||
+    Number.isNaN(Date.parse(profile.effectiveFrom)) ||
+    Date.parse(profile.effectiveFrom) > at.getTime() ||
+    (profile.effectiveUntil !== undefined &&
+      (Number.isNaN(Date.parse(profile.effectiveUntil)) || Date.parse(profile.effectiveUntil) <= at.getTime()))
   ) {
     return { ok: false, error: 'FISCAL_PROFILE_INCOMPLETE' }
   }

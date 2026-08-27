@@ -28,6 +28,8 @@ export type FiscalDocument = {
   protocol?: string
   issuedAt?: string
   cancelledAt?: string
+  xmlPath?: string
+  pdfPath?: string
 }
 
 const allowedTransitions: Record<FiscalDocumentStatus, readonly FiscalDocumentStatus[]> = {

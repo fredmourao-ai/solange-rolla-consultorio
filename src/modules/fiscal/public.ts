@@ -26,6 +26,13 @@ export type {
   NfseProvider,
   NfseStatusResult,
 } from './application/nfse-provider'
+export { classifyNfseError } from './application/nfse-provider'
+export { processFiscalJob } from './application/process-fiscal-job'
+export type {
+  FiscalJobRepository,
+  FiscalProviderSnapshot,
+} from './application/process-fiscal-job'
+export { NationalNfseProvider } from './infrastructure/national-nfse-provider'
 export { evaluateFiscalReadiness } from './application/evaluate-fiscal-readiness'
 export type {
   FiscalPayer,

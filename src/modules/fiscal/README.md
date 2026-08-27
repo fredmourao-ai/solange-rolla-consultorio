@@ -23,3 +23,6 @@ Nao emitir em producao sem gate fiscal e `NFSE_LIVE_ENABLED`; nao assumir tratam
 
 ## Operacao
 Elegibilidade retorna blockers sanitizados e separa `ready`, `review` e `not_ready`. Requests usam a chave composta por origem, perfil e tratamento para preservar snapshots e idempotencia. O provider mock e exclusivo de desenvolvimento, testes e homologacao controlada; nenhum identificador sintetico representa uma NFS-e real.
+
+## Worker e providers
+O worker consome mensagens da fila `fiscal`, arquiva somente jobs processados e reencaminha falhas com atraso. O adapter nacional exige `liveEnabled` antes de qualquer chamada de rede, classifica falhas transitórias e mantém idempotency key no ciclo de emissão/cancelamento. Respostas ambíguas não são reemitidas automaticamente.
