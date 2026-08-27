@@ -26,3 +26,16 @@ export type {
   NfseProvider,
   NfseStatusResult,
 } from './application/nfse-provider'
+export { evaluateFiscalReadiness } from './application/evaluate-fiscal-readiness'
+export type {
+  FiscalPayer,
+  FiscalReadiness,
+  FiscalReadinessBlocker,
+  FiscalReadinessInput,
+} from './application/evaluate-fiscal-readiness'
+export { requestNfse } from './application/request-nfse'
+export type {
+  FiscalDocumentRepository,
+  RequestNfseInput,
+} from './application/request-nfse'
+export { MockNfseProvider } from './infrastructure/mock-nfse-provider'
