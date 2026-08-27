@@ -24,7 +24,16 @@ export type NfseStatusResult = {
   protocol?: string
 }
 
+export type NfseProviderErrorKind = 'retryable' | 'final' | 'ambiguous'
+
+export function classifyNfseError(error: unknown): NfseProviderErrorKind {
+  if (error instanceof Error && error.message === 'NFSE_AMBIGUOUS') return 'ambiguous'
+  if (error instanceof Error && error.message === 'NFSE_FINAL') return 'final'
+  return 'retryable'
+}
+
 export type NfseCancelRequest = {
+  idempotencyKey: string
   externalId: string
   reason: string
   correlationId: string

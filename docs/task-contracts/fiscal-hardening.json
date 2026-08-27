@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "status": "approved",
+  "issue": 6,
+  "migration": "20260826014000_fiscal_hardening.sql",
+  "owners": ["fiscal"],
+  "objects": [
+    {"name": "public.fiscal_documents", "owner": "fiscal"}
+  ]
+}
