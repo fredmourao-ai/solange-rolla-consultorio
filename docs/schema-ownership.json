@@ -26,6 +26,7 @@
     "document_jobs": ["signatures"],
     "extensions": ["platform"],
     "events": ["events", "people"],
+    "fiscal": ["fiscal", "people"],
     "legal_terms": ["forms"],
     "forms_legal_terms": ["forms", "people"],
     "payments": ["receivables"],
