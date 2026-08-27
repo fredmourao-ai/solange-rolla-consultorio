@@ -113,6 +113,12 @@ Entregáveis:
 - pendências de formulário, pagamento, NFS-e, confirmação e reagendamento;
 - relatórios e exportação segura.
 
+Estado em 27/08/2026: contratos de dashboard, relatórios financeiros,
+agenda/eventos/fiscal, CSV/XLSX/PDF e observabilidade sanitizada estão
+implementados. Fixtures E2E sintéticas e runbooks de restore/privacidade estão
+versionados. O checklist de produção permanece `NO-GO` até os gates externos e
+as validações finais descritas em `docs/operations/GO_LIVE_CHECKLIST.md`.
+
 ### Gate L — Go-live
 
 Pré-condições:
@@ -124,6 +130,11 @@ Pré-condições:
 - security/RLS suite verde;
 - runbooks operacionais;
 - produção sem dados seed.
+
+O release candidate deve usar o template em
+`docs/releases/RELEASE_CANDIDATE_TEMPLATE.md`; ausência de formulário real
+homologado, credenciais fiscais/WhatsApp/e-mail, restore medido ou revisão
+jurídica mantém a decisão `NO-GO`.
 
 ## Ordem de execução
 

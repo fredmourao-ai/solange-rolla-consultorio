@@ -120,6 +120,23 @@ textarea {
 .fiscal-queue__item { display: grid; gap: var(--space-2); border-top: 1px solid var(--border); padding: var(--space-4) 0; }
 .fiscal-queue__heading { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
 .fiscal-queue__item p { margin: 0; color: var(--muted); }
+.attention-dashboard { display: grid; gap: var(--space-6); }
+.attention-dashboard__header { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-4); }
+.attention-dashboard__header h2 { margin: 0; font-size: 1.35rem; }
+.attention-dashboard__header p { margin: var(--space-2) 0 0; color: var(--muted); }
+.attention-dashboard__header strong { display: grid; min-width: 2.75rem; min-height: 2.75rem; place-items: center; border-radius: 999px; background: var(--surface-muted); color: var(--accent); }
+.attention-dashboard__list { display: grid; gap: var(--space-3); margin: 0; padding: 0; list-style: none; }
+.attention-item { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); border: 1px solid var(--border); border-left: 4px solid var(--accent); border-radius: var(--radius-sm); background: var(--surface); padding: var(--space-4); }
+.attention-item--critical { border-left-color: var(--danger); }
+.attention-item--high { border-left-color: var(--warning); }
+.attention-item h3 { margin: var(--space-1) 0; font-size: 1rem; }
+.attention-item time, .attention-item__kind { color: var(--muted); font-size: 0.9rem; }
+.reports-grid { display: grid; gap: var(--space-6); grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.report-metrics { display: grid; gap: var(--space-3); margin: var(--space-6) 0 0; }
+.report-metrics div { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-4); border-top: 1px solid var(--border); padding-top: var(--space-3); }
+.report-metrics dt { color: var(--muted); }
+.report-metrics dd { margin: 0; font-weight: 800; }
+.report-empty { margin: var(--space-6) 0 0; color: var(--muted); }
 .clinical-timeline { display: grid; gap: var(--space-4); margin: var(--space-4) 0 0; padding-left: 1.25rem; }
 .clinical-timeline li { display: grid; gap: var(--space-1); }
 .clinical-timeline li span, .clinical-timeline li small, .clinical-timeline__empty { color: var(--muted); }
@@ -164,6 +181,7 @@ textarea {
   .page-header { display: grid; }
   .page-header h1 { font-size: 1.6rem; }
   .fiscal-page-grid { grid-template-columns: 1fr; }
+  .reports-grid { grid-template-columns: 1fr; }
   .fiscal-queue__heading { align-items: flex-start; flex-direction: column; }
 }
 

@@ -116,6 +116,20 @@ Antes de produção com pacientes reais:
 - política de retenção definida;
 - responsáveis por controlador/operadores/encarregado avaliados conforme aplicável.
 
+## 10. Retenção e solicitações de titulares
+
+O inventário e o procedimento operacional ficam em `docs/DATA_INVENTORY.md`,
+`docs/operations/DATA_RETENTION.md` e `docs/operations/PRIVACY_REQUESTS.md`.
+Eles são defaults sujeitos a validação jurídica, contábil e profissional; não
+autorizam exclusão automática de dados clínicos, fiscais, assinados ou de
+auditoria.
+
+Na revisão de 27/08/2026 foram consultadas a página de direitos dos titulares e
+o regulamento de incidentes da ANPD, a orientação do CFP sobre guarda de
+documentos psicológicos e a Lei 13.787/2018. A ANPD informa prazo de três dias
+úteis para comunicação de incidente relevante sob a Resolução 15/2024; o fluxo
+de incidente deve ser validado para o caso concreto.
+
 ## Referências principais
 
 - CFP — Código/Resolução vigente sobre psicoterapia e materiais profissionais.
@@ -124,3 +138,7 @@ Antes de produção com pacientes reais:
 - Código Civil e CDC — contratos, boa-fé, transparência e cláusulas de consumo.
 - Portal Nacional NFS-e — documentação técnica vigente.
 - Prefeitura de Belo Horizonte — BHISS/Avisos.
+- [ANPD — direitos dos titulares](https://www.gov.br/anpd/pt-br/assuntos/titular-de-dados-1/direito-dos-titulares).
+- [ANPD — comunicação de incidente](https://www.gov.br/anpd/pt-br/canais_atendimento/agente-de-tratamento/comunicado-de-incidente-de-seguranca-cis).
+- [CFP — guarda de documentos](https://site.cfp.org.br/servicos/orientacao-e-etica/duvidas-frequentes-de-orientacao-e-etica/).
+- [Lei 13.787/2018](https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l13787.htm).

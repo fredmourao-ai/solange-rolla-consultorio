@@ -6,3 +6,4 @@ export { renderVersionedTemplate, type TemplateRepository } from './application/
 export { createMockProvider, type MessagingProvider, type ProviderDeliveryResult, type ProviderMessage } from './infrastructure/mock-provider'
 export { processMessage, type MessageAttemptRepository, type RetryQueue } from './application/process-message'
 export { ingestProviderEvent, type ProviderEventRepository } from './application/ingest-provider-event'
+export { createMessagingWebhookHandler, type WebhookProvider } from './application/create-webhook-handler'

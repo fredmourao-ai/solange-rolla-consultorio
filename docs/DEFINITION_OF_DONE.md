@@ -107,3 +107,9 @@ Quando aplicável:
 ## Regra final
 
 **“Compila” não significa “pronto”. Pronto significa correto, testado, autorizado, auditável, documentado e operável.**
+## Hardening final
+
+Fluxos administrativos devem ter teste de autorização negativo, acessibilidade
+axe sem violações `critical`/`serious`, teste mobile com zoom de 200% e budget
+de performance registrado. Testes que dependem de provider live usam sandbox;
+nenhuma credencial ou dado real é necessário para passar o CI.

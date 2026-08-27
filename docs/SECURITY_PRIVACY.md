@@ -131,8 +131,35 @@ Antes do go-live deve existir runbook contendo:
 - staging não compartilha banco/bucket com produção;
 - ferramentas de IA/agentes não recebem dumps ou prontuários reais por padrão.
 
+## Inventário e retenção
+
+O inventário operacional está em `docs/DATA_INVENTORY.md` e as regras de
+retenção/procedimento de titular estão em `docs/operations/DATA_RETENTION.md` e
+`docs/operations/PRIVACY_REQUESTS.md`. A aplicação não executa hard-delete
+automático de conteúdo clínico, fiscal, assinado ou audit; qualquer descarte
+depende de revisão de obrigação legal, defesa de direitos, backups e providers.
+
+As fontes normativas e a data de revalidação estão registradas nesses runbooks.
+O responsável de privacidade deve confirmar controlador, canal de titular,
+operadores e base legal antes do go-live.
+
 ## Referências
 
 - LGPD — Lei 13.709/2018.
 - ANPD — Guia de Segurança da Informação para Agentes de Tratamento de Pequeno Porte.
 - Supabase RLS/MFA/Security docs.
+## Hardening operacional
+
+O CI mantém testes negativos para anônimo, capability malformada e navegação
+clínica, além da matriz de autorização no banco. Rotas administrativas não
+podem incluir conteúdo clínico, ciphertext, respostas, CPF completo ou
+diagnóstico em tela, exportação ou log.
+
+O baseline de acessibilidade usa axe nas rotas administrativas e bloqueia
+violações `critical` e `serious`. O fluxo mobile é verificado em viewport de
+390x844 com zoom de 200%, foco visível e alvos de toque de pelo menos 44px.
+
+Budgets de performance do MVP: resposta de rota administrativa em até 2s em
+dataset sintético representativo, nenhuma consulta N+1 conhecida e fila sem
+backlog acima do threshold operacional documentado. Medições reais devem ser
+anexadas ao checklist de homologação antes do go-live.
