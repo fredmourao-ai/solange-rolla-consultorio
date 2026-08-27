@@ -120,6 +120,10 @@ textarea {
 .fiscal-queue__item { display: grid; gap: var(--space-2); border-top: 1px solid var(--border); padding: var(--space-4) 0; }
 .fiscal-queue__heading { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
 .fiscal-queue__item p { margin: 0; color: var(--muted); }
+.clinical-timeline { display: grid; gap: var(--space-4); margin: var(--space-4) 0 0; padding-left: 1.25rem; }
+.clinical-timeline li { display: grid; gap: var(--space-1); }
+.clinical-timeline li span, .clinical-timeline li small, .clinical-timeline__empty { color: var(--muted); }
+.clinical-editor { display: grid; gap: var(--space-4); margin-top: var(--space-6); }
 
 .app-shell { display: grid; min-height: 100vh; grid-template-columns: 240px minmax(0, 1fr); }
 .app-shell__sidebar { border-right: 1px solid var(--border); background: var(--surface); padding: var(--space-6) var(--space-4); }

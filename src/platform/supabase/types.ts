@@ -32,6 +32,100 @@ export type Database = {
       [_ in never]: never
     }
   }
+  clinical: {
+    Tables: {
+      attachments: {
+        Row: {
+          created_at: string
+          id: string
+          media_type: string
+          object_path: string
+          record_id: string
+          sha256: string
+          size_bytes: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          media_type: string
+          object_path: string
+          record_id: string
+          sha256: string
+          size_bytes: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          media_type?: string
+          object_path?: string
+          record_id?: string
+          sha256?: string
+          size_bytes?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attachments_record_id_fkey"
+            columns: ["record_id"]
+            isOneToOne: false
+            referencedRelation: "records"
+            referencedSchema: "clinical"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      records: {
+        Row: {
+          appointment_id: string
+          author_user_id: string
+          auth_tag: string
+          ciphertext: string
+          created_at: string
+          id: string
+          iv: string
+          key_version: number
+          person_id: string
+          supersedes_id: string | null
+        }
+        Insert: {
+          appointment_id: string
+          author_user_id: string
+          auth_tag: string
+          ciphertext: string
+          created_at?: string
+          id?: string
+          iv: string
+          key_version: number
+          person_id: string
+          supersedes_id?: string | null
+        }
+        Update: {
+          appointment_id?: string
+          author_user_id?: string
+          auth_tag?: string
+          ciphertext?: string
+          created_at?: string
+          id?: string
+          iv?: string
+          key_version?: number
+          person_id?: string
+          supersedes_id?: string | null
+        }
+        Relationships: []
+      }
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      [_ in never]: never
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       appointment_confirmations: {
@@ -1814,6 +1908,20 @@ export type Database = {
         Args: never
         Returns: Database["public"]["Enums"]["app_role"]
       }
+      get_clinical_record_envelope: {
+        Args: { record_id: string }
+        Returns: {
+          appointment_id: string
+          auth_tag: string
+          ciphertext: string
+          created_at: string
+          id: string
+          iv: string
+          key_version: number
+          person_id: string
+          supersedes_id: string | null
+        }[]
+      }
       queue_archive: {
         Args: { p_message_id: string; p_queue_name: string }
         Returns: boolean
@@ -1985,4 +2093,3 @@ export const Constants = {
     },
   },
 } as const
-

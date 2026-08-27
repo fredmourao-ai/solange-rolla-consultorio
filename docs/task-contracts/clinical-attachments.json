@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "status": "approved",
+  "issue": 6,
+  "migration": "20260827003000_clinical_attachments.sql",
+  "owners": ["clinical"],
+  "objects": [
+    {"name": "clinical.records", "owner": "clinical"},
+    {"name": "clinical.attachments", "owner": "clinical"},
+    {"name": "clinical.reject_clinical_record_mutation", "owner": "clinical"}
+  ]
+}

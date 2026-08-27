@@ -442,6 +442,9 @@ function sqlObjects(migration) {
       ) {
         parsed.unsupported = true
       }
+      if (token === 'create' && tokens[targetIndex] === 'function') {
+        recordObject(objectFromTokens(tokens, targetIndex + 1))
+      }
     }
     if (token === 'reassign') {
       parsed.unsupported = true
@@ -624,7 +627,7 @@ function validateTaskContract(migration, owners, header) {
 
     if (
       typeof objectName !== 'string' ||
-      !/^[a-z][a-z0-9_]*\.[a-z][a-z0-9_]*$/u.test(objectName) ||
+      !/^[a-z][a-z0-9_]*\.(?:[a-z][a-z0-9_]*|__schema__)$/u.test(objectName) ||
       typeof objectOwner !== 'string'
     ) {
       errors.push(`${contractName}: every object requires a valid name and owner`)

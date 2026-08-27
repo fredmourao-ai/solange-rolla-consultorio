@@ -1,0 +1,63 @@
+import 'server-only'
+import { randomUUID } from 'node:crypto'
+import type { AuditEventRepository } from '../../audit/public'
+import { recordAuditEvent } from '../../audit/public'
+import type { SensitiveDataCrypto } from '../../../platform/crypto/types'
+import { envelopeFields, type ClinicalRecord, type ClinicalRecordInsert } from '../domain/clinical-record'
+
+export type CreateClinicalRecordInput = {
+  appointmentId: string
+  personId: string
+  authorUserId: string
+  plaintext: string
+  supersedesId?: string
+}
+
+export type ClinicalRecordRepository = {
+  insert: (record: ClinicalRecordInsert) => Promise<ClinicalRecord>
+}
+
+export type CreateClinicalRecordDependencies = {
+  crypto: SensitiveDataCrypto
+  repository: ClinicalRecordRepository
+  audit: AuditEventRepository
+  idFactory?: () => string
+}
+
+export async function createClinicalRecord(
+  input: CreateClinicalRecordInput,
+  dependencies: CreateClinicalRecordDependencies,
+): Promise<ClinicalRecord> {
+  if (!input.appointmentId || !input.personId || !input.authorUserId || !input.plaintext.trim()) {
+    throw new Error('INVALID_CLINICAL_RECORD')
+  }
+
+  const id = dependencies.idFactory?.() ?? randomUUID()
+  const envelope = await dependencies.crypto.encrypt(input.plaintext, {
+    entity: 'clinical-record',
+    id,
+  })
+  const record = await dependencies.repository.insert({
+    id,
+    appointmentId: input.appointmentId,
+    personId: input.personId,
+    authorUserId: input.authorUserId,
+    ...envelopeFields(envelope),
+    supersedesId: input.supersedesId,
+  })
+
+  await recordAuditEvent({
+    actorId: input.authorUserId,
+    action: 'clinical_record.created',
+    entityType: 'clinical_record',
+    entityId: id,
+    correlationId: id,
+    metadata: {
+      appointmentId: input.appointmentId,
+      personId: input.personId,
+      keyVersion: envelope.keyVersion,
+    },
+  }, dependencies.audit)
+
+  return record
+}

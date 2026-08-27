@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "status": "approved",
+  "issue": 6,
+  "migration": "20260827001000_clinical.sql",
+  "owners": ["clinical"],
+  "objects": [
+    {"name": "clinical.__schema__", "owner": "clinical"},
+    {"name": "clinical.records", "owner": "clinical"}
+  ]
+}
