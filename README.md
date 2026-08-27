@@ -2,7 +2,7 @@
 
 Sistema privado para gestão de consultório, psicoterapia, eventos, formulários pré-atendimento, assinatura eletrônica simples, comunicação, financeiro e NFS-e.
 
-> Status: **foundation, architecture enforcement, platform provisioning e UI foundation integrados; estratégia de ambientes isolados implementada**. Os módulos de negócio, segurança operacional, homologação e checklist de produção ainda estão em execução. Não usar com dados reais de pacientes.
+> Status: **foundation, architecture enforcement, provisioning, UI, módulos de negócio, fiscal, clinical, reports, observabilidade e runbooks implementados na linha de entrega**. O release permanece **NO-GO** até CI/E2E/restore, revisão jurídica, formulário real e credenciais externas serem validados. Não usar com dados reais de pacientes.
 
 ## Direção técnica
 
@@ -48,6 +48,9 @@ Arquitetura: **monólito modular orientado a domínio**, PostgreSQL/Supabase com
 - [Spec arquitetura multiagente v2](docs/superpowers/specs/2026-08-24-multiagent-architecture-design.md)
 - [Spec funcional inicial](docs/superpowers/specs/2026-08-24-solange-rolla-consultorio-design.md)
 - [Planos de implementação](docs/superpowers/plans/README.md)
+- [Checklist de go-live](docs/operations/GO_LIVE_CHECKLIST.md)
+- [Release candidate](docs/releases/RELEASE_CANDIDATE_TEMPLATE.md)
+- [Inventário e retenção](docs/DATA_INVENTORY.md)
 
 ## Fluxos principais
 
@@ -73,6 +76,14 @@ Evento → inscrição → cadastro da pessoa → formulário/termo quando aplic
 - Política de cobrança aparece no termo/formulário assinado e na confirmação.
 - Agenda, financeiro e fiscal possuem estados independentes.
 - Secretaria/contabilidade não acessam conteúdo clínico.
+
+## Estado operacional
+
+Dashboard de atenção, relatórios financeiros/operacionais, exportações CSV/XLSX/PDF,
+redaction/correlation IDs, health check e testes E2E sintéticos estão versionados.
+O inventário de dados, retenção, resposta a incidentes, backup/restore e rollback
+estão documentados em `docs/operations/`. Integrações live continuam desligadas
+por padrão e nenhum segredo é versionado.
 
 ## Regra de execução
 

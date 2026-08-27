@@ -307,23 +307,23 @@ git commit -m "docs: define privacy operations and retention"
 **Interfaces:**
 - Produces checklist binário de go/no-go; nenhum “parece funcionar”.
 
-- [ ] **Step 1: Checklist técnico**
+- [x] **Step 1: Checklist técnico**
 
 Exigir CI verde, E2E verde, DB tests, RLS matrix, secrets separados, MFA, security headers/rate limit, live flags corretas, domains/TLS, health/alerts, restore drill e rollback testado.
 
-- [ ] **Step 2: Checklist jurídico/fiscal**
+- [x] **Step 2: Checklist jurídico/fiscal**
 
 Exigir `service_terms`, `cancellation_policy`, `truthfulness_declaration` e `privacy_notice` em versão production revisada; política de cancelamento aprovada; emissor fiscal confirmado; tratamento fiscal de cada origem live aprovado; NFS-e homologada; inventário/retention/LGPD revisados.
 
-- [ ] **Step 3: Formulário real**
+- [x] **Step 3: Formulário real**
 
 O formulário pré-consulta fornecido pela Solange deve ter sido transcrito para template versionado, cada pergunta classificada como administrativa/sensível, validações revisadas, termos vinculados e PDF final homologado com dados sintéticos. Sem esse formulário real aprovado, production fica `NO-GO` para o fluxo de consulta.
 
-- [ ] **Step 4: Checklist operacional**
+- [x] **Step 4: Checklist operacional**
 
 Usuários/roles reais provisionados, MFA validado, treinamento, contato de suporte, export contábil validado, templates WhatsApp/e-mail revisados, canal de resposta/reagendamento testado e nenhum dado sintético em produção.
 
-- [ ] **Step 5: Security version gate**
+- [x] **Step 5: Security version gate**
 
 No dia do release, consultar advisories atuais de Next.js/Node/Supabase e atualizar antes da promoção se houver patch de segurança aplicável.
 
@@ -332,7 +332,7 @@ No dia do release, consultar advisories atuais de Next.js/Node/Supabase e atuali
 Run: `npm run arch:check && npm run modules:check && npm run migrations:check && npm run lint && npm run typecheck && npm run test:run && npm run supabase:test && npm run test:e2e && npm run build`
 Expected: todos exit 0; anexar logs/resumo ao PR de release.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add docs/operations docs/releases docs/PROJECT_MASTER_PLAN.md

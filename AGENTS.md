@@ -214,6 +214,20 @@ Nenhum agente pode declarar tarefa concluída antes de cumprir `docs/DEFINITION_
 
 **Se uma mudança facilita o código mas reduz segurança, auditabilidade, isolamento de módulo ou clareza histórica, a mudança está errada.**
 
+## 18. Estado de reports e release
+
+- `reports` consome somente contratos públicos/read models administrativos,
+  financeiros e fiscais; nunca importa `clinical` ou conteúdo clínico.
+- Dashboard e relatórios usam centavos inteiros e exportações não incluem
+  respostas, envelopes, anexos clínicos, secrets ou payload bruto de provider.
+- Logs técnicos passam por redaction e usam correlation IDs opacos; health não
+  expõe URLs, tokens ou dados pessoais.
+- `docs/operations/GO_LIVE_CHECKLIST.md` é `NO-GO` por padrão. CI/E2E, restore,
+  revisão jurídica, formulário real, dados fiscais e credenciais externas
+  precisam de evidência antes de produção.
+- Runbooks de backup/restore, incidente, rollback, privacidade e retenção são
+  parte do estado operacional e devem ser atualizados junto do release.
+
 ## 18. Isolamento de ambientes
 
 - `APP_ENV` aceita somente `local`, `test`, `preview`, `staging` e `production`.
