@@ -131,6 +131,18 @@ Antes do go-live deve existir runbook contendo:
 - staging não compartilha banco/bucket com produção;
 - ferramentas de IA/agentes não recebem dumps ou prontuários reais por padrão.
 
+## Inventário e retenção
+
+O inventário operacional está em `docs/DATA_INVENTORY.md` e as regras de
+retenção/procedimento de titular estão em `docs/operations/DATA_RETENTION.md` e
+`docs/operations/PRIVACY_REQUESTS.md`. A aplicação não executa hard-delete
+automático de conteúdo clínico, fiscal, assinado ou audit; qualquer descarte
+depende de revisão de obrigação legal, defesa de direitos, backups e providers.
+
+As fontes normativas e a data de revalidação estão registradas nesses runbooks.
+O responsável de privacidade deve confirmar controlador, canal de titular,
+operadores e base legal antes do go-live.
+
 ## Referências
 
 - LGPD — Lei 13.709/2018.

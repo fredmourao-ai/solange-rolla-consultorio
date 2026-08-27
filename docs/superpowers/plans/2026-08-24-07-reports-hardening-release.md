@@ -268,27 +268,27 @@ git commit -m "docs: add disaster recovery runbooks"
 **Interfaces:**
 - Produces mapa de categorias de dados, sistemas, finalidade/base a validar, acesso, retenção e procedimento de solicitação do titular.
 
-- [ ] **Step 1: Inventariar dados por classe**
+- [x] **Step 1: Inventariar dados por classe**
 
 Mapear L0-L4 para tabelas/buckets/providers: cadastro, agenda, financeiro, fiscal, mensagens, formulários, assinaturas, clínico, audit e secrets. Para cada categoria registrar finalidade, owners, quem acessa, sistema de origem, destino externo e se contém dado sensível.
 
-- [ ] **Step 2: Definir retenção verificando normas vigentes**
+- [x] **Step 2: Definir retenção verificando normas vigentes**
 
 Revalidar fontes oficiais do CFP, LGPD/ANPD e obrigações fiscais aplicáveis na data da task. Registrar uma duração/regra explícita por categoria quando houver obrigação/política definida. Quando retenção depender de obrigação legal/defesa de direitos, registrar a condição de retenção e o evento que permite revisão/eliminação; não usar “guardar para sempre” como default.
 
-- [ ] **Step 3: Procedimento de pedido do titular**
+- [x] **Step 3: Procedimento de pedido do titular**
 
 Documentar identificação segura do solicitante, protocolo, escopo, busca por Person ID, correção, acesso/cópia, oposição/revogação quando aplicável, análise de eliminação e resposta. Nunca enviar export clínico/fiscal a e-mail/WhatsApp sem canal seguro apropriado.
 
-- [ ] **Step 4: Eliminação/anonymização**
+- [x] **Step 4: Eliminação/anonymização**
 
 Hard-delete só ocorre quando a matriz de retenção permitir e após backup/replicações/provider retention serem considerados. Registros clínicos/fiscais/assinados com obrigação de retenção ficam restritos/arquivados conforme base aplicável, não deletados automaticamente por UI.
 
-- [ ] **Step 5: Incidente**
+- [x] **Step 5: Incidente**
 
 `INCIDENT_RESPONSE.md` deve incluir classificação, contenção, rotação de secrets, preservação de evidência, avaliação de dados pessoais afetados e fluxo de notificação conforme obrigação vigente.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add docs/DATA_INVENTORY.md docs/operations/PRIVACY_REQUESTS.md docs/operations/DATA_RETENTION.md docs/SECURITY_PRIVACY.md docs/LEGAL_COMPLIANCE.md
