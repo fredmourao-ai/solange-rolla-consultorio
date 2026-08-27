@@ -1876,6 +1876,16 @@ export type Database = {
         Args: never
         Returns: Database["public"]["Enums"]["app_role"]
       }
+      exchange_capability: {
+        Args: { p_now?: string; p_purpose: string; p_token_hash: string }
+        Returns: {
+          expires_at: string
+          id: string
+          purpose: string
+          subject_id: string
+          subject_type: string
+        }[]
+      }
       get_clinical_record_envelope: {
         Args: { record_id: string }
         Returns: {
