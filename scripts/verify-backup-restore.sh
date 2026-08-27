@@ -2,7 +2,7 @@
 set -euo pipefail
 
 : "${RESTORE_ENV:?RESTORE_ENV=staging_restore_drill is required}"
-: "${BACKUP_FILE:?BACKUP_FILE must point to a dump file}" 
+: "${BACKUP_FILE:?BACKUP_FILE must point to a dump file}"
 : "${RESTORE_DB_URL:?RESTORE_DB_URL must point to an isolated restore database}"
 
 if [[ "$RESTORE_ENV" != "staging_restore_drill" ]]; then

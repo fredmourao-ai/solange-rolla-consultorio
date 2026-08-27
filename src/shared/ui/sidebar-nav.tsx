@@ -8,7 +8,7 @@ const items: NavItem[] = [
   { href: '/events', label: 'Eventos' },
   { href: '/receivables', label: 'Financeiro' },
   { href: '/fiscal', label: 'Fiscal' },
-  { href: '/reports', label: 'Relatórios' },
+  { href: '/relatorios', label: 'Relatórios' },
   { href: '/clinical', label: 'Clínico', clinical: true },
 ]
 

@@ -37,7 +37,7 @@
 
 **NO-GO** até que todas as condições críticas de `docs/operations/GO_LIVE_CHECKLIST.md` tenham evidência.
 
-Decisão final: `GO` / `NO-GO`  
-Aprovadores:  
-Data:  
+Decisão final: `GO` / `NO-GO`
+Aprovadores:
+Data:
 Observações:

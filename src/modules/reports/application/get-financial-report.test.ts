@@ -5,6 +5,7 @@ const fixture: FinancialReportInput = {
   payments: [
     { amountCents: 100000, paidAt: '2026-09-10T12:00:00Z', method: 'pix' },
     { amountCents: 50000, paidAt: '2026-09-11T12:00:00Z', method: 'card' },
+    { amountCents: 999, paidAt: '2026-10-05T12:00:00Z', method: 'pix' },
   ],
   refunds: [{ amountCents: 10000, refundedAt: '2026-09-12T12:00:00Z', status: 'effective' }],
   receivables: [
