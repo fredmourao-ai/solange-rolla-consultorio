@@ -442,6 +442,9 @@ function sqlObjects(migration) {
       ) {
         parsed.unsupported = true
       }
+      if (token === 'create' && tokens[targetIndex] === 'function') {
+        recordObject(objectFromTokens(tokens, targetIndex + 1))
+      }
     }
     if (token === 'reassign') {
       parsed.unsupported = true
@@ -494,6 +497,11 @@ function sqlObjects(migration) {
       if (object) {
         recordObject(object)
       }
+      continue
+    }
+    if (token === 'on' && tokens[index + 1] === 'schema') {
+      const schemaName = tokens[index + 2]
+      if (schemaName) recordObject(schemaName === 'clinical' ? 'clinical.__schema__' : `public.${schemaName}`)
       continue
     }
     if (token === 'on' && !['conflict', 'delete', 'update'].includes(tokens[index + 1])) {
@@ -624,7 +632,7 @@ function validateTaskContract(migration, owners, header) {
 
     if (
       typeof objectName !== 'string' ||
-      !/^[a-z][a-z0-9_]*\.[a-z][a-z0-9_]*$/u.test(objectName) ||
+      !/^[a-z][a-z0-9_]*\.(?:[a-z][a-z0-9_]*|__schema__)$/u.test(objectName) ||
       typeof objectOwner !== 'string'
     ) {
       errors.push(`${contractName}: every object requires a valid name and owner`)

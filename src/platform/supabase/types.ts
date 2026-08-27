@@ -1809,10 +1809,59 @@ export type Database = {
       }
     }
     Functions: {
+      create_clinical_record: {
+        Args: {
+          p_appointment_id: string
+          p_auth_tag: string
+          p_author_user_id: string
+          p_ciphertext: string
+          p_iv: string
+          p_key_version: number
+          p_person_id: string
+          p_record_id: string
+          p_supersedes_id?: string
+        }
+        Returns: {
+          appointment_id: string
+          auth_tag: string
+          author_user_id: string
+          ciphertext: string
+          created_at: string
+          id: string
+          iv: string
+          key_version: number
+          person_id: string
+          supersedes_id: string
+        }[]
+      }
       current_aal: { Args: never; Returns: string }
       current_app_role: {
         Args: never
         Returns: Database["public"]["Enums"]["app_role"]
+      }
+      get_clinical_record_envelope: {
+        Args: { record_id: string }
+        Returns: {
+          appointment_id: string
+          auth_tag: string
+          ciphertext: string
+          created_at: string
+          id: string
+          iv: string
+          key_version: number
+          person_id: string
+          supersedes_id: string
+        }[]
+      }
+      list_clinical_record_metadata: {
+        Args: { p_person_id: string }
+        Returns: {
+          appointment_id: string
+          created_at: string
+          id: string
+          person_id: string
+          supersedes_id: string
+        }[]
       }
       queue_archive: {
         Args: { p_message_id: string; p_queue_name: string }
@@ -1985,4 +2034,3 @@ export const Constants = {
     },
   },
 } as const
-

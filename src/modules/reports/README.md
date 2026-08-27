@@ -16,7 +16,7 @@ Contratos públicos de módulos financeiros, administrativos e fiscais.
 Totais monetários são centavos inteiros; realizado e projetado são derivados e não alteram transações.
 
 ## Dados sensíveis
-Não acessa nem indexa conteúdo clínico.
+Não acessa nem indexa Clinical, conteúdo clínico, envelopes cifrados ou anexos clínicos.
 
 ## Proibições
 Não importa infraestrutura de outros módulos, não calcula regras transacionais na UI e não substitui a contabilidade oficial.
