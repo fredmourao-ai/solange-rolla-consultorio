@@ -521,6 +521,252 @@ export type Database = {
         }
         Relationships: []
       }
+      fiscal_attempts: {
+        Row: {
+          attempt_number: number
+          correlation_id: string
+          error_code: string | null
+          finished_at: string | null
+          fiscal_document_id: string
+          id: string
+          operation: string
+          provider_status: string | null
+          started_at: string
+          status: string
+        }
+        Insert: {
+          attempt_number: number
+          correlation_id: string
+          error_code?: string | null
+          finished_at?: string | null
+          fiscal_document_id: string
+          id?: string
+          operation: string
+          provider_status?: string | null
+          started_at?: string
+          status: string
+        }
+        Update: {
+          attempt_number?: number
+          correlation_id?: string
+          error_code?: string | null
+          finished_at?: string | null
+          fiscal_document_id?: string
+          id?: string
+          operation?: string
+          provider_status?: string | null
+          started_at?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fiscal_attempts_fiscal_document_id_fkey"
+            columns: ["fiscal_document_id"]
+            isOneToOne: false
+            referencedRelation: "fiscal_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fiscal_documents: {
+        Row: {
+          amount_cents: number
+          cancelled_at: string | null
+          created_at: string
+          external_id: string | null
+          id: string
+          idempotency_key: string
+          issued_at: string | null
+          payer_person_id: string
+          pdf_path: string | null
+          person_id: string
+          profile_id: string
+          profile_version: number
+          protocol: string | null
+          provider: string
+          source_id: string
+          source_type: string
+          status: string
+          treatment_id: string
+          treatment_version: number
+          updated_at: string
+          xml_path: string | null
+        }
+        Insert: {
+          amount_cents: number
+          cancelled_at?: string | null
+          created_at?: string
+          external_id?: string | null
+          id?: string
+          idempotency_key: string
+          issued_at?: string | null
+          payer_person_id: string
+          pdf_path?: string | null
+          person_id: string
+          profile_id: string
+          profile_version: number
+          protocol?: string | null
+          provider: string
+          source_id: string
+          source_type: string
+          status?: string
+          treatment_id: string
+          treatment_version: number
+          updated_at?: string
+          xml_path?: string | null
+        }
+        Update: {
+          amount_cents?: number
+          cancelled_at?: string | null
+          created_at?: string
+          external_id?: string | null
+          id?: string
+          idempotency_key?: string
+          issued_at?: string | null
+          payer_person_id?: string
+          pdf_path?: string | null
+          person_id?: string
+          profile_id?: string
+          profile_version?: number
+          protocol?: string | null
+          provider?: string
+          source_id?: string
+          source_type?: string
+          status?: string
+          treatment_id?: string
+          treatment_version?: number
+          updated_at?: string
+          xml_path?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fiscal_documents_payer_person_id_fkey"
+            columns: ["payer_person_id"]
+            isOneToOne: false
+            referencedRelation: "accounting_people_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fiscal_documents_payer_person_id_fkey"
+            columns: ["payer_person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fiscal_documents_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "accounting_people_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fiscal_documents_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fiscal_documents_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "fiscal_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fiscal_documents_treatment_id_fkey"
+            columns: ["treatment_id"]
+            isOneToOne: false
+            referencedRelation: "fiscal_treatments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fiscal_profiles: {
+        Row: {
+          active: boolean
+          created_at: string
+          effective_from: string
+          effective_until: string | null
+          fiscal_address: Json
+          id: string
+          issuer_document: string
+          issuer_kind: string
+          municipality_code: string
+          service_code: string
+          tax_regime: string
+          version: number
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          effective_from: string
+          effective_until?: string | null
+          fiscal_address?: Json
+          id?: string
+          issuer_document: string
+          issuer_kind: string
+          municipality_code: string
+          service_code: string
+          tax_regime: string
+          version: number
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          effective_from?: string
+          effective_until?: string | null
+          fiscal_address?: Json
+          id?: string
+          issuer_document?: string
+          issuer_kind?: string
+          municipality_code?: string
+          service_code?: string
+          tax_regime?: string
+          version?: number
+        }
+        Relationships: []
+      }
+      fiscal_treatments: {
+        Row: {
+          approved: boolean
+          created_at: string
+          effective_from: string
+          effective_until: string | null
+          enabled_for_live: boolean
+          id: string
+          issuance_rule: string
+          service_code: string | null
+          source_kind: string
+          version: number
+        }
+        Insert: {
+          approved?: boolean
+          created_at?: string
+          effective_from: string
+          effective_until?: string | null
+          enabled_for_live?: boolean
+          id?: string
+          issuance_rule: string
+          service_code?: string | null
+          source_kind: string
+          version: number
+        }
+        Update: {
+          approved?: boolean
+          created_at?: string
+          effective_from?: string
+          effective_until?: string | null
+          enabled_for_live?: boolean
+          id?: string
+          issuance_rule?: string
+          service_code?: string | null
+          source_kind?: string
+          version?: number
+        }
+        Relationships: []
+      }
       form_submission_versions: {
         Row: {
           answers: Json | null

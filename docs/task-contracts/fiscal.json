@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "status": "approved",
+  "issue": 6,
+  "migration": "20260826013000_fiscal.sql",
+  "owners": ["fiscal", "people"],
+  "objects": [
+    {"name": "public.fiscal_profiles", "owner": "fiscal"},
+    {"name": "public.fiscal_treatments", "owner": "fiscal"},
+    {"name": "public.fiscal_documents", "owner": "fiscal"},
+    {"name": "public.fiscal_attempts", "owner": "fiscal"},
+    {"name": "public.people", "owner": "people"}
+  ]
+}
