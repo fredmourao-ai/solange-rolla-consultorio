@@ -5,7 +5,9 @@
   "migration": "20260827002000_clinical_read_rpc.sql",
   "owners": ["audit", "clinical"],
   "objects": [
+    {"name": "public.create_clinical_record", "owner": "clinical"},
     {"name": "public.get_clinical_record_envelope", "owner": "clinical"},
+    {"name": "public.list_clinical_record_metadata", "owner": "clinical"},
     {"name": "clinical.records", "owner": "clinical"},
     {"name": "public.audit_events", "owner": "audit"}
   ]

@@ -1,8 +1,10 @@
 begin;
 
-select plan(8);
+select plan(10);
 
+select has_function('public', 'create_clinical_record', 'clinical create RPC exists');
 select has_function('public', 'get_clinical_record_envelope', 'clinical envelope RPC exists');
+select has_function('public', 'list_clinical_record_metadata', 'clinical metadata RPC exists');
 select ok(not has_function_privilege('anon', 'public.get_clinical_record_envelope(uuid)', 'EXECUTE'), 'anonymous cannot execute clinical envelope RPC');
 
 insert into auth.users (id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data)

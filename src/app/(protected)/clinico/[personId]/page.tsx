@@ -23,29 +23,30 @@ async function createClinicalRecordAction(formData: FormData) {
 
   const repository = {
     async insert(input: ClinicalRecordInsert): Promise<ClinicalRecord> {
-      const { data, error } = await client.schema('clinical').from('records').insert({
-        id: input.id,
-        appointment_id: input.appointmentId,
-        person_id: input.personId,
-        author_user_id: input.authorUserId,
-        ciphertext: input.ciphertext,
-        iv: input.iv,
-        auth_tag: input.authTag,
-        key_version: input.keyVersion,
-        supersedes_id: input.supersedesId ?? null,
-      }).select('id, appointment_id, person_id, author_user_id, ciphertext, iv, auth_tag, key_version, supersedes_id, created_at').single()
-      if (error || !data) throw new Error('CLINICAL_RECORD_CREATE_FAILED')
+      const { data, error } = await client.rpc('create_clinical_record', {
+        p_record_id: input.id,
+        p_appointment_id: input.appointmentId,
+        p_person_id: input.personId,
+        p_author_user_id: input.authorUserId,
+        p_ciphertext: input.ciphertext,
+        p_iv: input.iv,
+        p_auth_tag: input.authTag,
+        p_key_version: input.keyVersion,
+        p_supersedes_id: input.supersedesId ?? null,
+      })
+      const record = data?.[0]
+      if (error || !record) throw new Error('CLINICAL_RECORD_CREATE_FAILED')
       return {
-        id: data.id,
-        appointmentId: data.appointment_id,
-        personId: data.person_id,
-        authorUserId: data.author_user_id,
-        ciphertext: data.ciphertext,
-        iv: data.iv,
-        authTag: data.auth_tag,
-        keyVersion: data.key_version,
-        supersedesId: data.supersedes_id ?? undefined,
-        createdAt: data.created_at,
+        id: record.id,
+        appointmentId: record.appointment_id,
+        personId: record.person_id,
+        authorUserId: record.author_user_id,
+        ciphertext: record.ciphertext,
+        iv: record.iv,
+        authTag: record.auth_tag,
+        keyVersion: record.key_version,
+        supersedesId: record.supersedes_id ?? undefined,
+        createdAt: record.created_at,
       }
     },
   }
@@ -87,10 +88,7 @@ export default async function ClinicalPersonPage({ params }: { params: Promise<{
   }
 
   const client = await createServerSupabaseClient()
-  const { data } = await client.schema('clinical').from('records')
-    .select('id, appointment_id, person_id, author_user_id, ciphertext, iv, auth_tag, key_version, supersedes_id, created_at')
-    .eq('person_id', personId)
-    .order('created_at', { ascending: false })
+  const { data } = await client.rpc('list_clinical_record_metadata', { p_person_id: personId })
   const records = await listClinicalRecords(personId, {
     listMetadata: async () => (data ?? []).map((record) => ({
       id: record.id,
