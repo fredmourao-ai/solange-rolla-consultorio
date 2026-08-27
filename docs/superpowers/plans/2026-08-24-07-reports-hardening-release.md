@@ -154,23 +154,23 @@ git commit -m "feat: add privacy safe observability"
 **Interfaces:**
 - Prova integração de módulos sem usar provider live.
 
-- [ ] **Step 1: Fluxo consulta**
+- [x] **Step 1: Fluxo consulta**
 
 E2E: criar Pessoa -> agendar -> emitir capability -> preencher formulário -> aceitar termos -> assinar -> confirmação -> marcar realizada -> registrar pagamento -> fiscal mock issued -> verificar relatório.
 
-- [ ] **Step 2: Fluxo falta/cancelamento**
+- [x] **Step 2: Fluxo falta/cancelamento**
 
 Cobrir cancelamento dentro do deadline = sem cobrança; fora do deadline = cobrança conforme policy; no-show = cobrança; isenção manual com motivo = balance zero/ajuste auditado. Fiscal de falta/cancelamento permanece em tratamento configurado, nunca é inferido do fluxo de consulta realizada.
 
-- [ ] **Step 3: Fluxo evento**
+- [x] **Step 3: Fluxo evento**
 
 Criar evento -> inscrever Pessoa existente e nova -> registrar pagamento parcial/integral -> presença -> fiscal mock -> despesas -> resultado.
 
-- [ ] **Step 4: Reexecutar jobs**
+- [x] **Step 4: Reexecutar jobs**
 
 Executar workers/automations duas vezes e provar ausência de duplicação de mensagens, recebíveis, pagamentos, documentos assinados e documentos fiscais.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add tests/e2e tests/fixtures
