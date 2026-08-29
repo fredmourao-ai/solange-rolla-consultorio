@@ -122,6 +122,8 @@ export default defineConfig([
     '.next/**',
     'out/**',
     'coverage/**',
+    '.worktrees/**',
+    'backups/**',
     'playwright-report/**',
     'test-results/**',
     'supabase/.temp/**',
