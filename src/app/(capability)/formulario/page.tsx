@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { FormRenderer } from '@/modules/forms/public'
-import { loadPublicIntake } from '@/modules/forms/application/public-intake'
+import { loadPublicIntake } from '@/modules/forms/public'
 import { getCapabilityPageSession } from '../session'
 import { createPublicIntakeRuntime } from '../intake-runtime'
 

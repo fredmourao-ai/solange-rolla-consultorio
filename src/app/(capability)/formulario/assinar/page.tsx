@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
-import { loadPublicIntake } from '@/modules/forms/application/public-intake'
+import { loadPublicIntake } from '@/modules/forms/public'
 import { SignatureStep } from '@/modules/signatures/ui/signature-step'
 import { getCapabilityPageSession } from '../../session'
 import { createPublicIntakeRuntime } from '../../intake-runtime'

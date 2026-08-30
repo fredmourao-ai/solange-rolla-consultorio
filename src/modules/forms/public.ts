@@ -22,3 +22,8 @@ export {
   type LegalDocumentKey,
   type LegalDocumentVersion,
 } from './domain/legal-document'
+export { loadPublicIntake } from './application/public-intake'
+export type { PublicIntakeBoundSubmission, PublicIntakeRepository } from './application/public-intake'
+export { savePublicIntakeDraft, savePublicIntakeForReview, submitReviewedPublicIntake } from './application/public-intake-actions'
+export { createSupabaseFormRepository } from './infrastructure/supabase-form-repository'
+export { createSupabaseLegalRepository } from './infrastructure/supabase-legal-repository'

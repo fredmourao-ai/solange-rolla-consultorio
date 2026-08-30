@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { calendarRange, type CalendarView } from '@/modules/appointments/application/calendar-range'
+import { calendarRange, type CalendarView } from '@/modules/appointments/public'
 import { AppointmentCalendar, type AppointmentCalendarItem } from '@/modules/appointments/ui/calendar'
 import { createServerSupabaseClient } from '@/platform/supabase/server'
 import { PageHeader } from '@/shared/ui/page-header'

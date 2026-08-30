@@ -1,3 +1,7 @@
 export { canonicalize } from './domain/canonicalize'
 export { hashCanonical } from './domain/hash'
 export { signSubmission } from './application/sign-submission'
+export { getSignedDocument } from './application/get-signed-document'
+export type { SignedDocumentAccess, SignedDocumentStatus } from './application/get-signed-document'
+export { signPublicSubmission } from './application/public-signature'
+export { createSupabaseSignatureRepository } from './infrastructure/supabase-signature-repository'

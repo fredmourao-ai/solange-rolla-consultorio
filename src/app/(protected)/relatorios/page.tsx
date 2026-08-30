@@ -1,6 +1,6 @@
 import { PageHeader } from '@/shared/ui/page-header'
 import { Card, CardDescription, CardTitle } from '@/shared/ui/card'
-import { buildOperationalReports } from '@/modules/reports/application/operational-report-read-model'
+import { buildOperationalReports } from '@/modules/reports/public'
 import { createServerSupabaseClient } from '@/platform/supabase/server'
 
 function businessDate(value: Date): string {

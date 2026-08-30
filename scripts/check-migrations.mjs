@@ -397,6 +397,8 @@ function sqlObjects(migration) {
 
   const ignoredExternalOrPseudoObjects = new Set([
     'public.anon',
+    'public.authenticated',
+    'public.skip',
     'public.column',
     'public.function',
     'public.on',

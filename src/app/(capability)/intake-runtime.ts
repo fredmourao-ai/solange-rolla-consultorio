@@ -5,9 +5,9 @@ import { createSupabasePublicActionNonceStore } from '@/platform/security/public
 import { createSensitiveDataCrypto } from '@/platform/crypto/aes-gcm'
 import { serverEnv } from '@/platform/env/server'
 import { createServiceRoleSupabaseClient } from '@/platform/supabase/service-role'
-import { createSupabaseFormRepository } from '@/modules/forms/infrastructure/supabase-form-repository'
-import { createSupabaseLegalRepository } from '@/modules/forms/infrastructure/supabase-legal-repository'
-import { createSupabaseSignatureRepository } from '@/modules/signatures/infrastructure/supabase-signature-repository'
+import { createSupabaseFormRepository } from '@/modules/forms/public'
+import { createSupabaseLegalRepository } from '@/modules/forms/public'
+import { createSupabaseSignatureRepository } from '@/modules/signatures/public'
 import type { CapabilitySessionRecord } from '@/platform/capabilities/session'
 
 export function createPublicIntakeRuntime(session: CapabilitySessionRecord) {

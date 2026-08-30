@@ -1,7 +1,7 @@
 import { Card, CardDescription, CardTitle } from '@/shared/ui/card'
 import { PageHeader } from '@/shared/ui/page-header'
 import { FiscalQueue } from '@/modules/fiscal/ui/fiscal-queue'
-import { toFiscalQueueItems } from '@/modules/fiscal/application/fiscal-queue-read-model'
+import { toFiscalQueueItems } from '@/modules/fiscal/public'
 import type { FiscalDocumentStatus } from '@/modules/fiscal/domain/fiscal-document'
 import { createServerSupabaseClient } from '@/platform/supabase/server'
 

@@ -3,7 +3,7 @@ import { canonicalCapabilityDestination } from '@/platform/capabilities/redirect
 import { serverEnv } from '@/platform/env/server'
 import { getCapabilityPageSession } from '@/app/(capability)/session'
 import { createPublicIntakeRuntime } from '@/app/(capability)/intake-runtime'
-import { savePublicIntakeForReview } from '@/modules/forms/application/public-intake-actions'
+import { savePublicIntakeForReview } from '@/modules/forms/public'
 
 export async function POST(request: Request) {
   const appUrl = serverEnv().APP_URL

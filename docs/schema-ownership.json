@@ -100,6 +100,15 @@
     ],
     "appointments_atomic_response": [
       "appointments"
+    ],
+    "signatures_document_delivery": [
+      "signatures"
+    ],
+    "signatures_document_dispatch_runtime": [
+      "signatures"
+    ],
+    "signatures_document_result_atomic": [
+      "signatures"
     ]
   },
   "objects": {
@@ -163,6 +172,8 @@
     "public.consume_public_rate_limit": "platform",
     "public.persist_form_submission": "forms",
     "public.exchange_capability": "forms",
-    "public.persist_appointment_response": "appointments"
+    "public.persist_appointment_response": "appointments",
+    "public.claim_document_jobs": "signatures",
+    "public.persist_document_job_result": "signatures"
   }
 }

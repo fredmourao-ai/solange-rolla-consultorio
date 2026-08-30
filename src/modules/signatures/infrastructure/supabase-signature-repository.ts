@@ -30,7 +30,7 @@ function mapEvidence(row: {
   }
 }
 
-function mapJob(row: Database['public']['Tables']['document_jobs']['Row']): SignatureDocumentJob {
+function mapJob(row: Pick<Database['public']['Tables']['document_jobs']['Row'], 'id' | 'idempotency_key' | 'signature_evidence_id'>): SignatureDocumentJob {
   return {
     id: row.id,
     idempotencyKey: row.idempotency_key,

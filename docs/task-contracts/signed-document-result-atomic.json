@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "status": "approved",
+  "issue": 4,
+  "migration": "20260830015200_signatures_document_result_atomic.sql",
+  "owners": ["signatures"],
+  "objects": [
+    {"name": "public.document_jobs", "owner": "signatures"},
+    {"name": "public.signature_evidence", "owner": "signatures"},
+    {"name": "public.persist_document_job_result", "owner": "signatures"}
+  ]
+}

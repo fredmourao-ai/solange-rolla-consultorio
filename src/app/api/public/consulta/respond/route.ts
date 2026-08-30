@@ -3,7 +3,7 @@ import { canonicalCapabilityDestination } from '@/platform/capabilities/redirect
 import { serverEnv } from '@/platform/env/server'
 import { getCapabilityPageSession } from '@/app/(capability)/session'
 import { createPublicAppointmentRuntime } from '@/app/(capability)/appointment-runtime'
-import { respondToPublicConfirmation } from '@/modules/appointments/application/public-confirmation'
+import { respondToPublicConfirmation } from '@/modules/appointments/public'
 
 const validActions = ['confirm', 'request_reschedule', 'cancel'] as const
 
