@@ -18,3 +18,16 @@ describe('PersonResults', () => {
     expect(html).toContain('Nenhuma pessoa encontrada')
   })
 })
+
+it('shows the contextual clinical action only when explicitly allowed', () => {
+  const person = {
+    id: 'person-1', civilName: 'Ana Demonstração', preferredName: 'Ana',
+    email: null, phone: null,
+  }
+  const allowed = renderToStaticMarkup(<PersonResults people={[person]} canAccessClinical />)
+  const denied = renderToStaticMarkup(<PersonResults people={[person]} />)
+
+  expect(allowed).toContain('href="/clinico/person-1"')
+  expect(allowed).toContain('Clínico')
+  expect(denied).not.toContain('/clinico/person-1')
+})

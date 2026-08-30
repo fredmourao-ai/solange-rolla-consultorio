@@ -25,7 +25,7 @@ test('local demo owner sees seeded operational surfaces', async ({ page }) => {
 
   await page.goto('/agenda?view=month&date=2026-08-29')
   await expect(page.getByRole('heading', { name: 'Agenda' })).toBeVisible()
-  await expect(page.getByText('Ana', { exact: true })).toBeVisible()
+  await expect(page.locator('.appointment-calendar__item').first().locator(':scope > div').first().locator('strong')).toHaveText('Ana')
 
   await page.goto('/financeiro')
   await expect(page.getByRole('heading', { name: 'Financeiro' })).toBeVisible()

@@ -1,3 +1,5 @@
+import { AppointmentDialog } from './appointment-dialog'
+
 export type AppointmentCalendarItem = {
   id: string
   patientName: string
@@ -44,6 +46,15 @@ export function AppointmentCalendar({ items }: { items: AppointmentCalendarItem[
           <span>{statusLabels[item.status] ?? item.status}</span>
           <small>Cancelamento sem cobrança até {dateTime.format(new Date(item.cancellationDeadlineAt))}</small>
         </div>
+        <details>
+          <summary>Ver detalhes</summary>
+          <AppointmentDialog appointment={{
+            patientName: item.patientName, serviceName: item.serviceName,
+            startsAt: item.startsAt, endsAt: item.endsAt,
+            statusLabel: statusLabels[item.status] ?? item.status,
+            cancellationDeadlineAt: item.cancellationDeadlineAt,
+          }} />
+        </details>
       </li>
     ))}
   </ul>

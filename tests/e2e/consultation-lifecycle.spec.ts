@@ -1,8 +1,10 @@
 import { expect, test } from '@playwright/test'
 import { syntheticConsultationFinance } from '../fixtures/synthetic-finance'
 import { syntheticPerson } from '../fixtures/synthetic-people'
+import { signInDemo } from './demo-auth'
 
 test('canonical consultation lifecycle uses synthetic identifiers and mock fiscal provider', async ({ page }) => {
+  await signInDemo(page)
   const person = syntheticPerson()
   const finance = syntheticConsultationFinance()
   const lifecycle = ['person_created', 'appointment_scheduled', 'form_submitted', 'terms_accepted', 'signed', 'confirmed', 'completed', 'paid', 'fiscal_issued']

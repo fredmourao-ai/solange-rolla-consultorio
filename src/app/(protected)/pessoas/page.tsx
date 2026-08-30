@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { getStaffSession } from '@/modules/identity/public'
 import { PersonResults, type PersonResult } from '@/modules/people/ui/person-results'
 import { PersonSearch } from '@/modules/people/ui/person-search'
 import { createServerSupabaseClient } from '@/platform/supabase/server'
@@ -16,7 +17,8 @@ export default async function PeoplePage({ searchParams }: {
 }) {
   const { q } = await searchParams
   const term = safeSearchTerm(q)
-  const supabase = await createServerSupabaseClient()
+  const [supabase, session] = await Promise.all([createServerSupabaseClient(), getStaffSession()])
+  const canAccessClinical = Boolean(session?.active && session.role === 'psychologist_owner' && session.aal === 'aal2')
   let request = supabase.from('people')
     .select('id,civil_name,preferred_name,email_normalized,phone_e164')
     .order('civil_name', { ascending: true })
@@ -39,6 +41,6 @@ export default async function PeoplePage({ searchParams }: {
       actions={<Link className="ui-button ui-button--primary" href="/pessoas/nova">Nova pessoa</Link>}
     />
     <PersonSearch />
-    <PersonResults people={people} />
+    <PersonResults people={people} canAccessClinical={canAccessClinical} />
   </>
 }

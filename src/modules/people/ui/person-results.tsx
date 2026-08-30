@@ -1,3 +1,5 @@
+import Link from 'next/link'
+
 export type PersonResult = {
   id: string
   civilName: string
@@ -6,7 +8,7 @@ export type PersonResult = {
   phone: string | null
 }
 
-export function PersonResults({ people }: { people: PersonResult[] }) {
+export function PersonResults({ people, canAccessClinical = false }: { people: PersonResult[]; canAccessClinical?: boolean }) {
   if (people.length === 0) return <p className="empty-state">Nenhuma pessoa encontrada.</p>
   return <ul className="people-results" aria-label="Pessoas encontradas">
     {people.map((person) => <li key={person.id} className="people-results__item">
@@ -20,6 +22,9 @@ export function PersonResults({ people }: { people: PersonResult[] }) {
           {person.phone ? <span>{person.phone}</span> : null}
         </> : <span>Contato não informado</span>}
       </div>
+      {canAccessClinical ? <div>
+        <Link className="ui-button ui-button--secondary" href={`/clinico/${person.id}`}>Clínico</Link>
+      </div> : null}
     </li>)}
   </ul>
 }
