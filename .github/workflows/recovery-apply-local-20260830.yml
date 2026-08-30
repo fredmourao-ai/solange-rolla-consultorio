@@ -1,0 +1,53 @@
+name: Recovery apply preserved local Solange commit
+
+on:
+  push:
+    branches: [recovery/two-a1-20260829]
+    paths:
+      - '.github/workflows/recovery-apply-local-20260830.yml'
+      - '.recovery/local-dirty-20260830.patch.gz.b64'
+
+permissions:
+  contents: write
+
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Restore preserved patch and apply with three-way merge
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          base64 -d .recovery/local-dirty-20260830.patch.gz.b64 > /tmp/local.patch.gz
+          gzip -dc /tmp/local.patch.gz > /tmp/local.patch
+          git config user.name 'Recovery Agent'
+          git config user.email 'recovery@localhost'
+          if ! git am -3 /tmp/local.patch; then
+            echo '=== CONFLICTS ==='
+            git status --short
+            git diff --name-only --diff-filter=U
+            git am --abort
+            exit 2
+          fi
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate reconciled code
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          npm run typecheck
+          npm run lint
+          npm run test:run -- tests/architecture/eslint-operational-ignore.test.ts tests/architecture/vitest-operational-ignore.test.ts tests/integration/messaging-webhook.test.ts
+
+      - name: Push reconciled commit to recovery branch
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          git push origin HEAD:recovery/two-a1-20260829
