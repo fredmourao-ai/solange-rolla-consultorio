@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "status": "approved",
+  "issue": 3,
+  "migration": "20260829014000_public_intake_service_role_privileges.sql",
+  "owners": ["forms", "signatures"],
+  "objects": [
+    {"name": "public.capabilities", "owner": "forms"},
+    {"name": "public.form_submissions", "owner": "forms"},
+    {"name": "public.form_template_versions", "owner": "forms"},
+    {"name": "public.form_submission_versions", "owner": "forms"},
+    {"name": "public.legal_documents", "owner": "forms"},
+    {"name": "public.legal_document_versions", "owner": "forms"},
+    {"name": "public.legal_acceptances", "owner": "forms"},
+    {"name": "public.document_jobs", "owner": "signatures"},
+    {"name": "public.signature_evidence", "owner": "signatures"}
+  ]
+}

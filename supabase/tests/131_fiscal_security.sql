@@ -33,6 +33,6 @@ set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"30000000-0000-0000-0000-000000000002","aal":"aal2","role":"authenticated"}', true);
 select is((select count(*)::int from public.fiscal_documents), 0, 'secretary cannot read fiscal documents');
 select set_config('request.jwt.claims', '{"sub":"30000000-0000-0000-0000-000000000003","aal":"aal2","role":"authenticated"}', true);
-select is((select count(*)::int from public.fiscal_documents), 1, 'accounting can read fiscal documents');
+select is((select count(*)::int from public.fiscal_documents where id = '30000000-0000-0000-0000-000000000040'), 1, 'accounting can read the test fiscal document');
 select * from finish();
 rollback;

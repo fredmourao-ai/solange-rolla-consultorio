@@ -23,10 +23,10 @@ reset role;
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-000000000003","aal":"aal2","role":"authenticated"}', true);
 select is((select count(*)::int from public.people), 0, 'accounting cannot read people directly');
-select is((select count(*)::int from public.accounting_people_view), 1, 'accounting can read the minimum accounting view');
+select is((select count(*)::int from public.accounting_people_view where id = '10000000-0000-0000-0000-000000000001'), 1, 'accounting can read the test person in the minimum accounting view');
 
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-000000000002","aal":"aal2","role":"authenticated"}', true);
-select is((select count(*)::int from public.people), 1, 'secretary can read administrative people');
+select is((select count(*)::int from public.people where id = '10000000-0000-0000-0000-000000000001'), 1, 'secretary can read the test administrative person');
 
 select * from finish();
 rollback;

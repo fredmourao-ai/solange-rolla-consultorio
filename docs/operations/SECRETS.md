@@ -12,6 +12,7 @@ environment's secret manager, never in Git, issues, PRs, logs or tests.
 | `SUPABASE_SECRET_KEY` | server-only environment | privileged workers and server adapters | provider policy; revoke immediately on leak |
 | `CLINICAL_ENCRYPTION_KEY_V1` | environment, server-only | L3 envelope encryption | add a new version; retain old versions while envelopes reference them |
 | `RATE_LIMIT_HMAC_KEY` | environment, server-only | privacy-safe rate-limit identifiers | coordinated rotation |
+| `PUBLIC_ACTION_HMAC_KEY` | environment, server-only | one-time public action token signatures | coordinated rotation; keep distinct from rate-limit key |
 | `WHATSAPP_ACCESS_TOKEN` | environment, server-only | WhatsApp adapter | provider policy or leak |
 | `EMAIL_PROVIDER_API_KEY` | environment, server-only | email adapter | provider policy or leak |
 | `NFSE_*` credentials | environment, server-only | fiscal sandbox/homologation/live adapter | provider policy or leak |

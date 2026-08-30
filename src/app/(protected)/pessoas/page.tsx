@@ -1,11 +1,44 @@
 import Link from 'next/link'
-import { PageHeader } from '@/shared/ui/page-header'
+import { PersonResults, type PersonResult } from '@/modules/people/ui/person-results'
 import { PersonSearch } from '@/modules/people/ui/person-search'
+import { createServerSupabaseClient } from '@/platform/supabase/server'
+import { PageHeader } from '@/shared/ui/page-header'
 
-export default function PeoplePage() {
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
+function safeSearchTerm(value?: string): string {
+  return (value ?? '').trim().slice(0, 100).replace(/[,%()]/g, ' ')
+}
+
+export default async function PeoplePage({ searchParams }: {
+  searchParams: Promise<{ q?: string }>
+}) {
+  const { q } = await searchParams
+  const term = safeSearchTerm(q)
+  const supabase = await createServerSupabaseClient()
+  let request = supabase.from('people')
+    .select('id,civil_name,preferred_name,email_normalized,phone_e164')
+    .order('civil_name', { ascending: true })
+    .limit(20)
+  if (term) request = request.or(`civil_name.ilike.%${term}%,preferred_name.ilike.%${term}%,email_normalized.ilike.%${term}%,phone_e164.ilike.%${term}%`)
+  const { data, error } = await request
+  if (error) throw new Error(`PEOPLE_SEARCH_FAILED:${error.code}`)
+  const people: PersonResult[] = (data ?? []).map((person) => ({
+    id: person.id,
+    civilName: person.civil_name,
+    preferredName: person.preferred_name,
+    email: person.email_normalized,
+    phone: person.phone_e164,
+  }))
+
   return <>
-    <PageHeader title="Pessoas" description="Cadastro único de pacientes, participantes e responsáveis." actions={<Link className="ui-button ui-button--primary" href="/pessoas/nova">Nova pessoa</Link>} />
+    <PageHeader
+      title="Pessoas"
+      description="Cadastro único de pacientes, participantes e responsáveis."
+      actions={<Link className="ui-button ui-button--primary" href="/pessoas/nova">Nova pessoa</Link>}
+    />
     <PersonSearch />
-    <p className="empty-state">Nenhuma busca realizada.</p>
+    <PersonResults people={people} />
   </>
 }

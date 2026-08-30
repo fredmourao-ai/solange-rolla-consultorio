@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "status": "approved",
+  "migration": "20260830013000_appointments_response_service_role_privileges.sql",
+  "owners": [
+    "appointments",
+    "people"
+  ],
+  "objects": [
+    {
+      "name": "public.appointments",
+      "owner": "appointments"
+    },
+    {
+      "name": "public.appointment_confirmations",
+      "owner": "appointments"
+    },
+    {
+      "name": "public.people",
+      "owner": "people"
+    },
+    {
+      "name": "public.services",
+      "owner": "appointments"
+    }
+  ],
+  "issue": 4
+}

@@ -188,3 +188,7 @@ textarea {
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; }
 }
+
+.intake-form { display: grid; gap: var(--space-6); max-width: 46rem; }
+.choice-control { display: flex; align-items: center; gap: var(--space-3); min-height: 44px; padding: var(--space-2) 0; }
+.choice-control > span { line-height: 1.35; }

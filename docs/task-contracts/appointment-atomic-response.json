@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "status": "approved",
+  "issue": 4,
+  "migration": "20260830014000_appointments_atomic_response.sql",
+  "owners": ["appointments"],
+  "objects": [
+    {"name": "public.persist_appointment_response", "owner": "appointments"},
+    {"name": "public.appointments", "owner": "appointments"},
+    {"name": "public.appointment_confirmations", "owner": "appointments"}
+  ]
+}

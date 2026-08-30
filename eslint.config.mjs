@@ -120,6 +120,8 @@ export default defineConfig([
   },
   globalIgnores([
     '.next/**',
+    '.worktrees/**',
+    '**/node_modules.npm-partial/**',
     'out/**',
     'coverage/**',
     'playwright-report/**',

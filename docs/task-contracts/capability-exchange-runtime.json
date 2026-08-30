@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "status": "approved",
+  "issue": 3,
+  "migration": "20260829015000_forms_capability_exchange_runtime.sql",
+  "owners": ["forms"],
+  "objects": [
+    {"name": "public.capabilities", "owner": "forms"},
+    {"name": "public.exchange_capability", "owner": "forms"}
+  ]
+}

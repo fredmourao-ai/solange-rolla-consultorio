@@ -427,13 +427,22 @@ function sqlObjects(migration) {
   }
   const staticRoutineTargets = new Set(['function', 'policy', 'trigger', 'type'])
 
+  const isAlterTableConstraintDrop = (index) => {
+    if (tokens[index] !== 'drop' || tokens[index + 1] !== 'constraint') return false
+    let start = index - 1
+    while (start >= 0 && tokens[start] !== ';') start -= 1
+    const statement = tokens.slice(start + 1, index)
+    return statement[0] === 'alter' && statement[1] === 'table'
+  }
+
   for (let index = 0; index < tokens.length; index += 1) {
     const token = tokens[index]
+    const alterTableConstraintDrop = isAlterTableConstraintDrop(index)
     if (token === 'execute' && ['begin', 'do'].includes(tokens[index - 1])) {
       parsed.unsupported = true
       continue
     }
-    if (supportedDdlTargets[token]) {
+    if (supportedDdlTargets[token] && !alterTableConstraintDrop) {
       let targetIndex = index + 1
       while (['if', 'not', 'exists', 'or', 'replace', 'temporary', 'unlogged', 'unique'].includes(tokens[targetIndex])) {
         targetIndex += 1
@@ -451,7 +460,7 @@ function sqlObjects(migration) {
     if (token === 'reassign') {
       parsed.unsupported = true
     }
-    if (multiTargetCommands.has(token)) {
+    if (multiTargetCommands.has(token) && !alterTableConstraintDrop) {
       for (let cursor = index + 1; cursor < tokens.length; cursor += 1) {
         if (tokens[cursor] === ';') break
         if (tokens[cursor] === ',') {

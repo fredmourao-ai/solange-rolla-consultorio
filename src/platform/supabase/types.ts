@@ -1535,6 +1535,24 @@ export type Database = {
         }
         Relationships: []
       }
+      public_action_nonces: {
+        Row: {
+          consumed_at: string
+          expires_at: string
+          nonce_hash: string
+        }
+        Insert: {
+          consumed_at?: string
+          expires_at: string
+          nonce_hash: string
+        }
+        Update: {
+          consumed_at?: string
+          expires_at?: string
+          nonce_hash?: string
+        }
+        Relationships: []
+      }
       public_rate_limits: {
         Row: {
           expires_at: string
@@ -1910,6 +1928,24 @@ export type Database = {
           supersedes_id: string
         }[]
       }
+      persist_form_submission: {
+        Args: {
+          p_answers?: Json
+          p_answers_auth_tag?: string
+          p_answers_ciphertext?: string
+          p_answers_iv?: string
+          p_key_version?: number
+          p_status: string
+          p_submission_id: string
+          p_template_version_id: string
+        }
+        Returns: {
+          result_id: string
+          result_submission_id: string
+          result_submitted_at: string
+          result_version: number
+        }[]
+      }
       queue_archive: {
         Args: { p_message_id: string; p_queue_name: string }
         Returns: boolean
@@ -1943,6 +1979,28 @@ export type Database = {
           p_queue_name: string
         }
         Returns: string
+      }
+      sign_form_submission: {
+        Args: {
+          p_canonical_hash_sha256: string
+          p_declaration_version: string
+          p_idempotency_key: string
+          p_source: string
+          p_submission_version_id: string
+          p_typed_name: string
+        }
+        Returns: {
+          result_canonical_hash_sha256: string
+          result_declaration_version: string
+          result_evidence_id: string
+          result_idempotency_key: string
+          result_job_id: string
+          result_signature_evidence_id: string
+          result_signed_at: string
+          result_source: string
+          result_submission_version_id: string
+          result_typed_name: string
+        }[]
       }
     }
     Enums: {

@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "status": "approved",
+  "migration": "20260830012000_appointments_response_capability.sql",
+  "owners": [
+    "forms"
+  ],
+  "objects": [
+    {
+      "name": "public.capabilities",
+      "owner": "forms"
+    }
+  ],
+  "issue": 4
+}
