@@ -34,3 +34,11 @@ environment's secret manager, never in Git, issues, PRs, logs or tests.
 
 Secret-manager entries and rotations require account-owner/provider access not
 available in this repository execution. No values were generated or recorded.
+
+## Signed document worker
+
+- The worker reuses `SUPABASE_SECRET_KEY` and `CLINICAL_ENCRYPTION_KEY_V<N>` server-side only.
+- `DOCUMENT_WORKER_POLL_MS` and `DOCUMENT_WORKER_BATCH_SIZE` are non-secret runtime tuning values.
+- `DOCUMENT_WORKER_HEALTH_FILE` is a local heartbeat path and must not contain payload data.
+- Worker env files stay outside Git with mode `0600`; do not pass secret values on command lines or logs.
+- The worker may read signed form/template data through `service_role`, but it must not receive form-table write privileges.

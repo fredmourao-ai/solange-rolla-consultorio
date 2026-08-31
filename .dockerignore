@@ -1,0 +1,15 @@
+.git
+node_modules
+.next
+.worker-dist
+.worktrees
+.superpowers
+test-results
+playwright-report
+coverage
+supabase
+docs
+tests
+*.log
+.env
+.env.*
