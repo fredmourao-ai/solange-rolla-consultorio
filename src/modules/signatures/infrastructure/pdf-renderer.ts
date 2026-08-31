@@ -86,5 +86,8 @@ export async function renderSignedFormPdf(input: SignedFormPdfInput): Promise<Ui
   document.setTitle(`Comprovante assinado - ${input.formName}`)
   document.setSubject('Comprovante de formulário assinado')
   document.setCreator('Solange Rolla Consultório')
+  const signedAt = new Date(input.signedAt)
+  document.setCreationDate(signedAt)
+  document.setModificationDate(signedAt)
   return document.save({ useObjectStreams: false })
 }

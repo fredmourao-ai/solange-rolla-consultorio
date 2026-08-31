@@ -25,3 +25,16 @@ describe('renderSignedFormPdf', () => {
   })
 
 })
+
+  it('produces identical bytes for identical signed input', async () => {
+    const first = await renderSignedFormPdf(input)
+    const second = await renderSignedFormPdf(input)
+    expect(Buffer.from(first).equals(Buffer.from(second))).toBe(true)
+  })
+
+  it('pins PDF creation and modification dates to the signature timestamp', async () => {
+    const bytes = await renderSignedFormPdf(input)
+    const pdf = await PDFDocument.load(bytes, { updateMetadata: false })
+    expect(pdf.getCreationDate()?.toISOString()).toBe(input.signedAt)
+    expect(pdf.getModificationDate()?.toISOString()).toBe(input.signedAt)
+  })
