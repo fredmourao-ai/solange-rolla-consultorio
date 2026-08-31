@@ -7,6 +7,9 @@ on:
         description: Full commit SHA already reviewed and approved for staging
         required: true
         type: string
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
 
 permissions:
   contents: read
@@ -17,20 +20,29 @@ concurrency:
 
 jobs:
   promote:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'workflow_run' &&
+       github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.head_branch == 'main' &&
+       github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-latest
     environment: staging
     timeout-minutes: 30
+    env:
+      PROMOTE_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || inputs.commit_sha }}
     steps:
       - name: Checkout selected revision
         uses: actions/checkout@v7
         with:
-          ref: ${{ inputs.commit_sha }}
+          ref: ${{ env.PROMOTE_SHA }}
           fetch-depth: 0
 
       - name: Verify selected revision
-        env:
-          STAGING_COMMIT_SHA: ${{ inputs.commit_sha }}
-        run: test "$(git rev-parse HEAD)" = "$STAGING_COMMIT_SHA"
+        run: |
+          set -Eeuo pipefail
+          test -n "$PROMOTE_SHA"
+          test "$(git rev-parse HEAD)" = "$PROMOTE_SHA"
 
       - name: Use Node 24.19.0
         uses: actions/setup-node@v7
@@ -47,7 +59,7 @@ jobs:
       - name: Validate serialized staging promotion
         env:
           APP_ENV: staging
-          STAGING_COMMIT_SHA: ${{ inputs.commit_sha }}
+          STAGING_COMMIT_SHA: ${{ env.PROMOTE_SHA }}
           STAGING_PROMOTION_APPROVED: ${{ vars.STAGING_PROMOTION_APPROVED }}
           SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_STAGING_PROJECT_REF }}
           SUPABASE_STAGING_PROJECT_REF: ${{ secrets.SUPABASE_STAGING_PROJECT_REF }}
@@ -70,5 +82,6 @@ jobs:
         env:
           STAGING_APP_URL: ${{ vars.STAGING_APP_URL }}
         run: |
+          set -Eeuo pipefail
           test -n "$STAGING_APP_URL"
           curl --fail --silent --show-error --retry 3 "$STAGING_APP_URL/api/health"

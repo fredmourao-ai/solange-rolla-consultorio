@@ -42,7 +42,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-function assertValidEvent(input: ProviderEvent): void {
+function assertValidProviderEvent(input: ProviderEvent): void {
   if (
     typeof input.provider !== 'string' || input.provider.trim() === '' ||
     typeof input.providerEventId !== 'string' || input.providerEventId.trim() === '' ||
@@ -57,7 +57,7 @@ export async function ingestProviderEvent(
   repository: ProviderEventRepository,
   processNewEvent?: ProviderEventProcessor,
 ): Promise<{ duplicate: boolean }> {
-  assertValidEvent(input)
+  assertValidProviderEvent(input)
   const inserted = await repository.insertIfNew(input)
   if (!inserted) return { duplicate: true }
   if (input.delivery) await repository.applyDeliveryStatus?.(input.delivery)

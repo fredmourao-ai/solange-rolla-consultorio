@@ -1,4 +1,5 @@
 import process from 'node:process'
+import { pathToFileURL } from 'node:url'
 
 const environments = new Set(['local', 'test', 'preview', 'staging', 'production'])
 
@@ -89,7 +90,7 @@ export function assertEnvironment(env = process.env) {
   }
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   try {
     assertEnvironment()
     process.stdout.write('environment isolation assertion passed\n')

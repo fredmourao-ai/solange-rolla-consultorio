@@ -125,6 +125,8 @@ export default defineConfig([
     '**/node_modules.npm-partial/**',
     'out/**',
     'coverage/**',
+    '.worktrees/**',
+    'backups/**',
     'playwright-report/**',
     'test-results/**',
     'supabase/.temp/**',

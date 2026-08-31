@@ -57,7 +57,9 @@ export function createMessagingWebhookHandler(
       return Response.json({ error: 'invalid webhook payload' }, { status: 400 })
     }
 
-    if (!event) return Response.json({ error: 'invalid webhook signature' }, { status: 401 })
+    if (!event) {
+      return Response.json({ error: 'invalid webhook signature' }, { status: 401 })
+    }
 
     try {
       const result = await ingestProviderEvent(
