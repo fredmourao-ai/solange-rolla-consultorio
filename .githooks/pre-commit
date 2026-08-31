@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+branch="$(git branch --show-current)"
+case "$branch" in main|master) echo 'BLOCKED: commits directly on protected branch are forbidden.' >&2; exit 40;; esac
+root="$(git rev-parse --show-toplevel)"
+"$root/scripts/repository-governance-validate.sh" pre-commit
