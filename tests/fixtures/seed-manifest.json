@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "status": "bootstrap-empty",
-  "allowedEmailDomains": ["example.test"],
+  "status": "synthetic-demo",
+  "allowedEmailDomains": ["example.test", "solange.invalid"],
   "syntheticPhonePrefixes": ["+55119999"],
   "forbiddenPatterns": [
     "service_role",
@@ -10,5 +10,9 @@
     "whsec_",
     "production.supabase.co"
   ],
-  "tables": []
+  "tables": [
+    "profiles", "people", "services", "legal_documents", "legal_document_versions",
+    "cancellation_policies", "appointments", "receivables", "events",
+    "event_registrations", "fiscal_profiles", "fiscal_documents"
+  ]
 }

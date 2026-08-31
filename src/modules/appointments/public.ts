@@ -22,3 +22,6 @@ export {
 export { listCalendar, type CalendarRepository } from './application/list-calendar'
 export { respondToConfirmation, type ConfirmationAction } from './application/respond-to-confirmation'
 export { cancellationPolicyCopy, type CancellationPolicyCopy } from './domain/policy-copy'
+export { calendarRange } from './application/calendar-range'
+export type { CalendarView } from './application/calendar-range'
+export { respondToPublicConfirmation } from './application/public-confirmation'

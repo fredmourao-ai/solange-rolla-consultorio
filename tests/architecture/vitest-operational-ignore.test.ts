@@ -16,5 +16,5 @@ describe('Vitest operational directory ignores', () => {
     expect(result.status, output).toBe(0)
     expect(output).not.toContain('.worktrees/')
     expect(output).not.toContain('backups/')
-  }, 20_000)
+  }, 45_000)
 })

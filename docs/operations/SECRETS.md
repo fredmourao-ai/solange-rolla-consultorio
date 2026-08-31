@@ -12,6 +12,7 @@ environment's secret manager, never in Git, issues, PRs, logs or tests.
 | `SUPABASE_SECRET_KEY` | server-only environment | privileged workers and server adapters | provider policy; revoke immediately on leak |
 | `CLINICAL_ENCRYPTION_KEY_V1` | environment, server-only | L3 envelope encryption | add a new version; retain old versions while envelopes reference them |
 | `RATE_LIMIT_HMAC_KEY` | environment, server-only | privacy-safe rate-limit identifiers | coordinated rotation |
+| `PUBLIC_ACTION_HMAC_KEY` | environment, server-only | one-time public action token signatures | coordinated rotation; keep distinct from rate-limit key |
 | `WHATSAPP_ACCESS_TOKEN` | environment, server-only | WhatsApp adapter | provider policy or leak |
 | `EMAIL_PROVIDER_API_KEY` | environment, server-only | email adapter | provider policy or leak |
 | `NFSE_*` credentials | environment, server-only | fiscal sandbox/homologation/live adapter | provider policy or leak |
@@ -33,3 +34,11 @@ environment's secret manager, never in Git, issues, PRs, logs or tests.
 
 Secret-manager entries and rotations require account-owner/provider access not
 available in this repository execution. No values were generated or recorded.
+
+## Signed document worker
+
+- The worker reuses `SUPABASE_SECRET_KEY` and `CLINICAL_ENCRYPTION_KEY_V<N>` server-side only.
+- `DOCUMENT_WORKER_POLL_MS` and `DOCUMENT_WORKER_BATCH_SIZE` are non-secret runtime tuning values.
+- `DOCUMENT_WORKER_HEALTH_FILE` is a local heartbeat path and must not contain payload data.
+- Worker env files stay outside Git with mode `0600`; do not pass secret values on command lines or logs.
+- The worker may read signed form/template data through `service_role`, but it must not receive form-table write privileges.

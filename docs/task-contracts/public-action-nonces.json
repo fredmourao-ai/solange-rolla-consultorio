@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "status": "approved",
+  "issue": 3,
+  "migration": "20260829011000_platform_public_action_nonces.sql",
+  "owners": ["platform"],
+  "objects": [
+    {"name": "public.public_action_nonces", "owner": "platform"}
+  ]
+}

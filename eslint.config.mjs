@@ -120,6 +120,9 @@ export default defineConfig([
   },
   globalIgnores([
     '.next/**',
+    '.worker-dist/**',
+    '.worktrees/**',
+    '**/node_modules.npm-partial/**',
     'out/**',
     'coverage/**',
     '.worktrees/**',

@@ -10,6 +10,7 @@ const validServerEnv = {
   CLINICAL_ENCRYPTION_KEY_V1: 'test-encryption-key',
   CLINICAL_ENCRYPTION_ACTIVE_VERSION: '1',
   RATE_LIMIT_HMAC_KEY: 'a'.repeat(32),
+  PUBLIC_ACTION_HMAC_KEY: 'b'.repeat(32),
   WHATSAPP_LIVE_ENABLED: 'false',
   NFSE_LIVE_ENABLED: 'true',
 }
@@ -32,6 +33,11 @@ describe('server environment contract', () => {
     expect(parsed.WHATSAPP_LIVE_ENABLED).toBe(false)
     expect(parsed.NFSE_LIVE_ENABLED).toBe(true)
     expect(() => parseServerEnv({ ...validServerEnv, NFSE_LIVE_ENABLED: 'yes' })).toThrow()
+  })
+
+  it('requires a dedicated public action signing secret', () => {
+    expect(parseServerEnv(validServerEnv).PUBLIC_ACTION_HMAC_KEY).toBe('b'.repeat(32))
+    expect(() => parseServerEnv({ ...validServerEnv, PUBLIC_ACTION_HMAC_KEY: 'short' })).toThrow(/PUBLIC_ACTION_HMAC_KEY/)
   })
 
   it('keeps server secrets out of the client environment', () => {

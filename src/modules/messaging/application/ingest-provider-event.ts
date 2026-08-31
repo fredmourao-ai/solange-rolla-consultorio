@@ -2,10 +2,31 @@ export type ProviderEvent = {
   provider: string
   providerEventId: string
   payload: Record<string, unknown>
+  delivery?: ProviderDeliveryUpdate
+}
+
+export type DeliveryStatus = 'sent' | 'delivered' | 'read'
+
+export type ProviderDeliveryUpdate = {
+  messageId: string
+  status: DeliveryStatus
 }
 
 export type ProviderEventRepository = {
   insertIfNew(event: ProviderEvent): Promise<boolean>
+  applyDeliveryStatus?: (update: ProviderDeliveryUpdate) => Promise<'updated' | 'ignored' | 'unknown'>
+}
+
+export type ProviderEventProcessor = (event: ProviderEvent) => Promise<void>
+
+const DELIVERY_STATUS_ORDER: Record<DeliveryStatus, number> = {
+  sent: 1,
+  delivered: 2,
+  read: 3,
+}
+
+export function shouldAdvanceDeliveryStatus(current: DeliveryStatus, incoming: DeliveryStatus): boolean {
+  return DELIVERY_STATUS_ORDER[incoming] > DELIVERY_STATUS_ORDER[current]
 }
 
 export class InvalidProviderEventError extends Error {
@@ -34,7 +55,12 @@ function assertValidProviderEvent(input: ProviderEvent): void {
 export async function ingestProviderEvent(
   input: ProviderEvent,
   repository: ProviderEventRepository,
+  processNewEvent?: ProviderEventProcessor,
 ): Promise<{ duplicate: boolean }> {
   assertValidProviderEvent(input)
-  return { duplicate: !(await repository.insertIfNew(input)) }
+  const inserted = await repository.insertIfNew(input)
+  if (!inserted) return { duplicate: true }
+  if (input.delivery) await repository.applyDeliveryStatus?.(input.delivery)
+  await processNewEvent?.(input)
+  return { duplicate: false }
 }

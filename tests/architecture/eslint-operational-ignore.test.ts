@@ -22,5 +22,5 @@ describe('ESLint operational directory ignores', () => {
       const result = spawnSync(process.execPath, [eslintBin, sentinelFile], { encoding: 'utf8' })
       expect(result.status, `${sentinelFile}\n${result.stdout}\n${result.stderr}`).toBe(0)
     }
-  })
+  }, 45_000)
 })

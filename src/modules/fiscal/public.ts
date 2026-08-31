@@ -64,3 +64,5 @@ export type {
   FiscalDocumentReadyInput,
   FiscalDocumentReadyQueue,
 } from './application/enqueue-fiscal-document-ready'
+export { toFiscalQueueItems } from './application/fiscal-queue-read-model'
+export type { FiscalQueueRecord } from './application/fiscal-queue-read-model'

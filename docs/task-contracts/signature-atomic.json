@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "status": "approved",
+  "issue": 3,
+  "migration": "20260829013000_signatures_atomic_submission.sql",
+  "owners": ["forms", "signatures"],
+  "objects": [
+    {"name": "public.form_submissions", "owner": "forms"},
+    {"name": "public.form_submission_versions", "owner": "forms"},
+    {"name": "public.signature_evidence", "owner": "signatures"},
+    {"name": "public.document_jobs", "owner": "signatures"},
+    {"name": "public.sign_form_submission", "owner": "signatures"}
+  ]
+}
