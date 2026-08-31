@@ -20,3 +20,14 @@ test('key demo surfaces use product-grade card and list layouts', async ({ page 
   await expect(page.locator('.people-results')).toHaveCSS('list-style-type', 'none')
   await expect(page.locator('.people-results__item').first()).not.toHaveCSS('border-top-width', '0px')
 })
+
+test('navigation highlights the current administrative route', async ({ page }) => {
+  await signInDemo(page)
+  for (const [path, label] of [['/agenda', 'Agenda'], ['/financeiro', 'Financeiro'], ['/fiscal', 'Fiscal']] as const) {
+    await page.goto(path)
+    const active = page.locator('.sidebar-nav a[aria-current="page"]')
+    await expect(active).toHaveCount(1)
+    await expect(active).toHaveText(label)
+    await expect(page.getByRole('link', { name: 'Dashboard' })).not.toHaveAttribute('aria-current', 'page')
+  }
+})
