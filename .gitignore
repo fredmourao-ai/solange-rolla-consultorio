@@ -27,3 +27,7 @@ supabase/.temp/
 # system/editor
 .DS_Store
 *.log
+
+# Python tool caches
+__pycache__/
+*.pyc
