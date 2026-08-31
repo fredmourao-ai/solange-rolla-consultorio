@@ -25,6 +25,7 @@ export type SignedDocumentJob = {
   status: string
   artifact: DocumentArtifact | null
 }
+
 export interface SignedDocumentRepository {
   findJob(jobId: string): Promise<SignedDocumentJob | null>
   loadSource(evidenceId: string): Promise<SignedDocumentSource>
@@ -44,14 +45,22 @@ export async function renderSignedDocument(jobId: string, dependencies: Dependen
   if (job.status === 'completed' && job.artifact) return job.artifact
 
   let source: SignedDocumentSource
-  let bytes: Uint8Array
   try {
     source = await dependencies.repository.loadSource(job.evidenceId)
+  } catch (error) {
+    if (error instanceof Error && error.message === 'DOCUMENT_SOURCE_INTEGRITY_ERROR') {
+      await dependencies.repository.markFailed(job.id, job.evidenceId, 'failed_final', 'DOCUMENT_SOURCE_INTEGRITY_ERROR')
+    }
+    throw error
+  }
+
+  let bytes: Uint8Array
+  try {
     bytes = await dependencies.renderer({ ...source, verificationCode: job.evidenceId.slice(0, 8) })
     if (!(bytes instanceof Uint8Array) || bytes.byteLength === 0) throw new Error('INVALID_PDF_BUFFER')
-  } catch {
+  } catch (error) {
     await dependencies.repository.markFailed(job.id, job.evidenceId, 'failed_final', 'DOCUMENT_RENDER_FAILED')
-    throw new Error('DOCUMENT_RENDER_FAILED')
+    throw new Error('DOCUMENT_RENDER_FAILED', { cause: error })
   }
 
   const artifact: DocumentArtifact = {

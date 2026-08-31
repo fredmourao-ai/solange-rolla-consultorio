@@ -77,3 +77,16 @@ describe('renderSignedDocument', () => {
     await expect(renderSignedDocument(job.id, { repository, storage, renderer })).rejects.toThrow('DOCUMENT_STORAGE_CONFLICT')
     expect(repository.markFailed).toHaveBeenCalledWith(job.id, job.evidenceId, 'failed_final', 'DOCUMENT_STORAGE_CONFLICT')
   })
+
+  it('leaves transient source lookup failures retryable for the worker', async () => {
+    const repository = {
+      findJob: vi.fn(async () => ({ ...job, artifact: null })),
+      loadSource: vi.fn(async () => { throw new Error('socket closed') }),
+      markReady: vi.fn(), markFailed: vi.fn(async () => undefined),
+    }
+    const storage = { put: vi.fn() }
+    const renderer = vi.fn()
+
+    await expect(renderSignedDocument(job.id, { repository, storage, renderer })).rejects.toThrow('socket closed')
+    expect(repository.markFailed).not.toHaveBeenCalled()
+  })

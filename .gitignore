@@ -3,6 +3,7 @@ node_modules/
 
 # next.js
 .next/
+.worker-dist/
 out/
 *.tsbuildinfo
 

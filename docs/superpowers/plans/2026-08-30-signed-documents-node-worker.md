@@ -6,7 +6,7 @@
 
 **Architecture:** Compose the existing queue, AES-GCM crypto, PDF renderer, result RPC, and private Storage behind focused Supabase adapters. Run a bounded polling loop as a restartable Docker worker on the authorized VM; the web process remains independent.
 
-**Tech Stack:** Node 24.19, TypeScript 5.9, tsx, Supabase JS 2.112, Supabase Queues RPCs, Supabase Storage, pdf-lib, Vitest, Playwright, Docker.
+**Tech Stack:** Node 24.19, TypeScript 5.9 compiler, Supabase JS 2.112, Supabase Queues RPCs, Supabase Storage, pdf-lib, Vitest, Playwright, Docker.
 
 **Spec:** `docs/superpowers/specs/2026-08-30-signed-documents-node-worker-design.md`
 
@@ -106,7 +106,7 @@ Commit: `feat: make signed document storage idempotent`
 - Produces `processDocumentJob(jobId, dependencies): Promise<'completed'|'retry'|'failed_final'>`.
 - Produces `runDocumentWorker({ signal, pollMs, batchSize }): Promise<void>`.
 - Runtime composes `createQueue({ name: 'documents', backend: createServerSupabaseQueueBackend() })`, signed repository/storage, `renderSignedFormPdf`, and `drainDocumentQueue`.
-- Adds `npm run worker:documents` using pinned `tsx` runtime dependency.
+- Adds `npm run worker:documents` using `tsc -p tsconfig.worker.json` and Node `--conditions=react-server`.
 
 - [ ] **Step 1: Write failing runtime tests**
 
@@ -123,7 +123,7 @@ Map terminal successful render to `completed`; map storage/network/RPC transient
 
 - [ ] **Step 4: Add executable entrypoint**
 
-`scripts/document-worker.ts` installs SIGINT/SIGTERM handlers, validates `serverEnv()` and encryption keyring at startup, then invokes the runtime. Add `tsx` as a pinned runtime dependency and `worker:documents` script.
+`scripts/document-worker.ts` installs SIGINT/SIGTERM handlers, validates `serverEnv()` and encryption keyring at startup, then invokes the runtime. Add `tsconfig.worker.json`, compile to CommonJS with the pinned TypeScript compiler, and run Node with `--conditions=react-server` so existing `server-only` guards remain intact.
 
 - [ ] **Step 5: Run targeted tests and commit**
 
