@@ -574,6 +574,22 @@ describe('migration history', () => {
     expect(result.status, outputOf(result)).toBe(0)
   })
 
+  it('accepts static alter table drop and add constraint syntax', () => {
+    const repository = createRepository()
+    const migration = '20260824000300_appointments_constraint_refresh.sql'
+    fs.writeFileSync(
+      path.join(repository, 'supabase/migrations', migration),
+      '-- owners: appointments\n-- task-contract: docs/task-contracts/appointments_constraint.json\nalter table public.appointments drop constraint appointments_status_check;\nalter table public.appointments add constraint appointments_status_check check (status <> \'invalid\');\n',
+    )
+    writeTaskContract(repository, 'appointments_constraint.json', {
+      issue: 123, migration, owners: ['appointments'],
+      objects: [{ name: 'public.appointments', owner: 'appointments' }],
+    })
+
+    const result = checkMigrations(repository, { baseRef: 'migration-base' })
+    expect(result.status, outputOf(result)).toBe(0)
+  })
+
   it('exposes immutable migration history as an npm and database CI gate', () => {
     const packageJson = JSON.parse(
       fs.readFileSync(path.join(repositoryRoot, 'package.json'), 'utf8'),

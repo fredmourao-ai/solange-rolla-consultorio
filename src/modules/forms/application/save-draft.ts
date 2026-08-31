@@ -1,6 +1,6 @@
 import type { EncryptedEnvelope, SensitiveDataCrypto } from '../../../platform/crypto/types'
-import { validateAnswers, type FormClassification } from '../domain/form-schema'
 import { assertPublicActionSubject, type PublicActionContext } from '../../../platform/security/public-action'
+import { validateAnswers, type FormClassification } from '../domain/form-schema'
 
 type SaveDraftInput = {
   submissionId: string
@@ -25,10 +25,21 @@ export async function saveDraft(
   input: SaveDraftInput,
   dependencies: SaveDraftDependencies,
 ): Promise<Record<string, unknown>> {
-  if (input.source === 'patient_capability') assertPublicActionSubject(input.publicActionContext, 'public_form_save', input.submissionId)
-  if (validateAnswers(input.template, input.answers).length > 0) {
+  if (input.templateVersionId !== input.template.id) {
+    throw new Error('FORM_TEMPLATE_VERSION_MISMATCH')
+  }
+  if (input.classification !== input.template.classification) {
+    throw new Error('FORM_CLASSIFICATION_MISMATCH')
+  }
+  if (input.source === 'patient_capability') {
+    assertPublicActionSubject(input.publicActionContext, 'public_form_save', input.submissionId)
+  }
+  const draftErrors = validateAnswers(input.template, input.answers)
+    .filter((error) => error.code !== 'required')
+  if (draftErrors.length > 0) {
     throw new Error('invalid form answers')
   }
+
   const base = {
     submissionId: input.submissionId,
     templateVersionId: input.templateVersionId,

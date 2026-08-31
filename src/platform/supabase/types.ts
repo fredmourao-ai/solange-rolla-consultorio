@@ -303,23 +303,38 @@ export type Database = {
       }
       document_jobs: {
         Row: {
+          attempts: number
+          completed_at: string | null
           created_at: string
+          dispatched_at: string | null
           id: string
           idempotency_key: string
+          kind: string
+          last_error_code: string | null
           signature_evidence_id: string
           status: string
         }
         Insert: {
+          attempts?: number
+          completed_at?: string | null
           created_at?: string
+          dispatched_at?: string | null
           id?: string
           idempotency_key: string
+          kind?: string
+          last_error_code?: string | null
           signature_evidence_id: string
           status?: string
         }
         Update: {
+          attempts?: number
+          completed_at?: string | null
           created_at?: string
+          dispatched_at?: string | null
           id?: string
           idempotency_key?: string
+          kind?: string
+          last_error_code?: string | null
           signature_evidence_id?: string
           status?: string
         }
@@ -1535,6 +1550,24 @@ export type Database = {
         }
         Relationships: []
       }
+      public_action_nonces: {
+        Row: {
+          consumed_at: string
+          expires_at: string
+          nonce_hash: string
+        }
+        Insert: {
+          consumed_at?: string
+          expires_at: string
+          nonce_hash: string
+        }
+        Update: {
+          consumed_at?: string
+          expires_at?: string
+          nonce_hash?: string
+        }
+        Relationships: []
+      }
       public_rate_limits: {
         Row: {
           expires_at: string
@@ -1744,7 +1777,10 @@ export type Database = {
         Row: {
           canonical_hash_sha256: string
           declaration_version: string
+          document_byte_length: number | null
+          document_sha256: string | null
           document_status: string
+          document_storage_path: string | null
           id: string
           metadata: Json
           signature_asset_path: string | null
@@ -1756,7 +1792,10 @@ export type Database = {
         Insert: {
           canonical_hash_sha256: string
           declaration_version: string
+          document_byte_length?: number | null
+          document_sha256?: string | null
           document_status?: string
+          document_storage_path?: string | null
           id?: string
           metadata?: Json
           signature_asset_path?: string | null
@@ -1768,7 +1807,10 @@ export type Database = {
         Update: {
           canonical_hash_sha256?: string
           declaration_version?: string
+          document_byte_length?: number | null
+          document_sha256?: string | null
           document_status?: string
+          document_storage_path?: string | null
           id?: string
           metadata?: Json
           signature_asset_path?: string | null
@@ -1833,6 +1875,13 @@ export type Database = {
       }
     }
     Functions: {
+      claim_document_jobs: {
+        Args: { p_limit?: number }
+        Returns: {
+          result_id: string
+          result_idempotency_key: string
+        }[]
+      }
       consume_public_rate_limit: {
         Args: {
           p_limit: number
@@ -1910,6 +1959,46 @@ export type Database = {
           supersedes_id: string
         }[]
       }
+      persist_appointment_response: {
+        Args: {
+          p_appointment_id: string
+          p_capability_id: string
+          p_expected_status: string
+          p_new_status: string
+          p_response: string
+        }
+        Returns: string
+      }
+      persist_document_job_result: {
+        Args: {
+          p_byte_length: number
+          p_error_code: string
+          p_evidence_id: string
+          p_job_id: string
+          p_result_status: string
+          p_sha256: string
+          p_storage_path: string
+        }
+        Returns: undefined
+      }
+      persist_form_submission: {
+        Args: {
+          p_answers?: Json
+          p_answers_auth_tag?: string
+          p_answers_ciphertext?: string
+          p_answers_iv?: string
+          p_key_version?: number
+          p_status: string
+          p_submission_id: string
+          p_template_version_id: string
+        }
+        Returns: {
+          result_id: string
+          result_submission_id: string
+          result_submitted_at: string
+          result_version: number
+        }[]
+      }
       queue_archive: {
         Args: { p_message_id: string; p_queue_name: string }
         Returns: boolean
@@ -1943,6 +2032,28 @@ export type Database = {
           p_queue_name: string
         }
         Returns: string
+      }
+      sign_form_submission: {
+        Args: {
+          p_canonical_hash_sha256: string
+          p_declaration_version: string
+          p_idempotency_key: string
+          p_source: string
+          p_submission_version_id: string
+          p_typed_name: string
+        }
+        Returns: {
+          result_canonical_hash_sha256: string
+          result_declaration_version: string
+          result_evidence_id: string
+          result_idempotency_key: string
+          result_job_id: string
+          result_signature_evidence_id: string
+          result_signed_at: string
+          result_source: string
+          result_submission_version_id: string
+          result_typed_name: string
+        }[]
       }
     }
     Enums: {

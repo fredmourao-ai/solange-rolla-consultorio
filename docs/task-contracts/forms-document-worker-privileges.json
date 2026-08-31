@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "status": "approved",
+  "issue": 5,
+  "migration": "20260830015300_forms_document_worker_privileges.sql",
+  "owners": ["forms"],
+  "objects": [
+    {"name": "public.form_templates", "owner": "forms"}
+  ]
+}

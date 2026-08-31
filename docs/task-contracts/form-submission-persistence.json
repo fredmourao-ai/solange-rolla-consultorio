@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "status": "approved",
+  "issue": 3,
+  "migration": "20260829012000_forms_public_submission_persistence.sql",
+  "owners": ["forms"],
+  "objects": [
+    {"name": "public.form_submissions", "owner": "forms"},
+    {"name": "public.form_template_versions", "owner": "forms"},
+    {"name": "public.form_submission_versions", "owner": "forms"},
+    {"name": "public.persist_form_submission", "owner": "forms"}
+  ]
+}

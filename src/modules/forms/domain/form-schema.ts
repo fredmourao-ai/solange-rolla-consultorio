@@ -40,8 +40,14 @@ function isEmpty(value: unknown): boolean {
 }
 
 function validFieldValue(field: FormField, value: unknown): boolean {
-  if (field.type === 'boolean') return typeof value === 'boolean'
-  if (field.type === 'multi_choice') return Array.isArray(value) && value.every((item) => typeof item === 'string')
+  if (field.type === 'boolean' || field.type === 'declaration') return typeof value === 'boolean'
+  if (field.type === 'single_choice') {
+    return typeof value === 'string' && (!field.options || field.options.includes(value))
+  }
+  if (field.type === 'multi_choice') {
+    return Array.isArray(value) && value.every((item) =>
+      typeof item === 'string' && (!field.options || field.options.includes(item)))
+  }
   return typeof value === 'string'
 }
 
@@ -57,7 +63,8 @@ export function validateAnswers(
   }
   for (const field of template.fields) {
     const value = answers[field.key]
-    if (field.required && isEmpty(value)) {
+    const requiresAffirmative = field.type === 'declaration' || field.declaration === true
+    if (field.required && (isEmpty(value) || (requiresAffirmative && value !== true))) {
       errors.push({ field: field.key, code: 'required' })
     } else if (!isEmpty(value) && !validFieldValue(field, value)) {
       errors.push({ field: field.key, code: 'invalid_type' })

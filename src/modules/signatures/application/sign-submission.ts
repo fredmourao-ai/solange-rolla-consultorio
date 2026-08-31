@@ -1,7 +1,7 @@
-import { hashCanonical } from '../domain/hash'
 import { assertPublicActionSubject, type PublicActionContext } from '../../../platform/security/public-action'
+import { hashCanonical } from '../domain/hash'
 
-type SignSubmissionInput = {
+export type SignSubmissionInput = {
   submissionVersionId: string
   declarationVersion: string
   typedName: string
@@ -12,7 +12,8 @@ type SignSubmissionInput = {
   publicActionContext?: PublicActionContext
 }
 
-type Evidence = {
+export type SignatureEvidence = {
+  id: string
   submissionVersionId: string
   declarationVersion: string
   typedName: string
@@ -21,34 +22,72 @@ type Evidence = {
   signedAt: string
 }
 
-type SignatureRepository = {
-  createEvidence(evidence: Evidence): Promise<{ id: string } & Evidence>
-  enqueueDocument(job: { idempotencyKey: string; signatureEvidenceId: string }): Promise<{ id: string } & typeof job>
+export type SignatureDocumentJob = {
+  id: string
+  idempotencyKey: string
+  signatureEvidenceId: string
+}
+
+export type SignSubmissionResult = { evidence: SignatureEvidence; job: SignatureDocumentJob }
+
+export type SignatureRepository = {
+  findByIdempotencyKey(idempotencyKey: string): Promise<SignSubmissionResult | null>
+  signAtomically(input: {
+    evidence: Omit<SignatureEvidence, 'id'>
+    idempotencyKey: string
+  }): Promise<SignSubmissionResult>
+}
+
+function assertIdempotentMatch(
+  existing: SignSubmissionResult,
+  expected: Omit<SignatureEvidence, 'id' | 'signedAt'>,
+  idempotencyKey: string,
+): void {
+  const evidence = existing.evidence
+  if (
+    existing.job.idempotencyKey !== idempotencyKey ||
+    evidence.submissionVersionId !== expected.submissionVersionId ||
+    evidence.declarationVersion !== expected.declarationVersion ||
+    evidence.typedName !== expected.typedName ||
+    evidence.source !== expected.source ||
+    evidence.canonicalHashSha256 !== expected.canonicalHashSha256
+  ) {
+    throw new Error('IDEMPOTENCY_KEY_CONFLICT')
+  }
 }
 
 export async function signSubmission(
   input: SignSubmissionInput,
   repository: SignatureRepository,
-): Promise<{ evidence: { id: string } & Evidence; job: { id: string; idempotencyKey: string; signatureEvidenceId: string } }> {
-  if (!input.typedName.trim()) throw new Error('INVALID_TYPED_NAME')
-  if (input.source === 'patient_capability') assertPublicActionSubject(input.publicActionContext, 'sign_submission', input.submissionVersionId)
+): Promise<SignSubmissionResult> {
+  const typedName = input.typedName.trim()
+  if (!typedName) throw new Error('INVALID_TYPED_NAME')
+  if (input.source === 'patient_capability') {
+    assertPublicActionSubject(input.publicActionContext, 'sign_submission', input.submissionVersionId)
+  }
   if (input.acceptedLegalDocuments.length === 0) throw new Error('LEGAL_ACCEPTANCE_REQUIRED')
+
   const canonicalHashSha256 = hashCanonical({
     declarationVersion: input.declarationVersion,
     answers: input.answers,
     acceptedLegalDocuments: input.acceptedLegalDocuments,
   })
-  const evidence = await repository.createEvidence({
+  const expected = {
     submissionVersionId: input.submissionVersionId,
     declarationVersion: input.declarationVersion,
-    typedName: input.typedName.trim(),
+    typedName,
     source: input.source,
     canonicalHashSha256,
-    signedAt: new Date().toISOString(),
-  })
-  const job = await repository.enqueueDocument({
+  }
+
+  const existing = await repository.findByIdempotencyKey(input.idempotencyKey)
+  if (existing) {
+    assertIdempotentMatch(existing, expected, input.idempotencyKey)
+    return existing
+  }
+
+  return repository.signAtomically({
+    evidence: { ...expected, signedAt: new Date().toISOString() },
     idempotencyKey: input.idempotencyKey,
-    signatureEvidenceId: evidence.id,
   })
-  return { evidence, job }
 }

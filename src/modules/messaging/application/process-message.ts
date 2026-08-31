@@ -5,19 +5,20 @@ export type MessageAttemptRepository = {
   markSent(messageId: string): Promise<void>
   markFailed(messageId: string): Promise<void>
 }
-export type RetryQueue = { requeue(idempotencyKey: string, delaySeconds: number): Promise<void> }
+export type RetryQueue = { requeue(delaySeconds: number): Promise<void> }
 
 export async function processMessage(input: { messageId: string; attemptNumber: number; message: ProviderMessage }, dependencies: { provider: MessagingProvider; attempts: MessageAttemptRepository; retryQueue: RetryQueue }): Promise<'sent' | 'retry' | 'failed'> {
   try {
     const result = await dependencies.provider.send(input.message)
     await dependencies.attempts.appendAttempt({ messageId: input.messageId, attemptNumber: input.attemptNumber, status: result.status })
     if (result.accepted) { await dependencies.attempts.markSent(input.messageId); return 'sent' }
-    await dependencies.attempts.markFailed(input.messageId); return 'failed'
+    await dependencies.attempts.markFailed(input.messageId)
+    return 'failed'
   } catch (error) {
     const transient = error instanceof Error && /429|5\d\d|timeout|abort/i.test(error.message)
     await dependencies.attempts.appendAttempt({ messageId: input.messageId, attemptNumber: input.attemptNumber, status: 'failed', errorCode: error instanceof Error ? error.message : 'UNKNOWN' })
     if (transient && input.attemptNumber < 5) {
-      await dependencies.retryQueue.requeue(input.message.idempotencyKey, 2 ** input.attemptNumber)
+      await dependencies.retryQueue.requeue(2 ** input.attemptNumber)
       return 'retry'
     }
     await dependencies.attempts.markFailed(input.messageId)

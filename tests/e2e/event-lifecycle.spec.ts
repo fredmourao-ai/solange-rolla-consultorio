@@ -1,8 +1,10 @@
 import { expect, test } from '@playwright/test'
 import { uniqueJobKeys } from '../fixtures/synthetic-finance'
 import { syntheticPerson } from '../fixtures/synthetic-people'
+import { signInDemo } from './demo-auth'
 
 test('canonical event lifecycle exposes an operational event surface', async ({ page }) => {
+  await signInDemo(page)
   const participant = syntheticPerson('synthetic-event-participant-1')
   const jobs = uniqueJobKeys(['event:synthetic-event-1:payment', 'event:synthetic-event-1:fiscal', 'event:synthetic-event-1:payment'])
 
