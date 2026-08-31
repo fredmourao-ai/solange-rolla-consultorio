@@ -65,3 +65,15 @@ describe('renderSignedDocument', () => {
     expect(JSON.stringify(repository.markFailed.mock.calls)).not.toContain('SIGNED_DOC_SENSITIVE_SENTINEL')
   })
 })
+
+  it('marks a differing existing artifact as a final conflict', async () => {
+    const repository = {
+      findJob: vi.fn(async () => ({ ...job, artifact: null })), loadSource: vi.fn(async () => source),
+      markReady: vi.fn(), markFailed: vi.fn(async () => undefined),
+    }
+    const storage = { put: vi.fn(async () => { throw new Error('DOCUMENT_STORAGE_CONFLICT') }) }
+    const renderer = vi.fn(async () => new Uint8Array([1, 2, 3]))
+
+    await expect(renderSignedDocument(job.id, { repository, storage, renderer })).rejects.toThrow('DOCUMENT_STORAGE_CONFLICT')
+    expect(repository.markFailed).toHaveBeenCalledWith(job.id, job.evidenceId, 'failed_final', 'DOCUMENT_STORAGE_CONFLICT')
+  })

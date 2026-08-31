@@ -6,3 +6,4 @@ export type { SignedDocumentAccess, SignedDocumentStatus } from './application/g
 export { signPublicSubmission } from './application/public-signature'
 export { createSupabaseSignatureRepository } from './infrastructure/supabase-signature-repository'
 export { createSupabaseSignedDocumentRepository } from './infrastructure/supabase-signed-document-repository'
+export { createSupabaseSignedDocumentStorage } from './infrastructure/supabase-signed-document-storage'

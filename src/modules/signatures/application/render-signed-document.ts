@@ -25,7 +25,6 @@ export type SignedDocumentJob = {
   status: string
   artifact: DocumentArtifact | null
 }
-
 export interface SignedDocumentRepository {
   findJob(jobId: string): Promise<SignedDocumentJob | null>
   loadSource(evidenceId: string): Promise<SignedDocumentSource>
@@ -64,9 +63,13 @@ export async function renderSignedDocument(jobId: string, dependencies: Dependen
 
   try {
     await dependencies.storage.put(artifact.storagePath, bytes, { contentType: artifact.mediaType, upsert: false })
-  } catch {
+  } catch (error) {
+    if (error instanceof Error && error.message === 'DOCUMENT_STORAGE_CONFLICT') {
+      await dependencies.repository.markFailed(job.id, job.evidenceId, 'failed_final', 'DOCUMENT_STORAGE_CONFLICT')
+      throw error
+    }
     await dependencies.repository.markFailed(job.id, job.evidenceId, 'failed_retryable', 'DOCUMENT_STORAGE_FAILED')
-    throw new Error('DOCUMENT_STORAGE_FAILED')
+    throw new Error('DOCUMENT_STORAGE_FAILED', { cause: error })
   }
 
   await dependencies.repository.markReady(job.id, job.evidenceId, artifact)
