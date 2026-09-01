@@ -66,44 +66,134 @@ function runnerJobs(content: string): Array<{ name: string; block: string; condi
   return jobs
 }
 
+function yamlIndent(line: string): number {
+  return line.length - line.trimStart().length
+}
+
 function hasPullRequestTrigger(content: string): boolean {
   const lines = content.split(/\r?\n/u)
   const onIndex = lines.findIndex((line) => /^(?:on|"on"|'on'):\s*/u.test(line))
   if (onIndex === -1) return false
 
-  const inline = lines[onIndex]?.replace(/^(?:on|"on"|'on'):\s*/u, '') ?? ''
-  if (inline.trim()) {
-    return /(?:^|[\s,\[{])["']?pull_request["']?(?=\s*(?::|[,}\]]|$))/u.test(inline)
+  const inline = lines[onIndex]?.replace(/^(?:on|"on"|'on'):\s*/u, '').trim() ?? ''
+  const childLines: string[] = []
+  for (const line of lines.slice(onIndex + 1)) {
+    const trimmed = line.trim()
+    if (!trimmed || trimmed.startsWith('#')) continue
+    if (yamlIndent(line) === 0) {
+      if (inline.startsWith('{') && trimmed === '}') childLines.push(line)
+      break
+    }
+    childLines.push(line)
   }
 
-  for (const line of lines.slice(onIndex + 1)) {
-    if (/^\S/u.test(line) && line.trim() !== '' && !line.startsWith('#')) break
-    if (/^\s{2}(?:-\s*)?["']?pull_request["']?(?:\s*:|\s*$)/u.test(line)) return true
+  const triggerToken = /(?:^|[\s,\[{])["']?pull_request["']?(?=\s*(?::|[,}\]]|$))/u
+  if (inline) {
+    return triggerToken.test([inline, ...childLines.map((line) => line.trim())].join(' '))
   }
-  return false
+
+  const candidates = childLines.filter((line) => line.trim() && !line.trim().startsWith('#'))
+  if (candidates.length === 0) return false
+  const minimumIndent = Math.min(...candidates.map(yamlIndent))
+  return candidates
+    .filter((line) => yamlIndent(line) === minimumIndent)
+    .some((line) => /^(?:-\s*)?["']?pull_request["']?(?:\s*:|\s*$)/u.test(line.trim()))
+}
+
+function splitTopLevel(expression: string, operator: '&&' | '||'): string[] {
+  const parts: string[] = []
+  let start = 0
+  let depth = 0
+  let quote = ''
+
+  for (let index = 0; index < expression.length; index += 1) {
+    const char = expression[index]
+    if (quote) {
+      if (char === '\\') {
+        index += 1
+        continue
+      }
+      if (char === quote) quote = ''
+      continue
+    }
+    if (char === "'" || char === '"') {
+      quote = char
+      continue
+    }
+    if (char === '(') {
+      depth += 1
+      continue
+    }
+    if (char === ')') {
+      depth -= 1
+      continue
+    }
+    if (depth === 0 && expression.startsWith(operator, index)) {
+      parts.push(expression.slice(start, index).trim())
+      index += operator.length - 1
+      start = index + 1
+    }
+  }
+  parts.push(expression.slice(start).trim())
+  return parts
+}
+
+function stripOuterParens(expression: string): string {
+  let current = expression.trim()
+  for (;;) {
+    if (!current.startsWith('(') || !current.endsWith(')')) return current
+
+    let depth = 0
+    let quote = ''
+    let enclosesWholeExpression = true
+    for (let index = 0; index < current.length; index += 1) {
+      const char = current[index]
+      if (quote) {
+        if (char === '\\') {
+          index += 1
+          continue
+        }
+        if (char === quote) quote = ''
+        continue
+      }
+      if (char === "'" || char === '"') {
+        quote = char
+        continue
+      }
+      if (char === '(') depth += 1
+      if (char === ')') {
+        depth -= 1
+        if (depth === 0 && index !== current.length - 1) {
+          enclosesWholeExpression = false
+          break
+        }
+      }
+    }
+
+    if (!enclosesWholeExpression || depth !== 0) return current
+    current = current.slice(1, -1).trim()
+  }
+}
+
+function branchRequiresPositiveSameRepoGuard(expression: string): boolean {
+  const normalized = stripOuterParens(expression)
+  return splitTopLevel(normalized, '&&').some(
+    (conjunct) => stripOuterParens(conjunct) === sameRepoGuard,
+  )
 }
 
 function conditionRequiresSameRepoOnPullRequest(condition: string): boolean {
-  let normalized = condition
+  const normalized = condition
     .replace(/^\$\{\{\s*/u, '')
     .replace(/\s*\}\}$/u, '')
     .replace(/\s+/gu, ' ')
     .trim()
 
-  while (normalized.startsWith('(') && normalized.endsWith(')')) {
-    normalized = normalized.slice(1, -1).trim()
-  }
-  const escapedGuard = sameRepoGuard.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')
-  const positiveGuard = new RegExp(`(?:^|&&)\\s*\\(?\\s*${escapedGuard}\\s*\\)?\\s*(?=&&|$)`, 'u')
-
-  const firstOr = normalized.indexOf('||')
-  if (firstOr === -1) return positiveGuard.test(normalized)
-
-  const nonPullRequestBranch = normalized.slice(0, firstOr).trim()
-  const pullRequestBranch = normalized.slice(firstOr + 2).trim()
-  if (nonPullRequestBranch !== "github.event_name != 'pull_request'") return false
-  if (pullRequestBranch.includes('||')) return false
-  return positiveGuard.test(pullRequestBranch)
+  const branches = splitTopLevel(stripOuterParens(normalized), '||')
+  if (branches.length === 1) return branchRequiresPositiveSameRepoGuard(branches[0] ?? '')
+  if (branches.length !== 2) return false
+  if (stripOuterParens(branches[0] ?? '') !== "github.event_name != 'pull_request'") return false
+  return branchRequiresPositiveSameRepoGuard(branches[1] ?? '')
 }
 
 describe('GitHub Actions runner policy', () => {
@@ -144,12 +234,28 @@ describe('GitHub Actions runner policy', () => {
     expect(conditionRequiresSameRepoOnPullRequest(`!(${sameRepoGuard})`)).toBe(false)
     expect(conditionRequiresSameRepoOnPullRequest(`(${sameRepoGuard}) == false`)).toBe(false)
   })
+
+  it('rejects false comparisons around compound guarded groups', () => {
+    expect(
+      conditionRequiresSameRepoOnPullRequest(
+        `github.event_name != 'pull_request' || (${sameRepoGuard} && true) == false`,
+      ),
+    ).toBe(false)
+  })
+
   it('recognizes inline and quoted pull-request trigger syntax', () => {
     expect(hasPullRequestTrigger('on: [push, pull_request]\n')).toBe(true)
     expect(hasPullRequestTrigger('"on":\n  "pull_request":\n')).toBe(true)
     expect(hasPullRequestTrigger("'on':\n  - 'pull_request'\n")).toBe(true)
     expect(hasPullRequestTrigger('on: {pull_request: {}, push: {}}\n')).toBe(true)
   })
+
+  it('recognizes multiline flow maps and arbitrary child indentation', () => {
+    expect(hasPullRequestTrigger('on: {\n  pull_request: {},\n  push: {}\n}\n')).toBe(true)
+    expect(hasPullRequestTrigger('on:\n    pull_request:\n')).toBe(true)
+    expect(hasPullRequestTrigger('on:\n  push:\n    branches:\n      - pull_request\n')).toBe(false)
+  })
+
   it('accepts a folded job-level runner guard', () => {
     const workflow = [
       'jobs:',
