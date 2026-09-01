@@ -349,6 +349,32 @@ describe('GitHub Actions runner policy', () => {
     expect(hasPullRequestTrigger('on:\n  push:\n    branches:\n      - pull_request\n')).toBe(false)
   })
 
+  it('recognizes pull-request triggers after multiline quoted flow values', () => {
+    const workflow = [
+      'on: {',
+      'push: {branches: ["main\\',
+      '}"]},',
+      'pull_request: {}',
+      '}',
+    ].join('\n')
+
+    expect(hasPullRequestTrigger(workflow)).toBe(true)
+  })
+
+  it('decodes escaped YAML trigger keys', () => {
+    expect(hasPullRequestTrigger('on:\n  "pull\\u005frequest": {}\n')).toBe(true)
+  })
+
+  it('resolves YAML aliases used as trigger names', () => {
+    const workflow = ['concurrency:', '  group: &pr-event pull_request', 'on: [*pr-event]'].join('\n')
+
+    expect(hasPullRequestTrigger(workflow)).toBe(true)
+  })
+
+  it('guards pull_request_target workflows as fork-controlled PR events', () => {
+    expect(hasPullRequestTrigger('on: pull_request_target\n')).toBe(true)
+  })
+
   it('accepts a folded job-level runner guard', () => {
     const workflow = [
       'jobs:',
