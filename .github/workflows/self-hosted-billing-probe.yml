@@ -1,0 +1,21 @@
+name: Self-hosted billing probe
+
+on:
+  push:
+    branches:
+      - ops/self-hosted-actions-probe-20260831
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: [self-hosted, Linux, ARM64, solange-ci]
+    timeout-minutes: 5
+    steps:
+      - name: Runner identity
+        run: |
+          echo "SELF_HOSTED_PROBE=START"
+          uname -a
+          node --version
+          echo "SELF_HOSTED_PROBE=PASS"
