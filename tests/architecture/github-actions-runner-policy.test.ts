@@ -66,6 +66,46 @@ function runnerJobs(content: string): Array<{ name: string; block: string; condi
   return jobs
 }
 
+function hasPullRequestTrigger(content: string): boolean {
+  const lines = content.split(/\r?\n/u)
+  const onIndex = lines.findIndex((line) => /^(?:on|"on"|'on'):\s*/u.test(line))
+  if (onIndex === -1) return false
+
+  const inline = lines[onIndex]?.replace(/^(?:on|"on"|'on'):\s*/u, '') ?? ''
+  if (inline.trim()) {
+    return /(?:^|[\s,\[])["']?pull_request["']?(?=[\s,\]]|$)/u.test(inline)
+  }
+
+  for (const line of lines.slice(onIndex + 1)) {
+    if (/^\S/u.test(line) && line.trim() !== '' && !line.startsWith('#')) break
+    if (/^\s{2}(?:-\s*)?["']?pull_request["']?(?:\s*:|\s*$)/u.test(line)) return true
+  }
+  return false
+}
+
+function conditionRequiresSameRepoOnPullRequest(condition: string): boolean {
+  let normalized = condition
+    .replace(/^\$\{\{\s*/u, '')
+    .replace(/\s*\}\}$/u, '')
+    .replace(/\s+/gu, ' ')
+    .trim()
+
+  while (normalized.startsWith('(') && normalized.endsWith(')')) {
+    normalized = normalized.slice(1, -1).trim()
+  }
+  const escapedGuard = sameRepoGuard.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')
+  const positiveGuard = new RegExp(`(?:^|&&|\\()\\s*${escapedGuard}\\s*(?=&&|\\)|$)`, 'u')
+
+  const firstOr = normalized.indexOf('||')
+  if (firstOr === -1) return positiveGuard.test(normalized)
+
+  const nonPullRequestBranch = normalized.slice(0, firstOr).trim()
+  const pullRequestBranch = normalized.slice(firstOr + 2).trim()
+  if (nonPullRequestBranch !== "github.event_name != 'pull_request'") return false
+  if (pullRequestBranch.includes('||')) return false
+  return positiveGuard.test(pullRequestBranch)
+}
+
 describe('GitHub Actions runner policy', () => {
   it('routes every workflow job through the Solange self-hosted runner', () => {
     for (const workflow of workflows()) {
@@ -78,14 +118,35 @@ describe('GitHub Actions runner policy', () => {
 
   it('guards every pull-request runner job at job level', () => {
     for (const workflow of workflows()) {
-      if (!/^\s*pull_request:/mu.test(workflow.content)) continue
+      if (!hasPullRequestTrigger(workflow.content)) continue
 
       for (const job of runnerJobs(workflow.content)) {
-        expect(job.condition, `${workflow.name}:${job.name}`).toContain(sameRepoGuard)
+        expect(conditionRequiresSameRepoOnPullRequest(job.condition), `${workflow.name}:${job.name}`).toBe(true)
       }
     }
   })
 
+  it('rejects a same-repository guard that can be bypassed by an OR branch', () => {
+    const workflow = [
+      'jobs:',
+      '  exposed:',
+      '    if: ${{ ' + sameRepoGuard + " || github.event_name == 'pull_request' }}",
+      `    ${runnerLine}`,
+    ].join('\n')
+    const [job] = runnerJobs(workflow)
+
+    expect(conditionRequiresSameRepoOnPullRequest(job?.condition ?? '')).toBe(false)
+  })
+
+  it('rejects negated or comparison forms of the same-repository predicate', () => {
+    expect(conditionRequiresSameRepoOnPullRequest(`!${sameRepoGuard}`)).toBe(false)
+    expect(conditionRequiresSameRepoOnPullRequest(`${sameRepoGuard} == false`)).toBe(false)
+  })
+  it('recognizes inline and quoted pull-request trigger syntax', () => {
+    expect(hasPullRequestTrigger('on: [push, pull_request]\n')).toBe(true)
+    expect(hasPullRequestTrigger('"on":\n  "pull_request":\n')).toBe(true)
+    expect(hasPullRequestTrigger("'on':\n  - 'pull_request'\n")).toBe(true)
+  })
   it('accepts a folded job-level runner guard', () => {
     const workflow = [
       'jobs:',
