@@ -99,31 +99,68 @@ function stripYamlComment(value: string): string {
   return value
 }
 
+function flowCollectionDepth(value: string): number {
+  let depth = 0
+  let quote = ''
+  for (let index = 0; index < value.length; index += 1) {
+    const char = value[index]
+    if (quote === "'") {
+      if (char === "'" && value[index + 1] === "'") {
+        index += 1
+        continue
+      }
+      if (char === "'") quote = ''
+      continue
+    }
+    if (quote === '"') {
+      if (char === '\\') {
+        index += 1
+        continue
+      }
+      if (char === '"') quote = ''
+      continue
+    }
+    if (char === "'" || char === '"') {
+      quote = char
+      continue
+    }
+    if (char === '{' || char === '[') depth += 1
+    if (char === '}' || char === ']') depth -= 1
+  }
+  return depth
+}
+
 function hasPullRequestTrigger(content: string): boolean {
   const lines = content.split(/\r?\n/u)
-  const onIndex = lines.findIndex((line) => /^(?:on|"on"|'on'):\s*/u.test(line))
+  const onIndex = lines.findIndex((line) => /^(?:on|"on"|'on')\s*:\s*/u.test(line))
   if (onIndex === -1) return false
 
   const inline = stripYamlComment(
-    lines[onIndex]?.replace(/^(?:on|"on"|'on'):\s*/u, '') ?? '',
+    lines[onIndex]?.replace(/^(?:on|"on"|'on')\s*:\s*/u, '') ?? '',
   ).trim()
+  const triggerToken = /(?:^|[\s,\[{])["']?pull_request["']?(?=\s*(?::|[,}\]]|$))/u
+
+  if (inline.startsWith('{') || inline.startsWith('[')) {
+    const flowLines = [inline]
+    let depth = flowCollectionDepth(inline)
+    for (const line of lines.slice(onIndex + 1)) {
+      if (depth <= 0) break
+      const stripped = stripYamlComment(line.trim()).trim()
+      if (!stripped) continue
+      flowLines.push(stripped)
+      depth += flowCollectionDepth(stripped)
+    }
+    return triggerToken.test(flowLines.join(' '))
+  }
+
+  if (inline) return triggerToken.test(inline)
+
   const childLines: string[] = []
   for (const line of lines.slice(onIndex + 1)) {
     const trimmed = line.trim()
     if (!trimmed || trimmed.startsWith('#')) continue
-    if (yamlIndent(line) === 0) {
-      if (inline.startsWith('{') && stripYamlComment(trimmed).trim() === '}') childLines.push(line)
-      break
-    }
+    if (yamlIndent(line) === 0) break
     childLines.push(line)
-  }
-
-  const triggerToken = /(?:^|[\s,\[{])["']?pull_request["']?(?=\s*(?::|[,}\]]|$))/u
-  if (inline) {
-    const flowValue = [inline, ...childLines.map((line) => stripYamlComment(line.trim()).trim())]
-      .filter(Boolean)
-      .join(' ')
-    return triggerToken.test(flowValue)
   }
 
   const candidates = childLines.filter((line) => {
@@ -300,9 +337,15 @@ describe('GitHub Actions runner policy', () => {
     expect(hasPullRequestTrigger('on:\n  - pull_request # PR checks\n')).toBe(true)
   })
 
-  it('recognizes multiline flow maps and arbitrary child indentation', () => {
+  it('recognizes multiline flow collections regardless of entry indentation', () => {
     expect(hasPullRequestTrigger('on: {\n  pull_request: {},\n  push: {}\n}\n')).toBe(true)
+    expect(hasPullRequestTrigger('on: {\npull_request: {},\npush: {}\n}\n')).toBe(true)
+    expect(hasPullRequestTrigger('on: [\npull_request,\npush\n]\n')).toBe(true)
+  })
+
+  it('recognizes block triggers with arbitrary indentation and key separation', () => {
     expect(hasPullRequestTrigger('on:\n    pull_request:\n')).toBe(true)
+    expect(hasPullRequestTrigger('on :\n  pull_request:\n')).toBe(true)
     expect(hasPullRequestTrigger('on:\n  push:\n    branches:\n      - pull_request\n')).toBe(false)
   })
 
