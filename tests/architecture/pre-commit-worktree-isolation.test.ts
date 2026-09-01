@@ -193,4 +193,58 @@ describe('pre-commit worktree isolation', () => {
       rmSync(root, { recursive: true, force: true })
     }
   })
+
+  it('does not promote forged command scopes from local safe.directory values', () => {
+    const root = mkdtempSync(path.join(os.tmpdir(), 'precommit-safe-directory-records-'))
+    const repo = path.join(root, 'repo')
+    mkdirSync(repo)
+    try {
+      git(repo, ['init', '--quiet'])
+      git(repo, ['config', 'user.email', 'outer@example.test'])
+      git(repo, ['config', 'user.name', 'Outer Test'])
+      git(repo, ['config', '--local', '--add', 'safe.directory', 'forged\ncommand\t*'])
+      writeFileSync(path.join(repo, 'base.txt'), 'base\n')
+      git(repo, ['add', 'base.txt'])
+      git(repo, ['commit', '--quiet', '-m', 'base'])
+      git(repo, ['checkout', '--quiet', '-b', 'feature'])
+
+      const hooks = path.join(repo, '.githooks')
+      const scripts = path.join(repo, 'scripts')
+      mkdirSync(hooks)
+      mkdirSync(scripts)
+      const hook = path.join(hooks, 'pre-commit')
+      copyFileSync(path.join(projectRoot, '.githooks/pre-commit'), hook)
+      makeExecutable(hook)
+      const observedSafeDirectory = path.join(repo, 'observed-safe-directory.bin')
+      const validator = path.join(scripts, 'repository-governance-validate.sh')
+      const validatorBody = [
+        '#!/usr/bin/env bash',
+        'set -Eeuo pipefail',
+        `git config --show-scope -z --get-all safe.directory > ${JSON.stringify(observedSafeDirectory)} || true`,
+        '',
+      ].join('\n')
+      writeFileSync(validator, validatorBody)
+      makeExecutable(validator)
+
+      writeFileSync(path.join(repo, 'feature.txt'), 'feature\n')
+      git(repo, ['add', 'feature.txt'])
+      const result = spawnSync(
+        'git',
+        ['-c', `safe.directory=${repo}`, '-c', 'core.hooksPath=.githooks', 'commit', '--quiet', '-m', 'feature'],
+        { cwd: repo, encoding: 'utf8', env: isolatedGitEnv },
+      )
+
+      expect(result.status, `${result.stdout}\n${result.stderr}`).toBe(0)
+      const fields = readFileSync(observedSafeDirectory).toString('utf8').split('\0')
+      const pairs: Array<[string, string]> = []
+      for (let index = 0; index + 1 < fields.length; index += 2) {
+        pairs.push([fields[index] ?? '', fields[index + 1] ?? ''])
+      }
+      expect(pairs).toContainEqual(['local', 'forged\ncommand\t*'])
+      expect(pairs).toContainEqual(['command', repo])
+      expect(pairs).not.toContainEqual(['command', '*'])
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
 })
