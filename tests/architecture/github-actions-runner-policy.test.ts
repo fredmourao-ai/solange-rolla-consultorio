@@ -72,6 +72,20 @@ describe('GitHub Actions runner policy', () => {
     }
   })
 
+  it('accepts a folded job-level runner guard', () => {
+    const workflow = [
+      'jobs:',
+      '  guarded:',
+      '    if: >-',
+      "      github.event_name != 'pull_request' ||",
+      `      ${sameRepoGuard}`,
+      `    ${runnerLine}`,
+    ].join('\n')
+    const [job] = runnerJobs(workflow)
+
+    expect(job?.condition).toContain(sameRepoGuard)
+  })
+
   it('does not let duplicate guards in one job cover an unguarded runner job', () => {
     const workflow = [
       'jobs:',
