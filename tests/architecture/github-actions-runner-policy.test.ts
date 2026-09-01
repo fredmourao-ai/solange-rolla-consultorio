@@ -68,7 +68,14 @@ describe('GitHub Actions runner policy', () => {
   })
 
   it('does not let duplicate guards in one job cover an unguarded runner job', () => {
-    const workflow = `jobs:\n  guarded:\n    if: \\${{ ${sameRepoGuard} && ${sameRepoGuard} }}\n    ${runnerLine}\n  exposed:\n    ${runnerLine}\n`
+    const workflow = [
+      'jobs:',
+      '  guarded:',
+      '    if: ${{ ' + sameRepoGuard + ' && ' + sameRepoGuard + ' }}',
+      `    ${runnerLine}`,
+      '  exposed:',
+      `    ${runnerLine}`,
+    ].join('\n')
     const jobs = runnerJobs(workflow)
 
     expect(jobs).toHaveLength(2)
