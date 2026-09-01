@@ -16,6 +16,21 @@ function workflows(): Array<{ name: string; content: string }> {
     }))
 }
 
+function jobLevelCondition(lines: string[]): string {
+  const ifIndex = lines.findIndex((line) => /^    if:\s*/u.test(line))
+  if (ifIndex === -1) return ''
+
+  const inline = lines[ifIndex]?.replace(/^    if:\s*/u, '') ?? ''
+  if (!/^[>|][+-]?\s*$/u.test(inline)) return inline
+
+  const continuations: string[] = []
+  for (const line of lines.slice(ifIndex + 1)) {
+    if (/^    \S/u.test(line)) break
+    if (/^\s{6,}\S/u.test(line)) continuations.push(line.trim())
+  }
+  return continuations.join(' ')
+}
+
 function runnerJobs(content: string): Array<{ name: string; block: string; condition: string }> {
   const lines = content.split(/\r?\n/u)
   const jobsStart = lines.findIndex((line) => /^jobs:\s*$/u.test(line))
@@ -27,11 +42,10 @@ function runnerJobs(content: string): Array<{ name: string; block: string; condi
 
   function flush() {
     if (currentName && currentLines.some((line) => line.trim() === runnerLine)) {
-      const conditionLine = currentLines.find((line) => /^    if:\s*/u.test(line))
       jobs.push({
         name: currentName,
         block: currentLines.join('\n'),
-        condition: conditionLine?.replace(/^    if:\s*/u, '') ?? '',
+        condition: jobLevelCondition(currentLines),
       })
     }
   }
