@@ -5,10 +5,10 @@ case "$branch" in main|master) echo 'BLOCKED: commits directly on protected bran
 root="$(git rev-parse --show-toplevel)"
 staged_index="$(git rev-parse --path-format=absolute --git-path index)"
 safe_directories=()
-while IFS=$'\t' read -r scope value; do
+while IFS= read -r -d '' scope && IFS= read -r -d '' value; do
   [ "$scope" = command ] || continue
   safe_directories[${#safe_directories[@]}]="$value"
-done < <(git config --show-scope --get-all safe.directory || true)
+done < <(git config --show-scope -z --get-all safe.directory || true)
 local_git_env="$(git rev-parse --local-env-vars)"
 for variable in $local_git_env; do
   unset "$variable"
