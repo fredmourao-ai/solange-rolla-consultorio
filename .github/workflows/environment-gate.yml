@@ -18,7 +18,7 @@ permissions:
 jobs:
   pre-deploy:
     name: Validate ${{ inputs.target }} isolation
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, ARM64, solange-ci]
     environment: ${{ inputs.target }}
     timeout-minutes: 10
     steps:
