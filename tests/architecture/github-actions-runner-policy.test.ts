@@ -16,18 +16,23 @@ function workflows(): Array<{ name: string; content: string }> {
     }))
 }
 
-function runnerJobs(content: string): Array<{ name: string; block: string }> {
+function runnerJobs(content: string): Array<{ name: string; block: string; condition: string }> {
   const lines = content.split(/\r?\n/u)
   const jobsStart = lines.findIndex((line) => /^jobs:\s*$/u.test(line))
   if (jobsStart === -1) return []
 
-  const jobs: Array<{ name: string; block: string }> = []
+  const jobs: Array<{ name: string; block: string; condition: string }> = []
   let currentName: string | undefined
   let currentLines: string[] = []
 
   function flush() {
     if (currentName && currentLines.some((line) => line.trim() === runnerLine)) {
-      jobs.push({ name: currentName, block: currentLines.join('\n') })
+      const conditionLine = currentLines.find((line) => /^    if:\s*/u.test(line))
+      jobs.push({
+        name: currentName,
+        block: currentLines.join('\n'),
+        condition: conditionLine?.replace(/^    if:\s*/u, '') ?? '',
+      })
     }
   }
 
@@ -57,12 +62,12 @@ describe('GitHub Actions runner policy', () => {
     }
   })
 
-  it('guards every pull-request runner job individually', () => {
+  it('guards every pull-request runner job at job level', () => {
     for (const workflow of workflows()) {
       if (!/^\s*pull_request:/mu.test(workflow.content)) continue
 
       for (const job of runnerJobs(workflow.content)) {
-        expect(job.block, `${workflow.name}:${job.name}`).toContain(sameRepoGuard)
+        expect(job.condition, `${workflow.name}:${job.name}`).toContain(sameRepoGuard)
       }
     }
   })
@@ -79,7 +84,22 @@ describe('GitHub Actions runner policy', () => {
     const jobs = runnerJobs(workflow)
 
     expect(jobs).toHaveLength(2)
-    expect(jobs[0]?.block).toContain(sameRepoGuard)
-    expect(jobs[1]?.block).not.toContain(sameRepoGuard)
+    expect(jobs[0]?.condition).toContain(sameRepoGuard)
+    expect(jobs[1]?.condition).not.toContain(sameRepoGuard)
+  })
+
+  it('does not accept a step-level guard as a job-level runner guard', () => {
+    const workflow = [
+      'jobs:',
+      '  exposed:',
+      `    ${runnerLine}`,
+      '    steps:',
+      '      - if: ${{ ' + sameRepoGuard + ' }}',
+      '        run: echo guarded-step',
+    ].join('\n')
+    const [job] = runnerJobs(workflow)
+
+    expect(job?.block).toContain(sameRepoGuard)
+    expect(job?.condition).not.toContain(sameRepoGuard)
   })
 })
