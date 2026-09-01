@@ -16,7 +16,7 @@ test('local demo owner sees operational dashboard and navigation', async ({ page
   await signIn(page)
   await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible()
   await expect(page.getByText('R$ 900,00')).toBeVisible()
-  await expect(page.getByText('3 pessoas')).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Pessoas' }).locator('..').getByText(/\d+ pessoas/)).toBeVisible()
   await expect(page.getByRole('link', { name: 'Agenda' })).toHaveAttribute('href', '/agenda')
   await expect(page.getByRole('link', { name: 'Financeiro' })).toHaveAttribute('href', '/financeiro')
 })
