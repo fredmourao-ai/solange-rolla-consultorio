@@ -1,9 +1,11 @@
 import { execFileSync } from 'node:child_process'
+import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 const previewScript = path.join(process.cwd(), 'scripts/preview-env.mjs')
 const stagingScript = path.join(process.cwd(), 'scripts/staging-lock.mjs')
+const stagingWorkflow = path.join(process.cwd(), '.github/workflows/staging-promote.yml')
 const base = {
   SUPABASE_BRANCHING_ENABLED: 'true',
   APP_ENV: 'preview',
@@ -25,6 +27,11 @@ function run(script: string, environment: Record<string, string>) {
 }
 
 describe('environment workflow contracts', () => {
+  it('keeps automatic staging promotion explicitly opt-in', () => {
+    const workflow = readFileSync(stagingWorkflow, 'utf8')
+    expect(workflow).toContain("vars.STAGING_AUTO_PROMOTE_ENABLED == 'true'")
+  })
+
   it('emits a preview association only for a dedicated branch', () => {
     expect(run(previewScript, base)).toContain('"supabasePreviewRef":"preview-ref"')
   })
