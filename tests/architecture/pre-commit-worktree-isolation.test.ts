@@ -29,6 +29,44 @@ describe('pre-commit worktree isolation', () => {
     const hook = readFileSync(path.join(projectRoot, '.githooks/pre-commit'), 'utf8')
     expect(hook).not.toMatch(/\bmapfile\b/u)
   })
+  it('invokes the governance validator through Bash when the script is not executable', () => {
+    const root = mkdtempSync(path.join(os.tmpdir(), 'precommit-nonexec-validator-'))
+    const repo = path.join(root, 'repo')
+    mkdirSync(repo)
+    try {
+      git(repo, ['init', '--quiet'])
+      git(repo, ['config', 'user.email', 'outer@example.test'])
+      git(repo, ['config', 'user.name', 'Outer Test'])
+      writeFileSync(path.join(repo, 'base.txt'), 'base\n')
+      git(repo, ['add', 'base.txt'])
+      git(repo, ['commit', '--quiet', '-m', 'base'])
+      git(repo, ['checkout', '--quiet', '-b', 'feature'])
+
+      const hooks = path.join(repo, '.githooks')
+      const scripts = path.join(repo, 'scripts')
+      mkdirSync(hooks)
+      mkdirSync(scripts)
+      const hook = path.join(hooks, 'pre-commit')
+      copyFileSync(path.join(projectRoot, '.githooks/pre-commit'), hook)
+      makeExecutable(hook)
+      const validator = path.join(scripts, 'repository-governance-validate.sh')
+      writeFileSync(validator, '#!/usr/bin/env bash\nset -Eeuo pipefail\nexit 0\n')
+      chmodSync(validator, 0o644)
+
+      writeFileSync(path.join(repo, 'feature.txt'), 'feature\n')
+      git(repo, ['add', 'feature.txt'])
+      const result = spawnSync(
+        'git',
+        ['-c', 'core.hooksPath=.githooks', 'commit', '--quiet', '-m', 'feature'],
+        { cwd: repo, encoding: 'utf8', env: isolatedGitEnv },
+      )
+
+      expect(result.status, `${result.stdout}\n${result.stderr}`).toBe(0)
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
   it('does not leak the parent worktree Git context into nested repositories', () => {
     const root = mkdtempSync(path.join(os.tmpdir(), 'precommit-worktree-'))
     const repo = path.join(root, 'repo')

@@ -21,4 +21,4 @@ if ((${#safe_directories[@]} > 0)); then
   done
 fi
 cd "$root"
-SOLANGE_GIT_INDEX_FILE="$staged_index" "$root/scripts/repository-governance-validate.sh" pre-commit
+SOLANGE_GIT_INDEX_FILE="$staged_index" bash "$root/scripts/repository-governance-validate.sh" pre-commit

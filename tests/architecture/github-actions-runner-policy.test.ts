@@ -197,6 +197,14 @@ function conditionRequiresSameRepoOnPullRequest(condition: string): boolean {
 }
 
 describe('GitHub Actions runner policy', () => {
+  it('declares the YAML parser used by this mandatory gate as a direct dev dependency', () => {
+    const packageJson = JSON.parse(
+      readFileSync(fileURLToPath(new URL('../../package.json', import.meta.url)), 'utf8'),
+    ) as { devDependencies?: Record<string, string> }
+
+    expect(packageJson.devDependencies?.['js-yaml']).toBeDefined()
+  })
+
   it('routes every workflow job through the Solange self-hosted runner', () => {
     for (const workflow of workflows()) {
       const runsOnLines = workflow.content.match(/^\s*runs-on:.*$/gmu) ?? []
