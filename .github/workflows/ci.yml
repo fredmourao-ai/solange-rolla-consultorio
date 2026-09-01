@@ -131,4 +131,6 @@ jobs:
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium
       - name: End-to-end tests
+        env:
+          DB_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
         run: npm run test:e2e
