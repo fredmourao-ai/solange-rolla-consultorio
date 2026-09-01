@@ -29,7 +29,6 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          if command -v gh >/dev/null 2>&1; then exit 0; fi
           archive="$RUNNER_TEMP/gh_${GH_VERSION}_linux_arm64.tar.gz"
           curl -fsSL --retry 3 "https://github.com/cli/cli/releases/download/v${GH_VERSION}/gh_${GH_VERSION}_linux_arm64.tar.gz" -o "$archive"
           printf '%s  %s\n' "$GH_SHA256" "$archive" | sha256sum -c -
