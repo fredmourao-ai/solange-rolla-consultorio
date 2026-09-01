@@ -70,18 +70,49 @@ function yamlIndent(line: string): number {
   return line.length - line.trimStart().length
 }
 
+function stripYamlComment(value: string): string {
+  let quote = ''
+  for (let index = 0; index < value.length; index += 1) {
+    const char = value[index]
+    if (quote === "'") {
+      if (char === "'" && value[index + 1] === "'") {
+        index += 1
+        continue
+      }
+      if (char === "'") quote = ''
+      continue
+    }
+    if (quote === '"') {
+      if (char === '\\') {
+        index += 1
+        continue
+      }
+      if (char === '"') quote = ''
+      continue
+    }
+    if (char === "'" || char === '"') {
+      quote = char
+      continue
+    }
+    if (char === '#') return value.slice(0, index).trimEnd()
+  }
+  return value
+}
+
 function hasPullRequestTrigger(content: string): boolean {
   const lines = content.split(/\r?\n/u)
   const onIndex = lines.findIndex((line) => /^(?:on|"on"|'on'):\s*/u.test(line))
   if (onIndex === -1) return false
 
-  const inline = lines[onIndex]?.replace(/^(?:on|"on"|'on'):\s*/u, '').trim() ?? ''
+  const inline = stripYamlComment(
+    lines[onIndex]?.replace(/^(?:on|"on"|'on'):\s*/u, '') ?? '',
+  ).trim()
   const childLines: string[] = []
   for (const line of lines.slice(onIndex + 1)) {
     const trimmed = line.trim()
     if (!trimmed || trimmed.startsWith('#')) continue
     if (yamlIndent(line) === 0) {
-      if (inline.startsWith('{') && trimmed === '}') childLines.push(line)
+      if (inline.startsWith('{') && stripYamlComment(trimmed).trim() === '}') childLines.push(line)
       break
     }
     childLines.push(line)
@@ -89,35 +120,45 @@ function hasPullRequestTrigger(content: string): boolean {
 
   const triggerToken = /(?:^|[\s,\[{])["']?pull_request["']?(?=\s*(?::|[,}\]]|$))/u
   if (inline) {
-    return triggerToken.test([inline, ...childLines.map((line) => line.trim())].join(' '))
+    const flowValue = [inline, ...childLines.map((line) => stripYamlComment(line.trim()).trim())]
+      .filter(Boolean)
+      .join(' ')
+    return triggerToken.test(flowValue)
   }
 
-  const candidates = childLines.filter((line) => line.trim() && !line.trim().startsWith('#'))
+  const candidates = childLines.filter((line) => {
+    const stripped = stripYamlComment(line.trim()).trim()
+    return stripped && !stripped.startsWith('#')
+  })
   if (candidates.length === 0) return false
   const minimumIndent = Math.min(...candidates.map(yamlIndent))
   return candidates
     .filter((line) => yamlIndent(line) === minimumIndent)
-    .some((line) => /^(?:-\s*)?["']?pull_request["']?(?:\s*:|\s*$)/u.test(line.trim()))
+    .some((line) =>
+      /^(?:-\s*)?["']?pull_request["']?(?:\s*:|\s*$)/u.test(
+        stripYamlComment(line.trim()).trim(),
+      ),
+    )
 }
 
 function splitTopLevel(expression: string, operator: '&&' | '||'): string[] {
   const parts: string[] = []
   let start = 0
   let depth = 0
-  let quote = ''
+  let inString = false
 
   for (let index = 0; index < expression.length; index += 1) {
     const char = expression[index]
-    if (quote) {
-      if (char === '\\') {
+    if (inString) {
+      if (char === "'" && expression[index + 1] === "'") {
         index += 1
         continue
       }
-      if (char === quote) quote = ''
+      if (char === "'") inString = false
       continue
     }
-    if (char === "'" || char === '"') {
-      quote = char
+    if (char === "'") {
+      inString = true
       continue
     }
     if (char === '(') {
@@ -144,20 +185,20 @@ function stripOuterParens(expression: string): string {
     if (!current.startsWith('(') || !current.endsWith(')')) return current
 
     let depth = 0
-    let quote = ''
+    let inString = false
     let enclosesWholeExpression = true
     for (let index = 0; index < current.length; index += 1) {
       const char = current[index]
-      if (quote) {
-        if (char === '\\') {
+      if (inString) {
+        if (char === "'" && current[index + 1] === "'") {
           index += 1
           continue
         }
-        if (char === quote) quote = ''
+        if (char === "'") inString = false
         continue
       }
-      if (char === "'" || char === '"') {
-        quote = char
+      if (char === "'") {
+        inString = true
         continue
       }
       if (char === '(') depth += 1
@@ -243,11 +284,20 @@ describe('GitHub Actions runner policy', () => {
     ).toBe(false)
   })
 
+  it('rejects OR bypasses after a backslash inside an expression string', () => {
+    expect(conditionRequiresSameRepoOnPullRequest(`${sameRepoGuard} && 'x\\' || true`)).toBe(false)
+  })
+
   it('recognizes inline and quoted pull-request trigger syntax', () => {
     expect(hasPullRequestTrigger('on: [push, pull_request]\n')).toBe(true)
     expect(hasPullRequestTrigger('"on":\n  "pull_request":\n')).toBe(true)
     expect(hasPullRequestTrigger("'on':\n  - 'pull_request'\n")).toBe(true)
     expect(hasPullRequestTrigger('on: {pull_request: {}, push: {}}\n')).toBe(true)
+  })
+
+  it('recognizes commented pull-request trigger syntax', () => {
+    expect(hasPullRequestTrigger('on: pull_request # PR checks\n')).toBe(true)
+    expect(hasPullRequestTrigger('on:\n  - pull_request # PR checks\n')).toBe(true)
   })
 
   it('recognizes multiline flow maps and arbitrary child indentation', () => {
