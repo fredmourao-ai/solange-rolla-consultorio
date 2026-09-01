@@ -7,8 +7,10 @@ import { describe, expect, it } from 'vitest'
 const require = createRequire(import.meta.url)
 const loadYaml = (require('js-yaml') as { load: (content: string) => unknown }).load
 const workflowsDir = fileURLToPath(new URL('../../.github/workflows/', import.meta.url))
-const runnerLine = 'runs-on: [self-hosted, Linux, ARM64, solange-ci]'
+const runnerLabels = ['self-hosted', 'Linux', 'ARM64', 'solange-ci'] as const
+const runnerLine = `runs-on: [${runnerLabels.join(', ')}]`
 const sameRepoGuard = 'github.event.pull_request.head.repo.full_name == github.repository'
+type PullRequestEvent = 'pull_request' | 'pull_request_target'
 
 function workflows(): Array<{ name: string; content: string }> {
   return readdirSync(workflowsDir)
@@ -19,79 +21,75 @@ function workflows(): Array<{ name: string; content: string }> {
     }))
 }
 
-function jobLevelCondition(lines: string[]): string {
-  const ifIndex = lines.findIndex((line) => /^    if:\s*/u.test(line))
-  if (ifIndex === -1) return ''
+function parsedWorkflow(content: string): Record<string, unknown> | undefined {
+  const parsed = loadYaml(content)
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return undefined
+  return parsed as Record<string, unknown>
+}
 
-  const inline = lines[ifIndex]?.replace(/^    if:\s*/u, '') ?? ''
-  if (!/^[>|][+-]?\s*$/u.test(inline)) return inline
-
-  const continuations: string[] = []
-  for (const line of lines.slice(ifIndex + 1)) {
-    if (/^    \S/u.test(line)) break
-    if (/^\s{6,}\S/u.test(line)) continuations.push(line.trim())
-  }
-  return continuations.join(' ')
+function isSolangeRunner(value: unknown): boolean {
+  return (
+    Array.isArray(value) &&
+    value.length === runnerLabels.length &&
+    runnerLabels.every((label, index) => value[index] === label)
+  )
 }
 
 function runnerJobs(content: string): Array<{ name: string; block: string; condition: string }> {
-  const lines = content.split(/\r?\n/u)
-  const jobsStart = lines.findIndex((line) => /^jobs:\s*$/u.test(line))
-  if (jobsStart === -1) return []
+  const parsed = parsedWorkflow(content)
+  const jobs = parsed?.jobs
+  if (!jobs || typeof jobs !== 'object' || Array.isArray(jobs)) return []
 
-  const jobs: Array<{ name: string; block: string; condition: string }> = []
-  let currentName: string | undefined
-  let currentLines: string[] = []
-
-  function flush() {
-    if (currentName && currentLines.some((line) => line.trim() === runnerLine)) {
-      jobs.push({
-        name: currentName,
-        block: currentLines.join('\n'),
-        condition: jobLevelCondition(currentLines),
-      })
-    }
-  }
-
-  for (const line of lines.slice(jobsStart + 1)) {
-    if (/^\S/u.test(line) && line.trim() !== '' && !line.startsWith('#')) break
-
-    const job = line.match(/^  ([A-Za-z_][A-Za-z0-9_-]*):\s*$/u)
-    if (job) {
-      flush()
-      currentName = job[1]
-      currentLines = [line]
-      continue
-    }
-    if (currentName) currentLines.push(line)
-  }
-  flush()
-  return jobs
+  return Object.entries(jobs as Record<string, unknown>).flatMap(([name, value]) => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return []
+    const job = value as Record<string, unknown>
+    if (!isSolangeRunner(job['runs-on'])) return []
+    return [
+      {
+        name,
+        block: JSON.stringify(job),
+        condition: typeof job.if === 'string' ? job.if : '',
+      },
+    ]
+  })
 }
 
-function isForkControlledPullRequestTrigger(value: unknown): boolean {
-  return value === 'pull_request' || value === 'pull_request_target'
+function asPullRequestEvent(value: unknown): PullRequestEvent | undefined {
+  if (value === 'pull_request' || value === 'pull_request_target') return value
+  return undefined
+}
+
+function pullRequestEvents(content: string): PullRequestEvent[] {
+  const triggerConfig = parsedWorkflow(content)?.on
+  const events = new Set<PullRequestEvent>()
+
+  const scalarEvent = asPullRequestEvent(triggerConfig)
+  if (scalarEvent) events.add(scalarEvent)
+
+  if (Array.isArray(triggerConfig)) {
+    for (const trigger of triggerConfig) {
+      const event = asPullRequestEvent(trigger)
+      if (event) events.add(event)
+    }
+  } else if (triggerConfig && typeof triggerConfig === 'object') {
+    for (const trigger of Object.keys(triggerConfig)) {
+      const event = asPullRequestEvent(trigger)
+      if (event) events.add(event)
+    }
+  }
+
+  return [...events]
 }
 
 function hasPullRequestTrigger(content: string): boolean {
-  const parsed = loadYaml(content)
-  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return false
-
-  const triggerConfig = (parsed as Record<string, unknown>).on
-  if (isForkControlledPullRequestTrigger(triggerConfig)) return true
-  if (Array.isArray(triggerConfig)) {
-    return triggerConfig.some(isForkControlledPullRequestTrigger)
-  }
-  if (triggerConfig && typeof triggerConfig === 'object') {
-    return Object.keys(triggerConfig).some(isForkControlledPullRequestTrigger)
-  }
-  return false
+  return pullRequestEvents(content).length > 0
 }
 
 function splitTopLevel(expression: string, operator: '&&' | '||'): string[] {
   const parts: string[] = []
   let start = 0
-  let depth = 0
+  let parenDepth = 0
+  let bracketDepth = 0
   let inString = false
 
   for (let index = 0; index < expression.length; index += 1) {
@@ -109,14 +107,22 @@ function splitTopLevel(expression: string, operator: '&&' | '||'): string[] {
       continue
     }
     if (char === '(') {
-      depth += 1
+      parenDepth += 1
       continue
     }
     if (char === ')') {
-      depth -= 1
+      parenDepth -= 1
       continue
     }
-    if (depth === 0 && expression.startsWith(operator, index)) {
+    if (char === '[') {
+      bracketDepth += 1
+      continue
+    }
+    if (char === ']') {
+      bracketDepth -= 1
+      continue
+    }
+    if (parenDepth === 0 && bracketDepth === 0 && expression.startsWith(operator, index)) {
       parts.push(expression.slice(start, index).trim())
       index += operator.length - 1
       start = index + 1
@@ -170,18 +176,24 @@ function branchRequiresPositiveSameRepoGuard(expression: string): boolean {
   )
 }
 
-function conditionRequiresSameRepoOnPullRequest(condition: string): boolean {
-  const normalized = condition
+function normalizeCondition(condition: string): string {
+  return condition
     .replace(/^\$\{\{\s*/u, '')
     .replace(/\s*\}\}$/u, '')
     .replace(/\s+/gu, ' ')
     .trim()
+}
 
-  const branches = splitTopLevel(stripOuterParens(normalized), '||')
+function conditionRequiresSameRepoOnEvent(condition: string, eventName: PullRequestEvent): boolean {
+  const branches = splitTopLevel(stripOuterParens(normalizeCondition(condition)), '||')
   if (branches.length === 1) return branchRequiresPositiveSameRepoGuard(branches[0] ?? '')
   if (branches.length !== 2) return false
-  if (stripOuterParens(branches[0] ?? '') !== "github.event_name != 'pull_request'") return false
+  if (stripOuterParens(branches[0] ?? '') !== `github.event_name != '${eventName}'`) return false
   return branchRequiresPositiveSameRepoGuard(branches[1] ?? '')
+}
+
+function conditionRequiresSameRepoOnPullRequest(condition: string): boolean {
+  return conditionRequiresSameRepoOnEvent(condition, 'pull_request')
 }
 
 describe('GitHub Actions runner policy', () => {
@@ -194,12 +206,18 @@ describe('GitHub Actions runner policy', () => {
     }
   })
 
-  it('guards every pull-request runner job at job level', () => {
+  it('guards every pull-request runner job at job level for every PR event', () => {
     for (const workflow of workflows()) {
-      if (!hasPullRequestTrigger(workflow.content)) continue
+      const events = pullRequestEvents(workflow.content)
+      if (events.length === 0) continue
 
       for (const job of runnerJobs(workflow.content)) {
-        expect(conditionRequiresSameRepoOnPullRequest(job.condition), `${workflow.name}:${job.name}`).toBe(true)
+        for (const eventName of events) {
+          expect(
+            conditionRequiresSameRepoOnEvent(job.condition, eventName),
+            `${workflow.name}:${job.name}:${eventName}`,
+          ).toBe(true)
+        }
       }
     }
   })
@@ -233,6 +251,11 @@ describe('GitHub Actions runner policy', () => {
 
   it('rejects OR bypasses after a backslash inside an expression string', () => {
     expect(conditionRequiresSameRepoOnPullRequest(`${sameRepoGuard} && 'x\\' || true`)).toBe(false)
+  })
+
+  it('rejects same-repo guards nested inside index expressions', () => {
+    const bypass = `fromJSON('{"false":true,"true":true}')[true && ${sameRepoGuard} && false]`
+    expect(conditionRequiresSameRepoOnPullRequest(bypass)).toBe(false)
   })
 
   it('recognizes inline and quoted pull-request trigger syntax', () => {
@@ -281,8 +304,32 @@ describe('GitHub Actions runner policy', () => {
     expect(hasPullRequestTrigger(workflow)).toBe(true)
   })
 
+  it('requires the matching event exemption for pull_request_target', () => {
+    const pullRequestExemption = `github.event_name != 'pull_request' || ${sameRepoGuard}`
+    const targetExemption = `github.event_name != 'pull_request_target' || ${sameRepoGuard}`
+
+    expect(conditionRequiresSameRepoOnEvent(pullRequestExemption, 'pull_request')).toBe(true)
+    expect(conditionRequiresSameRepoOnEvent(pullRequestExemption, 'pull_request_target')).toBe(false)
+    expect(conditionRequiresSameRepoOnEvent(targetExemption, 'pull_request_target')).toBe(true)
+    expect(conditionRequiresSameRepoOnEvent(targetExemption, 'pull_request')).toBe(false)
+    expect(conditionRequiresSameRepoOnEvent(sameRepoGuard, 'pull_request_target')).toBe(true)
+  })
+
+  it('decodes YAML job conditions before validating expression guards', () => {
+    const workflow = [
+      'jobs:',
+      '  exposed:',
+      `    if: "true \\u007c\\u007c false && ${sameRepoGuard} && true"`,
+      `    ${runnerLine}`,
+    ].join('\n')
+    const [job] = runnerJobs(workflow)
+
+    expect(job?.condition).toContain('true || false')
+    expect(conditionRequiresSameRepoOnPullRequest(job?.condition ?? '')).toBe(false)
+  })
+
   it('guards pull_request_target workflows as fork-controlled PR events', () => {
-    expect(hasPullRequestTrigger('on: pull_request_target\n')).toBe(true)
+    expect(pullRequestEvents('on: pull_request_target\n')).toEqual(['pull_request_target'])
   })
 
   it('accepts a folded job-level runner guard', () => {
