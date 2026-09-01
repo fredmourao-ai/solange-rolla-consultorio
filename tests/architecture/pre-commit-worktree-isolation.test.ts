@@ -6,9 +6,14 @@ import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
 const projectRoot = fileURLToPath(new URL('../../', import.meta.url))
+const isolatedGitEnv = {
+  ...process.env,
+  GIT_CONFIG_GLOBAL: os.devNull,
+  GIT_CONFIG_NOSYSTEM: '1',
+}
 
 function git(cwd: string, args: string[]) {
-  return execFileSync('git', args, { cwd, encoding: 'utf8' }).trim()
+  return execFileSync('git', args, { cwd, encoding: 'utf8', env: isolatedGitEnv }).trim()
 }
 
 function makeExecutable(file: string) {
@@ -58,17 +63,75 @@ describe('pre-commit worktree isolation', () => {
       ].join('\n')
       writeFileSync(validator, validatorBody)
       makeExecutable(validator)
-      git(worktree, ['config', 'core.hooksPath', '.githooks'])
 
       writeFileSync(path.join(worktree, 'feature.txt'), 'feature\n')
       git(worktree, ['add', 'feature.txt'])
-      const result = spawnSync('git', ['commit', '--quiet', '-m', 'feature'], {
-        cwd: worktree,
-        encoding: 'utf8',
-      })
+      const result = spawnSync(
+        'git',
+        ['-c', 'core.hooksPath=.githooks', 'commit', '--quiet', '-m', 'feature'],
+        {
+          cwd: worktree,
+          encoding: 'utf8',
+          env: isolatedGitEnv,
+        },
+      )
 
       expect(result.status, `${result.stdout}\n${result.stderr}`).toBe(0)
       expect(git(worktree, ['log', '-1', '--pretty=%s'])).toBe('feature')
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  it('preserves the temporary staged index used by partial commits', () => {
+    const root = mkdtempSync(path.join(os.tmpdir(), 'precommit-partial-index-'))
+    const repo = path.join(root, 'repo')
+    mkdirSync(repo)
+    try {
+      git(repo, ['init', '--quiet'])
+      git(repo, ['config', 'user.email', 'outer@example.test'])
+      git(repo, ['config', 'user.name', 'Outer Test'])
+      writeFileSync(path.join(repo, 'selected.txt'), 'base\n')
+      writeFileSync(path.join(repo, 'other.txt'), 'base\n')
+      git(repo, ['add', '.'])
+      git(repo, ['commit', '--quiet', '-m', 'base'])
+      git(repo, ['checkout', '--quiet', '-b', 'feature'])
+
+      const hooks = path.join(repo, '.githooks')
+      const scripts = path.join(repo, 'scripts')
+      mkdirSync(hooks)
+      mkdirSync(scripts)
+      const hook = path.join(hooks, 'pre-commit')
+      copyFileSync(path.join(projectRoot, '.githooks/pre-commit'), hook)
+      makeExecutable(hook)
+      const validator = path.join(scripts, 'repository-governance-validate.sh')
+      const observed = path.join(repo, 'observed-index.txt')
+      const validatorBody = [
+        '#!/usr/bin/env bash',
+        'set -Eeuo pipefail',
+        `GIT_INDEX_FILE="$SOLANGE_GIT_INDEX_FILE" git diff --cached --name-only > ${JSON.stringify(observed)}`,
+        '',
+      ].join('\n')
+      writeFileSync(validator, validatorBody)
+      makeExecutable(validator)
+
+      writeFileSync(path.join(repo, 'selected.txt'), 'selected\n')
+      writeFileSync(path.join(repo, 'other.txt'), 'other\n')
+      git(repo, ['add', 'selected.txt', 'other.txt'])
+      const result = spawnSync(
+        'git',
+        ['-c', 'core.hooksPath=.githooks', 'commit', '--quiet', '--only', 'selected.txt', '-m', 'partial'],
+        {
+          cwd: repo,
+          encoding: 'utf8',
+          env: isolatedGitEnv,
+        },
+      )
+
+      expect(result.status, `${result.stdout}\n${result.stderr}`).toBe(0)
+      expect(execFileSync('git', ['show', '--pretty=', '--name-only', 'HEAD'], { cwd: repo, encoding: 'utf8', env: isolatedGitEnv }).trim()).toBe('selected.txt')
+      expect(execFileSync('git', ['diff', '--cached', '--name-only'], { cwd: repo, encoding: 'utf8', env: isolatedGitEnv }).trim()).toBe('other.txt')
+      expect(execFileSync(process.execPath, ['-e', `process.stdout.write(require('node:fs').readFileSync(${JSON.stringify(observed)}, 'utf8'))`], { encoding: 'utf8' }).trim()).toBe('selected.txt')
     } finally {
       rmSync(root, { recursive: true, force: true })
     }
