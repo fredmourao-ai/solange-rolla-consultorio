@@ -237,7 +237,20 @@ Nenhum agente pode declarar tarefa concluída antes de cumprir `docs/DEFINITION_
 - Promoção para staging ocorre pelo workflow canônico, com `concurrency: staging`, commit SHA explícito e migrations forward-only; após CI verde em `main`, a promoção pode ser disparada automaticamente pelo gate aprovado.
 - Providers live permanecem desativados fora de production.
 
-## 19. Política obrigatória de PR, gate, merge e bloqueios
+## 19. Política obrigatória de consumo de IA e execução recorrente
+
+- Claude, GPT/OpenAI e Codex pagos são permitidos somente em tarefas finitas, com objetivo concreto, e devem encerrar ao concluir ou atingir bloqueio real.
+- É proibido usar IA paga em daemon, service loop, cron/timer periódico, watcher, autorepair, supervisor, polling ou retry sem limite.
+- Rotinas permanentes/periódicas devem ser determinísticas. Se IA for indispensável, usar opção gratuita/local aprovada, com limite de chamadas e sem fallback silencioso para provedor pago.
+- Toda tarefa finita com IA paga deve ter circuit breaker: timeout, limite de retries/chamadas/contexto, condição de saída e checkpoint quando necessário. Ao atingir limite, encerrar em vez de relançar automaticamente.
+- Antes de habilitar ou manter automação, auditar consumidor por consumidor: necessidade real, host, gatilho, frequência, provedor/modelo, custo, timeout, retries, limite de chamadas, condição de saída e duplicidade/orfandade.
+- Processo travado, órfão ou sem progresso deve ser encerrado e ter a causa raiz investigada; reinício infinito é proibido.
+- Workflows GitHub com IA paga devem exigir gatilho explícito/restrito. Eventos genéricos, comentários de bots, pushes ou `schedule` não podem disparar Claude/GPT/Codex automaticamente.
+- Fallback de automação deve seguir: determinístico → IA local/gratuita → paid somente em tarefa finita explicitamente autorizada. Para rotinas recorrentes a cadeia termina antes do provedor pago.
+- Teste de credencial não deve consumir modelo pago quando validação de configuração/formato for suficiente.
+- Registrar sem secrets início/fim, gatilho, provedor/modelo, tentativas, duração e resultado de qualquer consumidor de IA.
+
+## 20. Política obrigatória de PR, gate, merge e bloqueios
 
 - Toda tarefa finalizada deve terminar em PR validado e merge; não deixar PR pronta aberta sem motivo técnico comprovado.
 - Se qualquer check, lint, teste, gate, conflito ou Action falhar: investigar causa raiz, corrigir, revalidar e repetir até ficar verde. É proibido contornar falha com bypass, `|| true`, `exit 0`, force merge ou desativação de proteção.
