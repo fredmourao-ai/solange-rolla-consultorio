@@ -3,16 +3,25 @@ set -Eeuo pipefail
 
 root="$(git rev-parse --show-toplevel)"
 cd "$root"
+staged_index="${SOLANGE_GIT_INDEX_FILE-}"
 
 [ -d node_modules ] || npm ci
 
 git diff --check
-git diff --cached --check
+if [ -n "$staged_index" ]; then
+  GIT_INDEX_FILE="$staged_index" git diff --cached --check
+else
+  git diff --cached --check
+fi
 npm run lint
 npm run typecheck
 npm run arch:check
 npm run modules:check
-npm run migrations:check
+if [ -n "$staged_index" ]; then
+  GIT_INDEX_FILE="$staged_index" npm run migrations:check
+else
+  npm run migrations:check
+fi
 npm run test:run -- --fileParallelism=false
 node --test tests/dependabot-no-pr-contract.test.mjs
 

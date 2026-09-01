@@ -9,7 +9,9 @@ permissions:
 
 jobs:
   preview:
-    if: ${{ vars.SUPABASE_BRANCHING_ENABLED == 'true' }}
+    if: >-
+      vars.SUPABASE_BRANCHING_ENABLED == 'true' &&
+      github.event.pull_request.head.repo.full_name == github.repository
     runs-on: [self-hosted, Linux, ARM64, solange-ci]
     environment: preview
     timeout-minutes: 20

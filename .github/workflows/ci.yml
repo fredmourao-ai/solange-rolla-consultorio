@@ -18,6 +18,9 @@ concurrency:
 
 jobs:
   lint:
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository
     runs-on: [self-hosted, Linux, ARM64, solange-ci]
     timeout-minutes: 10
     steps:
@@ -34,6 +37,9 @@ jobs:
         run: npm run lint
 
   typecheck:
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository
     runs-on: [self-hosted, Linux, ARM64, solange-ci]
     timeout-minutes: 10
     steps:
@@ -50,6 +56,9 @@ jobs:
         run: npm run typecheck
 
   unit:
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository
     runs-on: [self-hosted, Linux, ARM64, solange-ci]
     timeout-minutes: 10
     steps:
@@ -66,6 +75,9 @@ jobs:
         run: npm run test:run
 
   architecture:
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository
     runs-on: [self-hosted, Linux, ARM64, solange-ci]
     timeout-minutes: 10
     steps:
@@ -90,6 +102,9 @@ jobs:
         run: npm run environment:check
 
   build:
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository
     runs-on: [self-hosted, Linux, ARM64, solange-ci]
     timeout-minutes: 15
     steps:
@@ -114,6 +129,9 @@ jobs:
         run: npm audit --audit-level=high
 
   e2e:
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository
     runs-on: [self-hosted, Linux, ARM64, solange-ci]
     timeout-minutes: 20
     steps:

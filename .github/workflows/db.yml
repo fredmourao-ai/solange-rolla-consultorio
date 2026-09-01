@@ -18,6 +18,9 @@ concurrency:
 
 jobs:
   db:
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository
     runs-on: [self-hosted, Linux, ARM64, solange-ci]
     timeout-minutes: 20
     steps:
