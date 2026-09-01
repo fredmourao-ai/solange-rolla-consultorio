@@ -18,7 +18,7 @@ concurrency:
 
 jobs:
   db:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, ARM64, solange-ci]
     timeout-minutes: 20
     steps:
       - name: Checkout

@@ -18,7 +18,7 @@ concurrency:
 
 jobs:
   lint:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, ARM64, solange-ci]
     timeout-minutes: 10
     steps:
       - name: Checkout
@@ -34,7 +34,7 @@ jobs:
         run: npm run lint
 
   typecheck:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, ARM64, solange-ci]
     timeout-minutes: 10
     steps:
       - name: Checkout
@@ -50,7 +50,7 @@ jobs:
         run: npm run typecheck
 
   unit:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, ARM64, solange-ci]
     timeout-minutes: 10
     steps:
       - name: Checkout
@@ -66,7 +66,7 @@ jobs:
         run: npm run test:run
 
   architecture:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, ARM64, solange-ci]
     timeout-minutes: 10
     steps:
       - name: Checkout
@@ -90,7 +90,7 @@ jobs:
         run: npm run environment:check
 
   build:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, ARM64, solange-ci]
     timeout-minutes: 15
     steps:
       - name: Checkout
@@ -114,7 +114,7 @@ jobs:
         run: npm audit --audit-level=high
 
   e2e:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, ARM64, solange-ci]
     timeout-minutes: 20
     steps:
       - name: Checkout
