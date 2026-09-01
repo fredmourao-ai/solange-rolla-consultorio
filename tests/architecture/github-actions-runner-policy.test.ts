@@ -1,4 +1,5 @@
 import { readdirSync, readFileSync } from 'node:fs'
+import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
@@ -11,12 +12,39 @@ function workflows(): Array<{ name: string; content: string }> {
     .filter((name) => name.endsWith('.yml') || name.endsWith('.yaml'))
     .map((name) => ({
       name,
-      content: readFileSync(`${workflowsDir}${name}`, 'utf8'),
+      content: readFileSync(path.join(workflowsDir, name), 'utf8'),
     }))
 }
 
-function occurrences(content: string, needle: string): number {
-  return content.split(needle).length - 1
+function runnerJobs(content: string): Array<{ name: string; block: string }> {
+  const lines = content.split(/\r?\n/u)
+  const jobsStart = lines.findIndex((line) => /^jobs:\s*$/u.test(line))
+  if (jobsStart === -1) return []
+
+  const jobs: Array<{ name: string; block: string }> = []
+  let currentName: string | undefined
+  let currentLines: string[] = []
+
+  function flush() {
+    if (currentName && currentLines.some((line) => line.trim() === runnerLine)) {
+      jobs.push({ name: currentName, block: currentLines.join('\n') })
+    }
+  }
+
+  for (const line of lines.slice(jobsStart + 1)) {
+    if (/^\S/u.test(line) && line.trim() !== '' && !line.startsWith('#')) break
+
+    const job = line.match(/^  ([A-Za-z_][A-Za-z0-9_-]*):\s*$/u)
+    if (job) {
+      flush()
+      currentName = job[1]
+      currentLines = [line]
+      continue
+    }
+    if (currentName) currentLines.push(line)
+  }
+  flush()
+  return jobs
 }
 
 describe('GitHub Actions runner policy', () => {
@@ -29,17 +57,22 @@ describe('GitHub Actions runner policy', () => {
     }
   })
 
-  it('guards every pull-request job before using the privileged runner', () => {
+  it('guards every pull-request runner job individually', () => {
     for (const workflow of workflows()) {
       if (!/^\s*pull_request:/mu.test(workflow.content)) continue
 
-      const runnerJobs = (workflow.content.match(/^\s*runs-on:.*$/gmu) ?? []).length
-      const guards = occurrences(workflow.content, sameRepoGuard)
-
-      expect(
-        guards,
-        `${workflow.name}: ${guards} same-repo guards for ${runnerJobs} runner jobs`,
-      ).toBeGreaterThanOrEqual(runnerJobs)
+      for (const job of runnerJobs(workflow.content)) {
+        expect(job.block, `${workflow.name}:${job.name}`).toContain(sameRepoGuard)
+      }
     }
+  })
+
+  it('does not let duplicate guards in one job cover an unguarded runner job', () => {
+    const workflow = `jobs:\n  guarded:\n    if: \\${{ ${sameRepoGuard} && ${sameRepoGuard} }}\n    ${runnerLine}\n  exposed:\n    ${runnerLine}\n`
+    const jobs = runnerJobs(workflow)
+
+    expect(jobs).toHaveLength(2)
+    expect(jobs[0]?.block).toContain(sameRepoGuard)
+    expect(jobs[1]?.block).not.toContain(sameRepoGuard)
   })
 })
