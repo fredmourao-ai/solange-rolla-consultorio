@@ -1,8 +1,11 @@
 import { readdirSync, readFileSync } from 'node:fs'
+import { createRequire } from 'node:module'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
+const require = createRequire(import.meta.url)
+const loadYaml = (require('js-yaml') as { load: (content: string) => unknown }).load
 const workflowsDir = fileURLToPath(new URL('../../.github/workflows/', import.meta.url))
 const runnerLine = 'runs-on: [self-hosted, Linux, ARM64, solange-ci]'
 const sameRepoGuard = 'github.event.pull_request.head.repo.full_name == github.repository'
@@ -66,116 +69,23 @@ function runnerJobs(content: string): Array<{ name: string; block: string; condi
   return jobs
 }
 
-function yamlIndent(line: string): number {
-  return line.length - line.trimStart().length
-}
-
-function stripYamlComment(value: string): string {
-  let quote = ''
-  for (let index = 0; index < value.length; index += 1) {
-    const char = value[index]
-    if (quote === "'") {
-      if (char === "'" && value[index + 1] === "'") {
-        index += 1
-        continue
-      }
-      if (char === "'") quote = ''
-      continue
-    }
-    if (quote === '"') {
-      if (char === '\\') {
-        index += 1
-        continue
-      }
-      if (char === '"') quote = ''
-      continue
-    }
-    if (char === "'" || char === '"') {
-      quote = char
-      continue
-    }
-    if (char === '#') return value.slice(0, index).trimEnd()
-  }
-  return value
-}
-
-function flowCollectionDepth(value: string): number {
-  let depth = 0
-  let quote = ''
-  for (let index = 0; index < value.length; index += 1) {
-    const char = value[index]
-    if (quote === "'") {
-      if (char === "'" && value[index + 1] === "'") {
-        index += 1
-        continue
-      }
-      if (char === "'") quote = ''
-      continue
-    }
-    if (quote === '"') {
-      if (char === '\\') {
-        index += 1
-        continue
-      }
-      if (char === '"') quote = ''
-      continue
-    }
-    if (char === "'" || char === '"') {
-      quote = char
-      continue
-    }
-    if (char === '{' || char === '[') depth += 1
-    if (char === '}' || char === ']') depth -= 1
-  }
-  return depth
+function isForkControlledPullRequestTrigger(value: unknown): boolean {
+  return value === 'pull_request' || value === 'pull_request_target'
 }
 
 function hasPullRequestTrigger(content: string): boolean {
-  const lines = content.split(/\r?\n/u)
-  const onIndex = lines.findIndex((line) => /^(?:on|"on"|'on')\s*:\s*/u.test(line))
-  if (onIndex === -1) return false
+  const parsed = loadYaml(content)
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return false
 
-  const inline = stripYamlComment(
-    lines[onIndex]?.replace(/^(?:on|"on"|'on')\s*:\s*/u, '') ?? '',
-  ).trim()
-  const triggerToken = /(?:^|[\s,\[{])["']?pull_request["']?(?=\s*(?::|[,}\]]|$))/u
-
-  if (inline.startsWith('{') || inline.startsWith('[')) {
-    const flowLines = [inline]
-    let depth = flowCollectionDepth(inline)
-    for (const line of lines.slice(onIndex + 1)) {
-      if (depth <= 0) break
-      const stripped = stripYamlComment(line.trim()).trim()
-      if (!stripped) continue
-      flowLines.push(stripped)
-      depth += flowCollectionDepth(stripped)
-    }
-    return triggerToken.test(flowLines.join(' '))
+  const triggerConfig = (parsed as Record<string, unknown>).on
+  if (isForkControlledPullRequestTrigger(triggerConfig)) return true
+  if (Array.isArray(triggerConfig)) {
+    return triggerConfig.some(isForkControlledPullRequestTrigger)
   }
-
-  if (inline) return triggerToken.test(inline)
-
-  const childLines: string[] = []
-  for (const line of lines.slice(onIndex + 1)) {
-    const trimmed = line.trim()
-    if (!trimmed || trimmed.startsWith('#')) continue
-    if (yamlIndent(line) === 0) break
-    childLines.push(line)
+  if (triggerConfig && typeof triggerConfig === 'object') {
+    return Object.keys(triggerConfig).some(isForkControlledPullRequestTrigger)
   }
-
-  const candidates = childLines.filter((line) => {
-    const stripped = stripYamlComment(line.trim()).trim()
-    return stripped && !stripped.startsWith('#')
-  })
-  if (candidates.length === 0) return false
-  const minimumIndent = Math.min(...candidates.map(yamlIndent))
-  return candidates
-    .filter((line) => yamlIndent(line) === minimumIndent)
-    .some((line) =>
-      /^(?:-\s*)?["']?pull_request["']?(?:\s*:|\s*$)/u.test(
-        stripYamlComment(line.trim()).trim(),
-      ),
-    )
+  return false
 }
 
 function splitTopLevel(expression: string, operator: '&&' | '||'): string[] {
@@ -353,7 +263,7 @@ describe('GitHub Actions runner policy', () => {
     const workflow = [
       'on: {',
       'push: {branches: ["main\\',
-      '}"]},',
+      '}}}"]},',
       'pull_request: {}',
       '}',
     ].join('\n')
