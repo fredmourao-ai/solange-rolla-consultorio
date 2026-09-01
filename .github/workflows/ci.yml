@@ -134,7 +134,16 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          eval "$(npx supabase@2.115.0 status -o env | grep -E '^(API_URL|DB_URL|PUBLISHABLE_KEY|SECRET_KEY)=')"
+          while IFS='=' read -r key value; do
+            case "$key" in
+              API_URL|DB_URL|PUBLISHABLE_KEY|SECRET_KEY)
+                value="${value#\"}"
+                value="${value%\"}"
+                printf -v "$key" '%s' "$value"
+                export "$key"
+                ;;
+            esac
+          done < <(npx supabase@2.115.0 status -o env)
           test -n "$API_URL" && test -n "$DB_URL" && test -n "$PUBLISHABLE_KEY" && test -n "$SECRET_KEY"
           {
             echo "DB_URL=$DB_URL"
@@ -146,7 +155,7 @@ jobs:
             echo "WHATSAPP_LIVE_ENABLED=false"
             echo "NFSE_LIVE_ENABLED=false"
             echo "CLINICAL_ENCRYPTION_ACTIVE_VERSION=1"
-            echo "CLINICAL_ENCRYPTION_KEY_V1=$(printf 'solange-ci-local-e2e-key-32bytes!!' | base64 -w0)"
+            echo "CLINICAL_ENCRYPTION_KEY_V1=$(printf 'solange-ci-local-e2e-key-0000001' | base64 -w0)"
             echo "RATE_LIMIT_HMAC_KEY=solange-ci-local-rate-limit-key-32-bytes"
             echo "PUBLIC_ACTION_HMAC_KEY=solange-ci-local-public-action-key-32-bytes"
             echo "DEMO_LOCAL_EMAIL=demo.owner@solange.invalid"
