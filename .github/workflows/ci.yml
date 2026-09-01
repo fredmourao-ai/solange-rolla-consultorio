@@ -126,6 +126,51 @@ jobs:
           cache: npm
       - name: Install locked dependencies
         run: npm ci
+      - name: Start local Supabase
+        run: npx supabase@2.115.0 db start
+      - name: Prepare isolated E2E environment
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          status_env="$(npx supabase@2.115.0 status -o env)"
+          read_value() {
+            local key="$1"
+            local value
+            value="$(printf '%s\n' "$status_env" | sed -n "s/^${key}=\"\(.*\)\"$/\1/p" | head -n 1)"
+            test -n "$value"
+            printf '%s' "$value"
+          }
+          db_url="$(read_value DB_URL)"
+          api_url="$(read_value API_URL)"
+          publishable_key="$(read_value PUBLISHABLE_KEY)"
+          secret_key="$(read_value SECRET_KEY)"
+          e2e_port="$(python3 - <<'PYPORT'
+          import socket
+          with socket.socket() as sock:
+              sock.bind(('127.0.0.1', 0))
+              print(sock.getsockname()[1])
+          PYPORT
+          )"
+          test -n "$e2e_port"
+          {
+            printf 'DB_URL=%s\n' "$db_url"
+            printf 'NEXT_PUBLIC_SUPABASE_URL=%s\n' "$api_url"
+            printf 'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=%s\n' "$publishable_key"
+            printf 'SUPABASE_SECRET_KEY=%s\n' "$secret_key"
+            printf 'APP_URL=http://127.0.0.1:%s\n' "$e2e_port"
+            printf 'APP_ENV=test\n'
+            printf 'CLINICAL_ENCRYPTION_KEY_V1=MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDE=\n'
+            printf 'CLINICAL_ENCRYPTION_ACTIVE_VERSION=1\n'
+            printf 'RATE_LIMIT_HMAC_KEY=ci-rate-limit-hmac-key-0000000000000001\n'
+            printf 'PUBLIC_ACTION_HMAC_KEY=ci-public-action-hmac-key-000000000001\n'
+            printf 'WHATSAPP_LIVE_ENABLED=false\n'
+            printf 'NFSE_LIVE_ENABLED=false\n'
+            printf 'DEMO_LOCAL_EMAIL=demo.owner@solange.invalid\n'
+            printf 'DEMO_LOCAL_PASSWORD=DemoLocalOnly!2026\n'
+            printf 'E2E_PORT=%s\n' "$e2e_port"
+          } >> "$GITHUB_ENV"
+      - name: Rebuild local database
+        run: npx supabase@2.115.0 db reset
       - name: Build application
         run: npm run build
       - name: Install Playwright browser
