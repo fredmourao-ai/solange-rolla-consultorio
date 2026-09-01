@@ -73,7 +73,7 @@ function hasPullRequestTrigger(content: string): boolean {
 
   const inline = lines[onIndex]?.replace(/^(?:on|"on"|'on'):\s*/u, '') ?? ''
   if (inline.trim()) {
-    return /(?:^|[\s,\[])["']?pull_request["']?(?=[\s,\]]|$)/u.test(inline)
+    return /(?:^|[\s,\[{])["']?pull_request["']?(?=\s*(?::|[,}\]]|$))/u.test(inline)
   }
 
   for (const line of lines.slice(onIndex + 1)) {
@@ -94,7 +94,7 @@ function conditionRequiresSameRepoOnPullRequest(condition: string): boolean {
     normalized = normalized.slice(1, -1).trim()
   }
   const escapedGuard = sameRepoGuard.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')
-  const positiveGuard = new RegExp(`(?:^|&&|\\()\\s*${escapedGuard}\\s*(?=&&|\\)|$)`, 'u')
+  const positiveGuard = new RegExp(`(?:^|&&)\\s*\\(?\\s*${escapedGuard}\\s*\\)?\\s*(?=&&|$)`, 'u')
 
   const firstOr = normalized.indexOf('||')
   if (firstOr === -1) return positiveGuard.test(normalized)
@@ -141,11 +141,14 @@ describe('GitHub Actions runner policy', () => {
   it('rejects negated or comparison forms of the same-repository predicate', () => {
     expect(conditionRequiresSameRepoOnPullRequest(`!${sameRepoGuard}`)).toBe(false)
     expect(conditionRequiresSameRepoOnPullRequest(`${sameRepoGuard} == false`)).toBe(false)
+    expect(conditionRequiresSameRepoOnPullRequest(`!(${sameRepoGuard})`)).toBe(false)
+    expect(conditionRequiresSameRepoOnPullRequest(`(${sameRepoGuard}) == false`)).toBe(false)
   })
   it('recognizes inline and quoted pull-request trigger syntax', () => {
     expect(hasPullRequestTrigger('on: [push, pull_request]\n')).toBe(true)
     expect(hasPullRequestTrigger('"on":\n  "pull_request":\n')).toBe(true)
     expect(hasPullRequestTrigger("'on':\n  - 'pull_request'\n")).toBe(true)
+    expect(hasPullRequestTrigger('on: {pull_request: {}, push: {}}\n')).toBe(true)
   })
   it('accepts a folded job-level runner guard', () => {
     const workflow = [

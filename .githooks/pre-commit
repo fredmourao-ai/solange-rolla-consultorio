@@ -4,7 +4,11 @@ branch="$(git branch --show-current)"
 case "$branch" in main|master) echo 'BLOCKED: commits directly on protected branch are forbidden.' >&2; exit 40;; esac
 root="$(git rev-parse --show-toplevel)"
 staged_index="$(git rev-parse --path-format=absolute --git-path index)"
-mapfile -t safe_directories < <(git config --get-all safe.directory || true)
+safe_directories=()
+while IFS=$'\t' read -r scope value; do
+  [ "$scope" = command ] || continue
+  safe_directories[${#safe_directories[@]}]="$value"
+done < <(git config --show-scope --get-all safe.directory || true)
 local_git_env="$(git rev-parse --local-env-vars)"
 for variable in $local_git_env; do
   unset "$variable"

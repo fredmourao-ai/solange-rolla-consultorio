@@ -25,6 +25,10 @@ function makeExecutable(file: string) {
 }
 
 describe('pre-commit worktree isolation', () => {
+  it('does not require Bash 4-only mapfile in the mandatory hook', () => {
+    const hook = readFileSync(path.join(projectRoot, '.githooks/pre-commit'), 'utf8')
+    expect(hook).not.toMatch(/\bmapfile\b/u)
+  })
   it('does not leak the parent worktree Git context into nested repositories', () => {
     const root = mkdtempSync(path.join(os.tmpdir(), 'precommit-worktree-'))
     const repo = path.join(root, 'repo')
@@ -145,6 +149,7 @@ describe('pre-commit worktree isolation', () => {
       git(repo, ['init', '--quiet'])
       git(repo, ['config', 'user.email', 'outer@example.test'])
       git(repo, ['config', 'user.name', 'Outer Test'])
+      git(repo, ['config', '--local', '--add', 'safe.directory', '*'])
       writeFileSync(path.join(repo, 'base.txt'), 'base\n')
       git(repo, ['add', 'base.txt'])
       git(repo, ['commit', '--quiet', '-m', 'base'])
@@ -163,7 +168,7 @@ describe('pre-commit worktree isolation', () => {
       const validatorBody = [
         '#!/usr/bin/env bash',
         'set -Eeuo pipefail',
-        `git config --get-all safe.directory > ${JSON.stringify(observedSafeDirectory)} || true`,
+        `git config --show-scope --get-all safe.directory > ${JSON.stringify(observedSafeDirectory)} || true`,
         `git config --get-all core.hooksPath > ${JSON.stringify(observedHooksPath)} || true`,
         '',
       ].join('\n')
@@ -179,7 +184,10 @@ describe('pre-commit worktree isolation', () => {
       )
 
       expect(result.status, `${result.stdout}\n${result.stderr}`).toBe(0)
-      expect(readFileSync(observedSafeDirectory, 'utf8').trim()).toBe(repo)
+      const safeDirectoryScopes = readFileSync(observedSafeDirectory, 'utf8').trim().split(/\r?\n/u)
+      expect(safeDirectoryScopes).toContain('command\t' + repo)
+      expect(safeDirectoryScopes).toContain('local\t*')
+      expect(safeDirectoryScopes).not.toContain('command\t*')
       expect(readFileSync(observedHooksPath, 'utf8').trim()).toBe('')
     } finally {
       rmSync(root, { recursive: true, force: true })
