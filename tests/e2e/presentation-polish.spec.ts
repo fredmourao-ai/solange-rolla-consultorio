@@ -28,6 +28,6 @@ test('navigation highlights the current administrative route', async ({ page }) 
     const active = page.locator('.sidebar-nav a[aria-current="page"]')
     await expect(active).toHaveCount(1)
     await expect(active).toHaveText(label)
-    await expect(page.getByRole('link', { name: 'Dashboard' })).not.toHaveAttribute('aria-current', 'page')
+    await expect(page.getByRole('link', { name: 'Dashboard', exact: true })).not.toHaveAttribute('aria-current', 'page')
   }
 })
