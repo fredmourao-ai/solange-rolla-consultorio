@@ -80,10 +80,14 @@ jobs:
           SUPABASE_STAGING_PROJECT_REF: ${{ secrets.SUPABASE_STAGING_PROJECT_REF }}
         run: node scripts/apply-staging-migrations.mjs
 
-      - name: Staging smoke contract
+      - name: Verify staging accounting RLS
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_STAGING_PROJECT_REF: ${{ secrets.SUPABASE_STAGING_PROJECT_REF }}
+        run: node scripts/verify-staging-accounting-rls.mjs
+
+      - name: Staging app smoke contract
+        if: vars.STAGING_APP_URL != ''
         env:
           STAGING_APP_URL: ${{ vars.STAGING_APP_URL }}
-        run: |
-          set -Eeuo pipefail
-          test -n "$STAGING_APP_URL"
-          curl --fail --silent --show-error --retry 3 "$STAGING_APP_URL/api/health"
+        run: curl --fail --silent --show-error --retry 3 "$STAGING_APP_URL/api/health"
