@@ -20,8 +20,18 @@ export default async function DashboardPage() {
     supabase.from('people').select('id', { count: 'exact', head: true }),
   ])
 
-  const firstError = [appointments.error, receivables.error, events.error, people.error].find(Boolean)
-  if (firstError) throw new Error(`DASHBOARD_READ_FAILED:${firstError.code}`)
+  const failedQuery = [
+    ['appointments', appointments.error],
+    ['receivables', receivables.error],
+    ['events', events.error],
+    ['people', people.error],
+  ] as const
+  const firstFailure = failedQuery.find(([, error]) => Boolean(error))
+  if (firstFailure) {
+    const [source, error] = firstFailure
+    throw new Error(`DASHBOARD_READ_FAILED:${source}:${error?.code ?? 'unknown'}`)
+  }
+
   const openReceivablesCents = (receivables.data ?? []).reduce((sum, row) => {
     const paid = (row.payments ?? []).reduce((paidSum, payment) => paidSum + payment.amount_cents, 0)
     return sum + Math.max(0, row.original_amount_cents - paid)
