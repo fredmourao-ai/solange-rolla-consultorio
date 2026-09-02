@@ -42,6 +42,13 @@ describe('environment workflow contracts', () => {
     )
   })
 
+  it('uses the Supabase Management API path for staging migrations', () => {
+    const workflow = readFileSync(stagingWorkflow, 'utf8')
+    expect(workflow).toContain('SUPABASE_ACCESS_TOKEN')
+    expect(workflow).toContain('node scripts/apply-staging-migrations.mjs')
+    expect(workflow).not.toContain('SUPABASE_DB_URL')
+  })
+
   it('requires explicit staging approval and distinct project refs', () => {
     expect(
       run(stagingScript, {

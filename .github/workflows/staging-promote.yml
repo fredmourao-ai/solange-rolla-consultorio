@@ -76,8 +76,9 @@ jobs:
 
       - name: Apply forward migrations
         env:
-          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
-        run: npx supabase@2.115.0 db push --db-url "$SUPABASE_DB_URL"
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_STAGING_PROJECT_REF: ${{ secrets.SUPABASE_STAGING_PROJECT_REF }}
+        run: node scripts/apply-staging-migrations.mjs
 
       - name: Staging smoke contract
         env:
