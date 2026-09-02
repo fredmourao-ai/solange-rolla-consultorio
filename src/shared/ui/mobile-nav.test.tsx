@@ -8,5 +8,7 @@ describe('MobileNav', () => {
     expect(html).toContain('class="mobile-nav__brand"')
     expect(html).toContain('solange-rolla-logo.png')
     expect(html).toContain('aria-label="Solange Rolla - Dashboard"')
+    expect(html).toContain('Abrir menu')
+    expect(html).toContain('aria-controls="mobile-navigation"')
   })
 })

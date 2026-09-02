@@ -8,7 +8,7 @@ const vitestBin = fileURLToPath(
 
 describe('Vitest operational directory ignores', () => {
   it('does not discover tests from worktrees or backups', () => {
-    const result = spawnSync(process.execPath, [vitestBin, 'list'], {
+    const result = spawnSync(process.execPath, [vitestBin, 'list', '--filesOnly', '--staticParse'], {
       cwd: process.cwd(),
       encoding: 'utf8',
     })
