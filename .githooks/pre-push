@@ -10,4 +10,4 @@ for variable in $local_git_env; do
   unset "$variable"
 done
 cd "$root"
-"$root/scripts/repository-governance-validate.sh" pre-push
+bash "$root/scripts/repository-governance-validate.sh" pre-push
