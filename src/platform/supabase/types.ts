@@ -159,13 +159,6 @@ export type Database = {
             foreignKeyName: "appointments_person_id_fkey"
             columns: ["person_id"]
             isOneToOne: false
-            referencedRelation: "accounting_people_view"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "appointments_person_id_fkey"
-            columns: ["person_id"]
-            isOneToOne: false
             referencedRelation: "people"
             referencedColumns: ["id"]
           },
@@ -455,13 +448,6 @@ export type Database = {
             foreignKeyName: "event_registrations_person_id_fkey"
             columns: ["person_id"]
             isOneToOne: false
-            referencedRelation: "accounting_people_view"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "event_registrations_person_id_fkey"
-            columns: ["person_id"]
-            isOneToOne: false
             referencedRelation: "people"
             referencedColumns: ["id"]
           },
@@ -724,21 +710,7 @@ export type Database = {
             foreignKeyName: "fiscal_documents_payer_person_id_fkey"
             columns: ["payer_person_id"]
             isOneToOne: false
-            referencedRelation: "accounting_people_view"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fiscal_documents_payer_person_id_fkey"
-            columns: ["payer_person_id"]
-            isOneToOne: false
             referencedRelation: "people"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fiscal_documents_person_id_fkey"
-            columns: ["person_id"]
-            isOneToOne: false
-            referencedRelation: "accounting_people_view"
             referencedColumns: ["id"]
           },
           {
@@ -1044,13 +1016,6 @@ export type Database = {
             columns: ["document_version_id"]
             isOneToOne: false
             referencedRelation: "legal_document_versions"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "legal_acceptances_person_id_fkey"
-            columns: ["person_id"]
-            isOneToOne: false
-            referencedRelation: "accounting_people_view"
             referencedColumns: ["id"]
           },
           {
@@ -1497,21 +1462,7 @@ export type Database = {
             foreignKeyName: "person_relationships_person_id_fkey"
             columns: ["person_id"]
             isOneToOne: false
-            referencedRelation: "accounting_people_view"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "person_relationships_person_id_fkey"
-            columns: ["person_id"]
-            isOneToOne: false
             referencedRelation: "people"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "person_relationships_related_person_id_fkey"
-            columns: ["related_person_id"]
-            isOneToOne: false
-            referencedRelation: "accounting_people_view"
             referencedColumns: ["id"]
           },
           {
@@ -1666,21 +1617,7 @@ export type Database = {
             foreignKeyName: "receivables_payer_person_id_fkey"
             columns: ["payer_person_id"]
             isOneToOne: false
-            referencedRelation: "accounting_people_view"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "receivables_payer_person_id_fkey"
-            columns: ["payer_person_id"]
-            isOneToOne: false
             referencedRelation: "people"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "receivables_person_id_fkey"
-            columns: ["person_id"]
-            isOneToOne: false
-            referencedRelation: "accounting_people_view"
             referencedColumns: ["id"]
           },
           {
@@ -1859,22 +1796,19 @@ export type Database = {
           fiscal_address: Json | null
           id: string | null
         }
-        Insert: {
-          civil_name?: string | null
-          cpf_normalized?: string | null
-          fiscal_address?: Json | null
-          id?: string | null
-        }
-        Update: {
-          civil_name?: string | null
-          cpf_normalized?: string | null
-          fiscal_address?: Json | null
-          id?: string | null
-        }
         Relationships: []
       }
     }
     Functions: {
+      accounting_people_rows: {
+        Args: never
+        Returns: {
+          civil_name: string
+          cpf_normalized: string
+          fiscal_address: Json
+          id: string
+        }[]
+      }
       claim_document_jobs: {
         Args: { p_limit?: number }
         Returns: {
