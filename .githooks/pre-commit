@@ -4,9 +4,21 @@ branch="$(git branch --show-current)"
 case "$branch" in main|master) echo 'BLOCKED: commits directly on protected branch are forbidden.' >&2; exit 40;; esac
 root="$(git rev-parse --show-toplevel)"
 staged_index="$(git rev-parse --path-format=absolute --git-path index)"
+safe_directories=()
+while IFS= read -r -d '' scope && IFS= read -r -d '' value; do
+  [ "$scope" = command ] || continue
+  safe_directories[${#safe_directories[@]}]="$value"
+done < <(git config --show-scope -z --get-all safe.directory || true)
 local_git_env="$(git rev-parse --local-env-vars)"
 for variable in $local_git_env; do
   unset "$variable"
 done
+if ((${#safe_directories[@]} > 0)); then
+  export GIT_CONFIG_COUNT="${#safe_directories[@]}"
+  for index in "${!safe_directories[@]}"; do
+    export "GIT_CONFIG_KEY_$index=safe.directory"
+    export "GIT_CONFIG_VALUE_$index=${safe_directories[$index]}"
+  done
+fi
 cd "$root"
-SOLANGE_GIT_INDEX_FILE="$staged_index" "$root/scripts/repository-governance-validate.sh" pre-commit
+SOLANGE_GIT_INDEX_FILE="$staged_index" bash "$root/scripts/repository-governance-validate.sh" pre-commit

@@ -60,6 +60,11 @@ describe('repository governance contract', () => {
     expect(indexMode('.githooks/pre-push')).toBe('100755')
   })
 
+  it('invokes the pre-push governance validator through Bash', () => {
+    const hook = projectFile('.githooks/pre-push')
+    expect(hook).toContain('bash "$root/scripts/repository-governance-validate.sh" pre-push')
+  })
+
   it('parses inline and multiline self-hosted runner declarations', () => {
     const fixture = `jobs:
   inline:
