@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 import { Button } from './button'
@@ -10,19 +11,12 @@ export function MobileNav({ pathname, role }: { pathname?: string; role?: string
   const triggerRef = useRef<HTMLButtonElement>(null)
   const wasOpenRef = useRef(false)
   useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && open) setOpen(false)
-    }
+    const onKeyDown = (event: KeyboardEvent) => { if (event.key === 'Escape' && open) setOpen(false) }
     document.addEventListener('keydown', onKeyDown)
     return () => document.removeEventListener('keydown', onKeyDown)
   }, [open])
-  useEffect(() => {
-    if (!open && wasOpenRef.current) triggerRef.current?.focus()
-    wasOpenRef.current = open
-  }, [open])
+  useEffect(() => { if (!open && wasOpenRef.current) triggerRef.current?.focus(); wasOpenRef.current = open }, [open])
   return <div className="mobile-nav">
-    <strong>Solange Rolla</strong>
-    <Button ref={triggerRef} variant="outline" aria-expanded={open} aria-controls="mobile-navigation" onClick={() => setOpen((value) => !value)}>{open ? 'Fechar menu' : 'Abrir menu'}</Button>
-    {open && <div id="mobile-navigation" className="mobile-nav__panel" onClick={() => setOpen(false)}><Link href="/dashboard">Início</Link><SidebarNav pathname={pathname} role={role} /></div>}
+    <Link className="mobile-nav__brand" href="/dashboard" aria-label="Solange Rolla - Dashboard"><Image src="/brand/solange-rolla-logo.png" alt="" width={196} height={48} /></Link>
   </div>
 }

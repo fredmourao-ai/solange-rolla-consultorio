@@ -5,4 +5,9 @@ if [ -n "$(git -C "$root" status --porcelain=v1)" ]; then echo 'BLOCKED: working
 while read -r local_ref local_sha remote_ref remote_sha; do
   case "$remote_ref" in refs/heads/main|refs/heads/master) echo 'BLOCKED: direct push to protected branch is forbidden.' >&2; exit 42;; esac
 done
-bash "$root/scripts/repository-governance-validate.sh" pre-push
+local_git_env="$(git rev-parse --local-env-vars)"
+for variable in $local_git_env; do
+  unset "$variable"
+done
+cd "$root"
+"$root/scripts/repository-governance-validate.sh" pre-push

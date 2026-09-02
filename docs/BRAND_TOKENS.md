@@ -1,31 +1,25 @@
 # Brand Tokens
 
-These are the initial product tokens for the private operational interface.
-They are semantic and intentionally independent from any public website asset.
-No patient names, testimonials or clinical imagery are used as design data.
+The private operational interface is now intentionally aligned with the public Solange Rolla identity while keeping accessibility and information clarity as product constraints.
 
-## Confirmed identity
-
+## Reference identity
+- Visual reference: `https://www.solangerolla.com.br/`.
 - Product name: Solange Rolla Consultorio.
 - Language: Brazilian Portuguese (`pt-BR`).
-- Audience: internal staff, with emphasis on readable controls and keyboard use.
-- Public logo and photography: not imported in this foundation; an approved
-  asset can be added later without changing component contracts.
+- Audience: internal staff; keyboard, touch and 200% zoom remain first-class requirements.
+- Public logo: reused locally as `public/brand/solange-rolla-logo.png`.
+- Marketing testimonials, patient imagery and clinical content are not imported into the private product.
 
 ## Semantic palette
+The physical values live in `src/app/globals.css`; components consume semantic variables.
 
-The physical values live in `src/app/globals.css`. Components consume these
-semantic variables instead of hard-coded colors.
-
-| Token | Use |
-| --- | --- |
-| `--background` / `--surface` | page and panel backgrounds |
-| `--foreground` / `--muted` | primary and supporting text |
-| `--primary` / `--primary-foreground` | main actions and active navigation |
-| `--accent` | secondary emphasis and links |
-| `--border` | separators and field boundaries |
-| `--danger` / `--success` / `--warning` | status meaning, always paired with text |
-| `--focus-ring` | keyboard focus indicator |
-
-Touch targets use a minimum 44px height. Focus remains visible at 200% zoom;
-color is never the sole status signal.
+| Token | Value | Use |
+| --- | --- | --- |
+| `--background` | `#f8f3ef` | warm page background |
+| `--surface` | `#fffdf8` | panels and cards |
+| `--surface-muted` | `#f3e9ee` | subtle brand-tinted emphasis |
+| `--foreground` | `#2f2e2e` | primary text |
+| `--primary` | `#82426e` | primary actions and brand emphasis |
+| `--accent` | `#582870` | headings, links and secondary emphasis |
+| `--border` | `#e2d5dc` | separators and field boundaries |
+| `--focus-ring` | `#6c3f94` | keyboard focus |
