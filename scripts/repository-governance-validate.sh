@@ -5,6 +5,25 @@ root="$(git rev-parse --show-toplevel)"
 cd "$root"
 staged_index="${SOLANGE_GIT_INDEX_FILE-}"
 
+check_project_boundaries() {
+  local workflows_dir='.github/workflows'
+  local marker
+  local -a forbidden_markers=(
+    'mei-mg-email'
+    'mei-mg-email-ndr-guard.service'
+    'mei-mg-email-worker.service'
+  )
+
+  [ -d "$workflows_dir" ] || return 0
+  for marker in "${forbidden_markers[@]}"; do
+    if grep -R -n -F --include='*.yml' --include='*.yaml' -- "$marker" "$workflows_dir"; then
+      echo "BLOCKED: Solange workflow references foreign project marker: $marker" >&2
+      return 44
+    fi
+  done
+}
+
+check_project_boundaries
 [ -d node_modules ] || npm ci
 
 git diff --check
