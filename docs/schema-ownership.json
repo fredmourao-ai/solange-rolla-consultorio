@@ -119,6 +119,7 @@
     "platform.extensions": "platform",
     "platform.functions": "platform",
     "pgmq.queue_metrics": "platform",
+    "public.accounting_people_rows": "people",
     "public.accounting_people_view": "people",
     "public.appointment_status_history": "appointments",
     "public.appointment_confirmations": "appointments",

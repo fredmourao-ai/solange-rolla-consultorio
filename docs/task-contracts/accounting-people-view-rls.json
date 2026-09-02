@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "status": "approved",
+  "issue": 55,
+  "migration": "20260902014500_people_accounting_view_rls.sql",
+  "owners": ["people"],
+  "objects": [
+    {"name": "public.accounting_people_rows", "owner": "people"},
+    {"name": "public.people", "owner": "people"},
+    {"name": "public.accounting_people_view", "owner": "people"}
+  ]
+}
