@@ -49,6 +49,13 @@ describe('environment workflow contracts', () => {
     expect(workflow).not.toContain('SUPABASE_DB_URL')
   })
 
+  it('runs the database security smoke and makes app smoke conditional', () => {
+    const workflow = readFileSync(stagingWorkflow, 'utf8')
+    expect(workflow).toContain('node scripts/verify-staging-accounting-rls.mjs')
+    expect(workflow).toContain("if: vars.STAGING_APP_URL != ''")
+    expect(workflow).not.toContain('test -n "$STAGING_APP_URL"')
+  })
+
   it('requires explicit staging approval and distinct project refs', () => {
     expect(
       run(stagingScript, {
