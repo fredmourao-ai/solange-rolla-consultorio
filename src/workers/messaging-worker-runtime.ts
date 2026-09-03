@@ -19,6 +19,14 @@ function validMessage(message: unknown): message is { kind: 'messaging.deliver';
   return Object.keys(payload).length === 1 && typeof payload.messageId === 'string' && payload.messageId.length > 0
 }
 
+/**
+ * Pure queue mechanics only -- deliberately does not re-implement send/retry
+ * classification. That already lives, tested, in
+ * modules/messaging/application/process-message.ts (processMessage); the
+ * worker script wires this drain loop's `process` callback straight to it
+ * (after loading + rendering the message body) so retry policy has exactly
+ * one implementation.
+ */
 export async function drainMessagingQueueOnce({ queue, process, batchSize = 10 }: DrainOptions): Promise<number> {
   const jobs = await queue.read({ visibilityTimeoutSeconds: 60, batchSize: Math.max(1, Math.min(50, batchSize)) })
   let completed = 0
@@ -50,30 +58,6 @@ export async function drainMessagingQueueOnce({ queue, process, batchSize = 10 }
 function safeErrorCode(error: unknown): string {
   if (!(error instanceof Error)) return 'MESSAGING_WORKER_TRANSIENT'
   return /^[A-Z][A-Z0-9_]{2,99}$/u.test(error.message) ? error.message : 'MESSAGING_WORKER_TRANSIENT'
-}
-
-const TRANSIENT_PATTERN = /429|5\d\d|TIMEOUT|ABORT|TRANSIENT/i
-const MAX_ATTEMPTS = 5
-
-export async function processMessagingJob(messageId: string, attemptNumber: number, retry: (delaySeconds: number) => Promise<void>, dependencies: {
-  send: (messageId: string) => Promise<void>
-  logger?: WorkerLogger
-}): Promise<ProcessResult> {
-  try {
-    await dependencies.send(messageId)
-    dependencies.logger?.('messaging_job_sent', { messageId })
-    return 'sent'
-  } catch (error) {
-    const code = safeErrorCode(error)
-    const transient = TRANSIENT_PATTERN.test(code)
-    if (transient && attemptNumber < MAX_ATTEMPTS) {
-      await retry(2 ** attemptNumber)
-      dependencies.logger?.('messaging_job_retry', { messageId, code, attemptNumber })
-      return 'retry'
-    }
-    dependencies.logger?.('messaging_job_failed', { messageId, code, attemptNumber })
-    return 'failed'
-  }
 }
 
 function defaultWait(ms: number, signal: AbortSignal): Promise<void> {

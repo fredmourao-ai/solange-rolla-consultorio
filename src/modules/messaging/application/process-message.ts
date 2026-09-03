@@ -15,7 +15,7 @@ export async function processMessage(input: { messageId: string; attemptNumber: 
     await dependencies.attempts.markFailed(input.messageId)
     return 'failed'
   } catch (error) {
-    const transient = error instanceof Error && /429|5\d\d|timeout|abort/i.test(error.message)
+    const transient = error instanceof Error && /429|5\d\d|timeout|abort|transient/i.test(error.message)
     await dependencies.attempts.appendAttempt({ messageId: input.messageId, attemptNumber: input.attemptNumber, status: 'failed', errorCode: error instanceof Error ? error.message : 'UNKNOWN' })
     if (transient && input.attemptNumber < 5) {
       await dependencies.retryQueue.requeue(2 ** input.attemptNumber)
