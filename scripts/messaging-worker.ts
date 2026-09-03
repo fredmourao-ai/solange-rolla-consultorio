@@ -14,7 +14,12 @@ import { createSupabaseOutboxRepository } from '../src/modules/messaging/infrast
 import { renderVersionedTemplate } from '../src/modules/messaging/application/render-template'
 import { processMessage } from '../src/modules/messaging/application/process-message'
 import { dispatchOutbox } from '../src/modules/messaging/application/dispatch-outbox'
+import { enqueueMessage } from '../src/modules/messaging/application/enqueue-message'
 import { drainMessagingQueueOnce, runMessagingWorker } from '../src/workers/messaging-worker-runtime'
+import { scheduleDueAppointmentConfirmations } from '../src/workers/appointment-confirmation-scheduling'
+import { loadConfirmationCandidates } from '../src/workers/supabase-confirmation-candidates'
+import { issueCapability } from '../src/platform/capabilities/issue'
+import { createSupabaseCapabilityIssuanceRepository } from '../src/platform/capabilities/supabase-issue-capability-repository'
 import type { MessagingProvider } from '../src/modules/messaging/infrastructure/mock-provider'
 import type { MessageChannel } from '../src/modules/messaging/domain/message'
 
@@ -63,6 +68,7 @@ async function main() {
   const templates = createSupabaseTemplateRepository()
   const attempts = createSupabaseMessageAttemptRepository()
   const outbox = createSupabaseOutboxRepository()
+  const capabilityIssuance = createSupabaseCapabilityIssuanceRepository()
 
   const whatsappProvider = buildWhatsAppProvider(env.WHATSAPP_LIVE_ENABLED)
   const emailProvider = buildEmailProvider(env.EMAIL_LIVE_ENABLED)
@@ -100,8 +106,38 @@ async function main() {
   const batchSize = positiveInt(process.env.MESSAGING_WORKER_BATCH_SIZE, 10, 1, 50)
   const pollMs = positiveInt(process.env.MESSAGING_WORKER_POLL_MS, 2000, 250, 60000)
   const heartbeatPath = process.env.MESSAGING_WORKER_HEALTH_FILE ?? '/tmp/solange-messaging-worker.heartbeat'
+  const confirmationSchedulingIntervalMs = positiveInt(process.env.APPOINTMENT_CONFIRMATION_SCHEDULER_INTERVAL_MS, 120_000, 30_000, 3_600_000)
+  let lastConfirmationSchedulingRun = 0
+
+  async function scheduleAppointmentConfirmationsIfDue(): Promise<void> {
+    const now = new Date()
+    if (now.getTime() - lastConfirmationSchedulingRun < confirmationSchedulingIntervalMs) return
+    lastConfirmationSchedulingRun = now.getTime()
+
+    const candidates = await loadConfirmationCandidates(now)
+    const scheduled = await scheduleDueAppointmentConfirmations({
+      now,
+      candidates,
+      alreadyEnqueued: async (idempotencyKey) => (await messages.findByIdempotencyKey(idempotencyKey)) !== null,
+      issueLink: async (candidate) => {
+        const { rawToken } = await issueCapability(
+          { purpose: 'appointment_response', subjectType: 'appointment', subjectId: candidate.id, expiresAt: candidate.startsAt, now },
+          capabilityIssuance,
+        )
+        return `${env.APP_URL}/c/${rawToken}?purpose=appointment_response`
+      },
+      enqueue: async (message) => { await enqueueMessage(message, messages); return true },
+      logSkipped: (candidateId, reason) => log('appointment_confirmation_skipped', { candidateId, reason }),
+    })
+    if (scheduled > 0) log('appointment_confirmations_scheduled', { scheduled })
+  }
 
   const drain = async () => {
+    try {
+      await scheduleAppointmentConfirmationsIfDue()
+    } catch (error) {
+      log('appointment_confirmation_scheduling_failed', { message: error instanceof Error ? error.message : 'unknown' })
+    }
     const dispatched = await dispatchOutbox(outbox, queue, batchSize)
     if (dispatched > 0) log('messaging_outbox_dispatched', { dispatched })
     return drainMessagingQueueOnce({ queue, process: sendOutboundMessage, batchSize })
