@@ -34,6 +34,17 @@ describe('appointment confirmation response', () => {
     expect(result.status).toBe('cancelled_in_time')
     expect(state.updated).toEqual(['cancelled_in_time'])
   })
+  it('treats the exact deadline instant itself as still in time (deadline is inclusive)', async () => {
+    const state = repository('2026-08-30T12:00:00Z')
+    const result = await respondToConfirmation({ appointmentId: 'a1', action: 'cancel', publicActionContext: context, now: new Date('2026-08-30T12:00:00.000Z') }, state.repo)
+    expect(result.status).toBe('cancelled_in_time')
+  })
+
+  it('treats one millisecond past the deadline as late', async () => {
+    const state = repository('2026-08-30T12:00:00Z')
+    await expect(respondToConfirmation({ appointmentId: 'a1', action: 'cancel', publicActionContext: context, now: new Date('2026-08-30T12:00:00.001Z') }, state.repo)).rejects.toThrow('LATE_CANCELLATION_ACK_REQUIRED')
+  })
+
   it('requires explicit acknowledgement for late cancellation', async () => {
     const state = repository('2026-08-28T12:00:00Z')
     await expect(respondToConfirmation({ appointmentId: 'a1', action: 'cancel', publicActionContext: context, now: new Date('2026-08-29T12:00:00Z') }, state.repo)).rejects.toThrow('LATE_CANCELLATION_ACK_REQUIRED')
