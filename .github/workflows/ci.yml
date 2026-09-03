@@ -98,6 +98,7 @@ jobs:
         env:
           APP_ENV: local
           WHATSAPP_LIVE_ENABLED: false
+          EMAIL_LIVE_ENABLED: false
           NFSE_LIVE_ENABLED: false
         run: npm run environment:check
 
@@ -171,6 +172,7 @@ jobs:
             echo "APP_URL=http://127.0.0.1:3000"
             echo "APP_ENV=local"
             echo "WHATSAPP_LIVE_ENABLED=false"
+            echo "EMAIL_LIVE_ENABLED=false"
             echo "NFSE_LIVE_ENABLED=false"
             echo "CLINICAL_ENCRYPTION_ACTIVE_VERSION=1"
             echo "CLINICAL_ENCRYPTION_KEY_V1=$(printf 'solange-ci-local-e2e-key-0000001' | base64 -w0)"

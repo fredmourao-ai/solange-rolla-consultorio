@@ -69,6 +69,7 @@ jobs:
           NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
           WHATSAPP_LIVE_ENABLED: ${{ vars.WHATSAPP_LIVE_ENABLED }}
+          EMAIL_LIVE_ENABLED: ${{ vars.EMAIL_LIVE_ENABLED }}
           NFSE_LIVE_ENABLED: ${{ vars.NFSE_LIVE_ENABLED }}
         run: |
           npm run environment:check
