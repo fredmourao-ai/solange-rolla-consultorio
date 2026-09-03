@@ -10,8 +10,10 @@ import { createMetaWhatsAppProvider } from '../src/modules/messaging/infrastruct
 import { createEmailProvider } from '../src/modules/messaging/infrastructure/email-provider'
 import { createFetchWhatsAppTransport } from '../src/modules/messaging/infrastructure/fetch-whatsapp-transport'
 import { createSmtpEmailTransport } from '../src/modules/messaging/infrastructure/smtp-email-transport'
+import { createSupabaseOutboxRepository } from '../src/modules/messaging/infrastructure/supabase-outbox-repository'
 import { renderVersionedTemplate } from '../src/modules/messaging/application/render-template'
 import { processMessage } from '../src/modules/messaging/application/process-message'
+import { dispatchOutbox } from '../src/modules/messaging/application/dispatch-outbox'
 import { drainMessagingQueueOnce, runMessagingWorker } from '../src/workers/messaging-worker-runtime'
 import type { MessagingProvider } from '../src/modules/messaging/infrastructure/mock-provider'
 import type { MessageChannel } from '../src/modules/messaging/domain/message'
@@ -60,6 +62,7 @@ async function main() {
   const messages = createSupabaseMessageRepository()
   const templates = createSupabaseTemplateRepository()
   const attempts = createSupabaseMessageAttemptRepository()
+  const outbox = createSupabaseOutboxRepository()
 
   const whatsappProvider = buildWhatsAppProvider(env.WHATSAPP_LIVE_ENABLED)
   const emailProvider = buildEmailProvider(env.EMAIL_LIVE_ENABLED)
@@ -98,7 +101,11 @@ async function main() {
   const pollMs = positiveInt(process.env.MESSAGING_WORKER_POLL_MS, 2000, 250, 60000)
   const heartbeatPath = process.env.MESSAGING_WORKER_HEALTH_FILE ?? '/tmp/solange-messaging-worker.heartbeat'
 
-  const drain = () => drainMessagingQueueOnce({ queue, process: sendOutboundMessage, batchSize })
+  const drain = async () => {
+    const dispatched = await dispatchOutbox(outbox, queue, batchSize)
+    if (dispatched > 0) log('messaging_outbox_dispatched', { dispatched })
+    return drainMessagingQueueOnce({ queue, process: sendOutboundMessage, batchSize })
+  }
   const heartbeat = () => writeFile(heartbeatPath, new Date().toISOString(), { encoding: 'utf8', mode: 0o600 })
 
   log('messaging_worker_started', { batchSize, pollMs, whatsappLive: env.WHATSAPP_LIVE_ENABLED, emailLive: env.EMAIL_LIVE_ENABLED })
