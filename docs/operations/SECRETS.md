@@ -13,8 +13,11 @@ environment's secret manager, never in Git, issues, PRs, logs or tests.
 | `CLINICAL_ENCRYPTION_KEY_V1` | environment, server-only | L3 envelope encryption | add a new version; retain old versions while envelopes reference them |
 | `RATE_LIMIT_HMAC_KEY` | environment, server-only | privacy-safe rate-limit identifiers | coordinated rotation |
 | `PUBLIC_ACTION_HMAC_KEY` | environment, server-only | one-time public action token signatures | coordinated rotation; keep distinct from rate-limit key |
-| `WHATSAPP_ACCESS_TOKEN` | environment, server-only | WhatsApp adapter | provider policy or leak |
-| `EMAIL_PROVIDER_API_KEY` | environment, server-only | email adapter | provider policy or leak |
+| `WHATSAPP_ACCESS_TOKEN` | environment, server-only | Meta WhatsApp Cloud API adapter | provider policy or leak |
+| `WHATSAPP_PHONE_NUMBER_ID` | environment, server-only | Meta WhatsApp Cloud API adapter (not secret by itself, but keep alongside the token) | when the sending number changes |
+| `EMAIL_SMTP_HOST` / `EMAIL_SMTP_PORT` | environment | SMTP adapter connection | when the provider changes |
+| `EMAIL_SMTP_USER` / `EMAIL_SMTP_PASSWORD` | environment, server-only | SMTP adapter credentials | provider policy or leak |
+| `EMAIL_FROM` | environment | SMTP adapter sender address (not secret) | when the sending mailbox changes |
 | `NFSE_*` credentials | environment, server-only | fiscal sandbox/homologation/live adapter | provider policy or leak |
 | `WEBHOOK_SIGNING_SECRET_*` | environment, server-only | inbound provider verification | provider policy or leak |
 
@@ -42,3 +45,12 @@ available in this repository execution. No values were generated or recorded.
 - `DOCUMENT_WORKER_HEALTH_FILE` is a local heartbeat path and must not contain payload data.
 - Worker env files stay outside Git with mode `0600`; do not pass secret values on command lines or logs.
 - The worker may read signed form/template data through `service_role`, but it must not receive form-table write privileges.
+
+## Messaging worker
+
+- The worker reuses `SUPABASE_SECRET_KEY` server-side only, same as every other worker.
+- WhatsApp send is disabled unless `WHATSAPP_LIVE_ENABLED=true`; email send is disabled unless `EMAIL_LIVE_ENABLED=true`. Both default to `false` and are gated by the same environment-isolation assertion (`scripts/assert-environment.mjs`) as `NFSE_LIVE_ENABLED`: never on outside production, and production requires `GO_LIVE_APPROVED=true`.
+- `MESSAGING_WORKER_POLL_MS` and `MESSAGING_WORKER_BATCH_SIZE` are non-secret runtime tuning values, matching the document worker's `DOCUMENT_WORKER_*` pair.
+- `MESSAGING_WORKER_HEALTH_FILE` is a local heartbeat path and must not contain payload data.
+- Worker env files stay outside Git with mode `0600`; do not pass secret values on command lines or logs.
+- See `docs/CREDENTIALS-ROTATION-BEFORE-PRODUCTION.md` for the temporary Shop Vivaliz SMTP credentials currently used to validate real email delivery, and what must replace them before production go-live.

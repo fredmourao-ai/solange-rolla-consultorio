@@ -6,7 +6,11 @@ import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
 const projectRoot = fileURLToPath(new URL('../../', import.meta.url))
-const isolatedGitEnv = { ...process.env, GIT_CONFIG_GLOBAL: os.devNull, GIT_CONFIG_NOSYSTEM: '1' }
+// os.devNull is the native Win32 device path (\\.\nul) on Windows, which
+// Git for Windows' MSYS2 runtime cannot read as a config file location
+// ("fatal: unable to access '\\.\nul': Invalid argument"). Git's own path
+// translation layer accepts the POSIX spelling on every platform it runs on.
+const isolatedGitEnv = { ...process.env, GIT_CONFIG_GLOBAL: process.platform === 'win32' ? '/dev/null' : os.devNull, GIT_CONFIG_NOSYSTEM: '1' }
 
 function git(cwd: string, args: string[]) {
   return execFileSync('git', args, { cwd, encoding: 'utf8', env: isolatedGitEnv }).trim()
@@ -61,7 +65,13 @@ describe('pre-push worktree isolation', () => {
         GIT_WORK_TREE: repo,
         GIT_INDEX_FILE: path.join(repo, '.git', 'index'),
       }
-      const result = spawnSync(hook, ['origin', 'unused'], {
+      // Windows has no shebang execution, so a hook file cannot be spawned
+      // directly; invoke it through the same bash that runs it under real
+      // Git for Windows hook execution.
+      const [command, args] = process.platform === 'win32'
+        ? ['bash', [hook, 'origin', 'unused']]
+        : [hook, ['origin', 'unused']]
+      const result = spawnSync(command, args, {
         cwd: repo,
         encoding: 'utf8',
         env: hookEnv,

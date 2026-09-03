@@ -25,12 +25,15 @@
     "supabase:reset": "npx supabase@2.115.0 db reset",
     "supabase:test": "npx supabase@2.115.0 test db",
     "worker:documents:build": "tsc -p tsconfig.worker.json",
-    "worker:documents": "npm run worker:documents:build && node --conditions=react-server .worker-dist/scripts/document-worker.js"
+    "worker:documents": "npm run worker:documents:build && node --conditions=react-server .worker-dist/scripts/document-worker.js",
+    "worker:messaging:build": "tsc -p tsconfig.worker.json",
+    "worker:messaging": "npm run worker:messaging:build && node --conditions=react-server .worker-dist/scripts/messaging-worker.js"
   },
   "dependencies": {
     "@supabase/ssr": "0.12.5",
     "@supabase/supabase-js": "2.112.4",
     "next": "16.2.11",
+    "nodemailer": "9.1.1",
     "pdf-lib": "1.17.1",
     "react": "19.2.8",
     "react-dom": "19.2.8",
@@ -41,6 +44,7 @@
     "@axe-core/playwright": "4.13.0",
     "@playwright/test": "1.62.1",
     "@types/node": "^24.0.0",
+    "@types/nodemailer": "^7.0.2",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "dependency-cruiser": "18.2.0",

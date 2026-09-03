@@ -19,6 +19,7 @@ export const serverEnvSchema = z.object({
   RATE_LIMIT_HMAC_KEY: z.string().min(32),
   PUBLIC_ACTION_HMAC_KEY: z.string().min(32),
   WHATSAPP_LIVE_ENABLED: explicitBoolean,
+  EMAIL_LIVE_ENABLED: explicitBoolean,
   NFSE_LIVE_ENABLED: explicitBoolean,
 })
 

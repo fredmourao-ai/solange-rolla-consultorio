@@ -12,6 +12,7 @@ const validServerEnv = {
   RATE_LIMIT_HMAC_KEY: 'a'.repeat(32),
   PUBLIC_ACTION_HMAC_KEY: 'b'.repeat(32),
   WHATSAPP_LIVE_ENABLED: 'false',
+  EMAIL_LIVE_ENABLED: 'false',
   NFSE_LIVE_ENABLED: 'true',
 }
 
