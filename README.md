@@ -88,3 +88,4 @@ por padrão e nenhum segredo é versionado.
 ## Regra de execução
 
 Uma task = uma Issue Task Contract = uma branch/worktree = um PR. Alterações de contratos públicos, RLS, clínico, fiscal, dinheiro/tempo ou políticas históricas exigem ADR/revisão arquitetural.
+
