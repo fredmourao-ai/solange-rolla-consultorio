@@ -75,7 +75,7 @@ export function assertEnvironment(env = process.env) {
     }
   }
 
-  const liveProviderEnabled = isTrue(env.WHATSAPP_LIVE_ENABLED) || isTrue(env.NFSE_LIVE_ENABLED)
+  const liveProviderEnabled = isTrue(env.WHATSAPP_LIVE_ENABLED) || isTrue(env.EMAIL_LIVE_ENABLED) || isTrue(env.NFSE_LIVE_ENABLED)
   if (appEnvironment === 'local' || appEnvironment === 'test' || appEnvironment === 'preview' || appEnvironment === 'staging') {
     if (liveProviderEnabled) {
       errors.push(`${appEnvironment} live providers must be disabled`)

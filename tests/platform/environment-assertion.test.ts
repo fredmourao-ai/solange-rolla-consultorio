@@ -26,6 +26,7 @@ describe('environment isolation assertion', () => {
       run({
         APP_ENV: 'local',
         WHATSAPP_LIVE_ENABLED: 'false',
+        EMAIL_LIVE_ENABLED: 'false',
         NFSE_LIVE_ENABLED: 'false',
       }).ok,
     ).toBe(true)
@@ -36,6 +37,7 @@ describe('environment isolation assertion', () => {
       run({
         APP_ENV: 'test',
         WHATSAPP_LIVE_ENABLED: 'false',
+        EMAIL_LIVE_ENABLED: 'false',
         NFSE_LIVE_ENABLED: 'false',
       }).ok,
     ).toBe(true)
@@ -45,6 +47,19 @@ describe('environment isolation assertion', () => {
     const result = run({
       APP_ENV: 'local',
       WHATSAPP_LIVE_ENABLED: 'true',
+      EMAIL_LIVE_ENABLED: 'false',
+      NFSE_LIVE_ENABLED: 'false',
+    })
+
+    expect(result.ok).toBe(false)
+    expect(result.output).toContain('live providers must be disabled')
+  })
+
+  it('rejects live email outside production the same way as live WhatsApp', () => {
+    const result = run({
+      APP_ENV: 'local',
+      WHATSAPP_LIVE_ENABLED: 'false',
+      EMAIL_LIVE_ENABLED: 'true',
       NFSE_LIVE_ENABLED: 'false',
     })
 
@@ -62,6 +77,7 @@ describe('environment isolation assertion', () => {
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_staging',
       SUPABASE_SECRET_KEY: 'sb_secret_staging',
       WHATSAPP_LIVE_ENABLED: 'false',
+      EMAIL_LIVE_ENABLED: 'false',
       NFSE_LIVE_ENABLED: 'false',
     })
 
@@ -79,6 +95,7 @@ describe('environment isolation assertion', () => {
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_preview',
       SUPABASE_SECRET_KEY: 'sb_secret_preview',
       WHATSAPP_LIVE_ENABLED: 'true',
+      EMAIL_LIVE_ENABLED: 'false',
       NFSE_LIVE_ENABLED: 'false',
     })
     const production = run({
@@ -89,6 +106,7 @@ describe('environment isolation assertion', () => {
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_production',
       SUPABASE_SECRET_KEY: 'sb_secret_production',
       WHATSAPP_LIVE_ENABLED: 'true',
+      EMAIL_LIVE_ENABLED: 'false',
       NFSE_LIVE_ENABLED: 'false',
     })
 
@@ -108,6 +126,7 @@ describe('environment isolation assertion', () => {
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_staging',
       SUPABASE_SECRET_KEY: 'sb_secret_staging',
       WHATSAPP_LIVE_ENABLED: 'false',
+      EMAIL_LIVE_ENABLED: 'false',
       NFSE_LIVE_ENABLED: 'false',
     })
 
@@ -126,6 +145,7 @@ describe('environment isolation assertion', () => {
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_preview',
       SUPABASE_SECRET_KEY: 'sb_secret_preview',
       WHATSAPP_LIVE_ENABLED: 'false',
+      EMAIL_LIVE_ENABLED: 'false',
       NFSE_LIVE_ENABLED: 'false',
     })
 

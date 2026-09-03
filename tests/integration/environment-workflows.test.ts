@@ -16,6 +16,7 @@ const base = {
   SUPABASE_PRODUCTION_PROJECT_REF: 'production-ref',
   SUPABASE_STAGING_PROJECT_REF: 'staging-ref',
   WHATSAPP_LIVE_ENABLED: 'false',
+  EMAIL_LIVE_ENABLED: 'false',
   NFSE_LIVE_ENABLED: 'false',
 }
 
@@ -65,6 +66,7 @@ describe('environment workflow contracts', () => {
         SUPABASE_STAGING_PROJECT_REF: 'staging-ref',
         SUPABASE_PRODUCTION_PROJECT_REF: 'production-ref',
         WHATSAPP_LIVE_ENABLED: 'false',
+        EMAIL_LIVE_ENABLED: 'false',
         NFSE_LIVE_ENABLED: 'false',
       }),
     ).toContain('staging promotion authorized')
@@ -76,6 +78,7 @@ describe('environment workflow contracts', () => {
         SUPABASE_STAGING_PROJECT_REF: 'staging-ref',
         SUPABASE_PRODUCTION_PROJECT_REF: 'production-ref',
         WHATSAPP_LIVE_ENABLED: 'false',
+        EMAIL_LIVE_ENABLED: 'false',
         NFSE_LIVE_ENABLED: 'false',
       }),
     ).toThrow(/requires STAGING_PROMOTION_APPROVED/)
