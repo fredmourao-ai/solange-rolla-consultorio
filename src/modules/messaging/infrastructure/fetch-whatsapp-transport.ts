@@ -35,8 +35,12 @@ export function createFetchWhatsAppTransport(apiVersion: string): WhatsAppTransp
     })
     const payload = (await response.json().catch(() => null)) as { messages?: { id?: string }[]; error?: { message?: string; code?: number } } | null
     if (!response.ok || !payload?.messages?.[0]?.id) {
+      // The worker's retry classifier (safeErrorCode in messaging-worker-runtime)
+      // only trusts a clean ALL_CAPS error.message as a real code; Meta's own
+      // (arbitrary, free-text) error reason goes on `cause` instead so it never
+      // leaks into -- and defeats -- that classification.
       const reason = payload?.error?.message ?? `HTTP_${response.status}`
-      throw new Error(response.status >= 500 || response.status === 429 ? `WHATSAPP_TRANSIENT_${reason}` : `WHATSAPP_REJECTED_${reason}`)
+      throw new Error(response.status >= 500 || response.status === 429 ? 'WHATSAPP_TRANSIENT' : 'WHATSAPP_REJECTED', { cause: reason })
     }
     return { externalId: payload.messages[0].id, status: 'accepted' }
   }
