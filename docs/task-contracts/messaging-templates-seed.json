@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "status": "approved",
+  "issue": 4,
+  "migration": "20260903010000_messaging_seed_templates.sql",
+  "owners": ["messaging"],
+  "objects": [
+    {"name": "public.message_templates", "owner": "messaging"}
+  ]
+}
