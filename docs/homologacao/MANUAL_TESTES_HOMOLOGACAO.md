@@ -13,6 +13,8 @@ A coluna de estado inicial usa:
 
 **Nunca transformar `PARTIAL` ou `BLOCKED` em PASS apenas por existir teste unitário.**
 
+O estado técnico corrente e o rastreamento por issue/PR estão em `PENDENCIAS_TECNICAS_HOMOLOGACAO.md`; em caso de divergência entre uma marcação inicial deste manual e aquele documento, prevalece o status técnico mais recente.
+
 ## 2. Preparação de cada rodada
 
 Antes de testar, registrar:
@@ -211,28 +213,28 @@ Tentar cadastrar a mesma pessoa novamente pelos identificadores relevantes.
 **Esperado:** horários, status e nomes coerentes.
 
 ### H-APT-002 — Criar consulta
-**Estado:** verificar caminho real no SHA candidato
+**Estado:** BLOCKED no `main` auditado; Issue #75
 
 Criar consulta associada à pessoa e serviço.
 
 **Esperado:** `starts_at`, timezone, preço/política e deadline persistidos corretamente.
 
 ### H-APT-003 — Timezone São Paulo
-**Estado:** READY
+**Estado:** READY no domínio; execução pela UI depende Issue #75
 
 Criar horário e conferir UTC x `America/Sao_Paulo`.
 
 **Esperado:** nenhuma mudança de horário por conversão incorreta.
 
 ### H-APT-004 — Conflito de agenda
-**Estado:** READY se caller existir
+**Estado:** BLOCKED para homologação pela UI; Issue #75
 
 Tentar sobreposição proibida.
 
 **Esperado:** recusa clara e sem registro órfão.
 
 ### H-APT-005 — Política histórica
-**Estado:** READY em domínio
+**Estado:** READY no domínio; exercício pela UI depende Issue #75
 
 Alterar versão da política para novos registros.
 
@@ -388,9 +390,9 @@ Preencher parcialmente e salvar conforme fluxo existente.
 **Esperado:** status tardio registrado com versão/snapshot de política.
 
 ### H-CNF-008 — Solicitar reagendamento
-**Estado:** READY
+**Estado:** PARTIAL; solicitação pública pode existir, conclusão administrativa depende Issue #75
 
-**Esperado:** pedido registrado; paciente não escolhe novo horário diretamente.
+**Esperado:** pedido registrado; paciente não escolhe novo horário diretamente; secretaria conclui o novo agendamento pela rotina protegida.
 
 ### H-CNF-009 — Reuso do link
 **Estado:** READY
@@ -436,7 +438,7 @@ Preencher parcialmente e salvar conforme fluxo existente.
 # Fase 9 — Mensageria: e-mail e WhatsApp
 
 ### H-MSG-001 — Worker em execução
-**Estado:** código READY; implantação do demo auditado estava desatualizada
+**Estado:** código READY; implantação do demo auditado estava desatualizada, Issue #82
 
 **Esperado:** container/processo ativo e heartbeat recente.
 
@@ -490,7 +492,7 @@ Preencher parcialmente e salvar conforme fluxo existente.
 # Fase 10 — Atendimento e clínico
 
 ### H-CLI-001 — Marcar consulta realizada
-**Estado:** verificar caller real no SHA candidato
+**Estado:** BLOCKED para homologação pela UI no `main` auditado; Issue #75
 
 **Esperado:** status de agenda muda sem alterar financeiro/fiscal implicitamente.
 
@@ -550,7 +552,7 @@ Usar somente texto clínico fictício.
 
 **Esperado:** exatamente um recebível, inclusive sob concorrência.
 
-### H-NSH-006 — Exceção manual/isencão
+### H-NSH-006 — Exceção manual/isenção
 **Estado:** PARTIAL
 
 **Esperado:** motivo obrigatório e auditado; histórico preservado.
@@ -565,42 +567,42 @@ Usar somente texto clínico fictício.
 **Esperado:** paciente, pagador, origem, valor pago e saldo corretos.
 
 ### H-FIN-002 — Registrar pagamento total
-**Estado:** BLOCKED pela UI no `main`
+**Estado:** BLOCKED pela UI no `main`; Issue #76
 
 **Esperado:** pagamento idempotente; saldo zero; agenda não muda automaticamente.
 
 ### H-FIN-003 — Pagamento parcial
-**Estado:** BLOCKED pela UI no `main`
+**Estado:** BLOCKED pela UI no `main`; Issue #76
 
 **Esperado:** saldo remanescente correto.
 
 ### H-FIN-004 — Segundo pagamento
-**Estado:** BLOCKED pela UI no `main`
+**Estado:** BLOCKED pela UI no `main`; Issue #76
 
 **Esperado:** acumular sem exceder regras do domínio.
 
 ### H-FIN-005 — Método de pagamento
-**Estado:** BLOCKED pela UI no `main`
+**Estado:** BLOCKED pela UI no `main`; Issue #76
 
 Validar pix, dinheiro, débito, crédito, transferência e outro conforme disponibilidade.
 
-### H-FIN-006 — Ajuste/isencão
-**Estado:** BLOCKED pela UI no `main`
+### H-FIN-006 — Ajuste/isenção
+**Estado:** BLOCKED pela UI no `main`; Issue #76
 
 **Esperado:** justificativa e auditoria; nenhum delete físico.
 
 ### H-FIN-007 — Estorno parcial
-**Estado:** BLOCKED pela UI no `main`
+**Estado:** BLOCKED pela UI no `main`; Issue #76
 
 **Esperado:** motivo obrigatório, histórico mantido.
 
 ### H-FIN-008 — Estorno total
-**Estado:** BLOCKED pela UI no `main`
+**Estado:** BLOCKED pela UI no `main`; Issue #76
 
 **Esperado:** resultado financeiro coerente; pagamento original preservado.
 
 ### H-FIN-009 — Idempotência financeira
-**Estado:** BLOCKED pela UI no `main`
+**Estado:** BLOCKED pela UI no `main`; Issue #76
 
 **Esperado:** repetição da mesma operação não duplica dinheiro.
 
@@ -609,28 +611,28 @@ Validar pix, dinheiro, débito, crédito, transferência e outro conforme dispon
 # Fase 13 — Contas a pagar
 
 ### H-PAY-001 — Criar despesa
-**Estado:** BLOCKED pela UI no `main`
+**Estado:** BLOCKED pela UI no `main`; Issue #76
 
 **Esperado:** centavos inteiros, categoria, fornecedor e vencimento.
 
 ### H-PAY-002 — Baixa parcial
-**Estado:** BLOCKED pela UI no `main`
+**Estado:** BLOCKED pela UI no `main`; Issue #76
 
 ### H-PAY-003 — Baixa total
-**Estado:** BLOCKED pela UI no `main`
+**Estado:** BLOCKED pela UI no `main`; Issue #76
 
 ### H-PAY-004 — Recorrência mensal
-**Estado:** BLOCKED pela UI no `main`
+**Estado:** BLOCKED pela UI no `main`; Issue #76
 
 **Esperado:** geração idempotente por competência.
 
 ### H-PAY-005 — Fim de mês
-**Estado:** BLOCKED pela UI no `main`
+**Estado:** BLOCKED pela UI no `main`; Issue #76
 
 **Esperado:** fallback explícito para meses menores.
 
 ### H-PAY-006 — Recibo privado
-**Estado:** BLOCKED pela UI no `main`
+**Estado:** BLOCKED pela UI no `main`; Issue #76
 
 **Esperado:** armazenamento/acesso privado.
 
@@ -642,38 +644,38 @@ Validar pix, dinheiro, débito, crédito, transferência e outro conforme dispon
 **Estado:** READY
 
 ### H-EVT-002 — Criar evento
-**Estado:** BLOCKED pela UI no `main`
+**Estado:** BLOCKED pela UI no `main`; Issue #77
 
 Validar título, datas, modalidade, local, capacidade e preço.
 
 ### H-EVT-003 — Inscrever participante
-**Estado:** BLOCKED pela UI no `main`
+**Estado:** BLOCKED pela UI no `main`; Issue #77
 
 **Esperado:** reutilizar cadastro de Pessoa.
 
 ### H-EVT-004 — Limite de capacidade
-**Estado:** BLOCKED pela UI no `main`
+**Estado:** BLOCKED pela UI no `main`; Issue #77
 
 **Esperado:** impedir excedente conforme regra.
 
 ### H-EVT-005 — Cancelar inscrição
-**Estado:** BLOCKED pela UI no `main`
+**Estado:** BLOCKED pela UI no `main`; Issue #77
 
 **Esperado:** não apagar pagamento; estorno é operação separada.
 
 ### H-EVT-006 — Registrar presença
-**Estado:** BLOCKED pela UI no `main`
+**Estado:** BLOCKED pela UI no `main`; Issue #77
 
 ### H-EVT-007 — Registrar despesa do evento
-**Estado:** BLOCKED pela UI no `main`
+**Estado:** BLOCKED pela UI no `main`; Issue #77
 
 ### H-EVT-008 — Receita/resultado do evento
-**Estado:** PARTIAL — leitura de relatório existe
+**Estado:** PARTIAL — leitura de relatório existe; operação depende Issue #77
 
 **Esperado:** inscrições, pagamentos e despesas reconciliados.
 
 ### H-EVT-009 — NFS-e de evento
-**Estado:** BLOCKED operacionalmente e PROD-GATE fiscal
+**Estado:** BLOCKED operacionalmente e PROD-GATE fiscal; Issues #77/#78
 
 **Esperado:** tratamento fiscal separado e aprovado.
 
@@ -690,33 +692,33 @@ Validar título, datas, modalidade, local, capacidade e preço.
 **Esperado:** bloquear emissão e listar motivo.
 
 ### H-FIS-003 — Solicitar NFS-e mock
-**Estado:** BLOCKED pela UI no `main`
+**Estado:** BLOCKED pela UI no `main`; Issue #78
 
 **Esperado:** documento idempotente e enfileirado.
 
 ### H-FIS-004 — Worker fiscal mock
-**Estado:** READY em integração, depende de caller
+**Estado:** READY em integração, depende de caller da Issue #78
 
 **Esperado:** transições corretas e retry sanitizado.
 
 ### H-FIS-005 — Repetir solicitação
-**Estado:** BLOCKED pela UI no `main`
+**Estado:** BLOCKED pela UI no `main`; Issue #78
 
 **Esperado:** retornar documento/request existente.
 
 ### H-FIS-006 — Artefato XML/PDF
-**Estado:** PARTIAL
+**Estado:** PARTIAL; fluxo operacional depende Issue #78
 
 **Esperado:** storage privado; nunca logar XML bruto com PII.
 
 ### H-FIS-007 — Cancelar NFS-e mock
-**Estado:** BLOCKED pela UI no `main`
+**Estado:** BLOCKED pela UI no `main`; Issue #78
 
 ### H-FIS-008 — Substituição
 **Estado:** PROD-GATE/contabilidade
 
 ### H-FIS-009 — Consulta realizada x no-show x cancelamento tardio x evento
-**Estado:** PROD-GATE/contabilidade
+**Estado:** PROD-GATE/contabilidade para regra definitiva; execução mock depende Issue #78
 
 **Esperado:** cada origem usa tratamento parametrizado e aprovado; não presumir equivalência tributária.
 
@@ -751,16 +753,16 @@ Validar título, datas, modalidade, local, capacidade e preço.
 **Esperado:** corte em `America/Sao_Paulo`.
 
 ### H-REP-006 — CSV
-**Estado:** BLOCKED — caminho real não encontrado
+**Estado:** BLOCKED — caminho real não encontrado; Issue #79
 
 ### H-REP-007 — XLSX
-**Estado:** BLOCKED — caminho real não encontrado
+**Estado:** BLOCKED — caminho real não encontrado; Issue #79
 
 ### H-REP-008 — PDF
-**Estado:** BLOCKED — caminho real não encontrado
+**Estado:** BLOCKED — caminho real não encontrado; Issue #79
 
 ### H-REP-009 — Privacidade de exportação
-**Estado:** READY negativo
+**Estado:** READY negativo no design; exportação real depende Issue #79
 
 **Esperado:** nenhuma informação clínica em exportações administrativas.
 
@@ -769,22 +771,22 @@ Validar título, datas, modalidade, local, capacidade e preço.
 # Fase 17 — Aniversário e demais automações
 
 ### H-BDAY-001 — Pessoa elegível
-**Estado:** verificar caller/cron real
+**Estado:** BLOCKED/PARTIAL; caller/cron não encontrado, Issue #81
 
 **Esperado:** uma mensagem por aniversário e canal permitido.
 
 ### H-BDAY-002 — Opt-out
-**Estado:** verificar caller/cron real
+**Estado:** BLOCKED/PARTIAL; Issue #81
 
 **Esperado:** não enviar.
 
 ### H-BDAY-003 — Reexecução do cron
-**Estado:** verificar caller/cron real
+**Estado:** BLOCKED/PARTIAL; Issue #81
 
 **Esperado:** idempotente; sem mensagem duplicada.
 
 ### H-BDAY-004 — Demais templates automáticos
-**Estado:** PARTIAL
+**Estado:** PARTIAL; Issue #81 para aniversário e PR #72 para confirmação automática
 
 **Esperado:** somente templates revisados/ativos podem ser enviados.
 
@@ -910,7 +912,7 @@ Simular descoberta, contenção, avaliação, registro e escalonamento.
 **Estado:** READY
 
 ### H-RES-006 — Duplo clique em ação financeira
-**Estado:** BLOCKED até caminho financeiro real
+**Estado:** BLOCKED até caminho financeiro real; Issue #76
 
 **Esperado:** não duplicar cobrança/pagamento.
 
@@ -919,14 +921,14 @@ Simular descoberta, contenção, avaliação, registro e escalonamento.
 # Fase 22 — Mobile, acessibilidade e UX
 
 ### H-UX-001 — iPhone/mobile
-**Estado:** READY
+**Estado:** READY nas rotinas atualmente alcançáveis
 
-Testar login, pessoa, agenda, formulário, assinatura e confirmação.
+Testar login, pessoa, agenda, formulário, assinatura e confirmação; ações bloqueadas continuam vinculadas às respectivas issues técnicas.
 
 ### H-UX-002 — Teclado
-**Estado:** READY
+**Estado:** READY nas rotinas alcançáveis
 
-**Esperado:** fluxo crítico completo sem mouse.
+**Esperado:** fluxo crítico disponível sem mouse.
 
 ### H-UX-003 — Labels/forms
 **Estado:** READY
@@ -951,44 +953,44 @@ Testar login, pessoa, agenda, formulário, assinatura e confirmação.
 # Fase 23 — Backup e restore
 
 ### H-BKP-001 — Backup automático configurado
-**Estado:** BLOCKED na auditoria de 04/09/2026
+**Estado:** BLOCKED na auditoria de 04/09/2026; Issue #80
 
 **Esperado:** job/timer Solange ativo e documentado.
 
 ### H-BKP-002 — Backup gerado
-**Estado:** BLOCKED
+**Estado:** BLOCKED; Issue #80
 
 **Esperado:** dump íntegro, timestamp, checksum e armazenamento protegido no destino aprovado.
 
 ### H-BKP-003 — Retenção/rotação
-**Estado:** BLOCKED
+**Estado:** BLOCKED; Issue #80
 
 **Esperado:** retenção definida sem encher o host; exclusão segura de versões expiradas.
 
 ### H-BKP-004 — Falha do destino
-**Estado:** BLOCKED
+**Estado:** BLOCKED; Issue #80
 
 **Esperado:** job falha de modo visível; não declara sucesso.
 
 ### H-BKP-005 — Restore isolado
-**Estado:** PARTIAL — script existe, evidência real pendente
+**Estado:** PARTIAL — script existe, evidência real pendente; Issue #80
 
 Restaurar backup em ambiente isolado, nunca sobre o demo/produção.
 
 **Esperado:** schema, migrations, RLS, tabelas críticas e contagens validadas.
 
 ### H-BKP-006 — Teste de conteúdo criptografado
-**Estado:** PARTIAL
+**Estado:** PARTIAL; Issue #80
 
 **Esperado:** banco restaurado sozinho não revela plaintext clínico; versões de chave são fornecidas separadamente quando necessário.
 
 ### H-BKP-007 — RPO/RTO medidos
-**Estado:** BLOCKED até primeiro drill
+**Estado:** BLOCKED até primeiro drill; Issue #80
 
 Registrar idade do backup e tempo real de restauração.
 
 ### H-BKP-008 — Dados pessoais de homologação no backup
-**Estado:** BLOCKED até rotina existir
+**Estado:** BLOCKED até rotina existir; Issue #80
 
 **Esperado:** mesmos controles de acesso/retenção aplicados aos dados autorizados do testador; limpeza pós-homologação inclui cópias de backup conforme política.
 
@@ -997,7 +999,7 @@ Registrar idade do backup e tempo real de restauração.
 # Fase 24 — Rollback, atualização e operação
 
 ### H-OPS-001 — Atualização do ambiente
-**Estado:** READY operacional
+**Estado:** READY operacional; promoção do SHA candidato rastreada na Issue #82
 
 **Esperado:** versão implantada muda de forma controlada e registrada.
 
