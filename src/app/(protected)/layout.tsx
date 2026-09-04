@@ -8,7 +8,7 @@ export const metadata: Metadata = { robots: { index: false, follow: false } }
 
 export default async function ProtectedLayout({ children }: { children: ReactNode }) {
   const session = await getStaffSession()
-  if (!session && process.env.APP_ENV === 'production') redirect('/login')
+  if (!session) redirect('/login')
 
-  return <AppShell role={session?.role ?? 'staff'}>{children}</AppShell>
+  return <AppShell role={session.role}>{children}</AppShell>
 }
