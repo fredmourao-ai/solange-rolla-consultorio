@@ -43,6 +43,7 @@ Arquitetura: **monólito modular orientado a domínio**, PostgreSQL/Supabase com
 - [Jurídico, CFP e política de cobrança](docs/LEGAL_COMPLIANCE.md)
 - [Integrações externas](docs/INTEGRATIONS.md)
 - [Testes, deploy e operação](docs/TESTING_DEPLOYMENT.md)
+- [Homologação — índice, auditoria, manual e matriz](docs/homologacao/README.md)
 - [Ambientes isolados](docs/ENVIRONMENTS.md)
 - [Referências pesquisadas](docs/REFERENCES.md)
 - [Spec arquitetura multiagente v2](docs/superpowers/specs/2026-08-24-multiagent-architecture-design.md)
@@ -79,11 +80,14 @@ Evento → inscrição → cadastro da pessoa → formulário/termo quando aplic
 
 ## Estado operacional
 
-Dashboard de atenção, relatórios financeiros/operacionais, exportações CSV/XLSX/PDF,
+Dashboard de atenção, relatórios financeiros/operacionais de tela,
 redaction/correlation IDs, health check e testes E2E sintéticos estão versionados.
 O inventário de dados, retenção, resposta a incidentes, backup/restore e rollback
-estão documentados em `docs/operations/`. Integrações live continuam desligadas
-por padrão e nenhum segredo é versionado.
+estão documentados em `docs/operations/`. A auditoria de homologação de 04/09/2026
+identificou que alguns casos de uso existentes no domínio ainda não possuem caminho
+administrativo real na UI/worker e que o backup automático ainda não estava ativo;
+consultar `docs/homologacao/` antes de declarar uma rotina homologável. Integrações
+live continuam desligadas por padrão e nenhum segredo é versionado.
 
 ## Regra de execução
 
