@@ -73,3 +73,7 @@ export function transitionAppointment(
   if (!next) throw new Error('INVALID_APPOINTMENT_TRANSITION')
   return next
 }
+
+export function availableAppointmentCommands(current: AppointmentStatus): AppointmentCommand[] {
+  return Object.keys(transitions[current]) as AppointmentCommand[]
+}

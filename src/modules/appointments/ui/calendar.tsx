@@ -1,4 +1,5 @@
 import { AppointmentDialog } from './appointment-dialog'
+import type { AppointmentCommand, AppointmentStatus } from '../domain/status'
 
 export type AppointmentCalendarItem = {
   id: string
@@ -6,8 +7,10 @@ export type AppointmentCalendarItem = {
   serviceName: string
   startsAt: string
   endsAt: string
-  status: string
+  status: AppointmentStatus
   cancellationDeadlineAt: string
+  availableCommands: AppointmentCommand[]
+  chargeable: boolean
 }
 
 const statusLabels: Record<string, string> = {
@@ -28,7 +31,12 @@ const dateTime = new Intl.DateTimeFormat('pt-BR', {
   dateStyle: 'short',
   timeStyle: 'short',
 })
-export function AppointmentCalendar({ items }: { items: AppointmentCalendarItem[] }) {
+export function AppointmentCalendar({ items, redirectTo, changeStatusAction, chargeAction }: {
+  items: AppointmentCalendarItem[]
+  redirectTo: string
+  changeStatusAction: (formData: FormData) => Promise<void>
+  chargeAction: (formData: FormData) => Promise<void>
+}) {
   if (items.length === 0) return <p className="empty-state">Nenhuma consulta neste período.</p>
 
   return <ul className="appointment-calendar" aria-label="Agenda de consultas">
@@ -48,12 +56,19 @@ export function AppointmentCalendar({ items }: { items: AppointmentCalendarItem[
         </div>
         <details>
           <summary>Ver detalhes</summary>
-          <AppointmentDialog appointment={{
-            patientName: item.patientName, serviceName: item.serviceName,
-            startsAt: item.startsAt, endsAt: item.endsAt,
-            statusLabel: statusLabels[item.status] ?? item.status,
-            cancellationDeadlineAt: item.cancellationDeadlineAt,
-          }} />
+          <AppointmentDialog
+            appointment={{
+              id: item.id, patientName: item.patientName, serviceName: item.serviceName,
+              startsAt: item.startsAt, endsAt: item.endsAt,
+              statusLabel: statusLabels[item.status] ?? item.status,
+              cancellationDeadlineAt: item.cancellationDeadlineAt,
+              availableCommands: item.availableCommands,
+              chargeable: item.chargeable,
+            }}
+            redirectTo={redirectTo}
+            changeStatusAction={changeStatusAction}
+            chargeAction={chargeAction}
+          />
         </details>
       </li>
     ))}
