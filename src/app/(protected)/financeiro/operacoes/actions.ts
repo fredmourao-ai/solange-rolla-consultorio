@@ -1,0 +1,128 @@
+'use server'
+
+import { redirect } from 'next/navigation'
+import { authorizeStaffSession, getStaffSession } from '@/modules/identity/public'
+import { createServerSupabaseClient } from '@/platform/supabase/server'
+
+const PAYMENT_METHODS = new Set(['pix', 'cash', 'debit_card', 'credit_card', 'bank_transfer', 'other'])
+function cents(value: FormDataEntryValue | null): number {
+  const parsed = Math.round(Number(String(value ?? '').replace(',', '.')) * 100)
+  if (!Number.isSafeInteger(parsed) || parsed <= 0) throw new Error('FINANCE_INVALID_AMOUNT')
+  return parsed
+}
+function text(formData: FormData, key: string): string {
+  const value = String(formData.get(key) ?? '').trim()
+  if (!value) throw new Error(`FINANCE_${key.toUpperCase()}_REQUIRED`)
+  return value
+}
+async function context(roles: Array<'psychologist_owner' | 'accounting'>) {
+  const session = await getStaffSession()
+  const authorized = authorizeStaffSession(session, roles)
+  return { authorized, client: await createServerSupabaseClient() }
+}
+async function audit(client: Awaited<ReturnType<typeof createServerSupabaseClient>>, actorId: string, action: string, entityType: string, entityId: string, metadata: Record<string, unknown>) {
+  const { error } = await client.from('audit_events').insert({ actor_user_id: actorId, action, entity_type: entityType, entity_id: entityId, correlation_id: entityId, metadata })
+  if (error) throw new Error('FINANCE_AUDIT_FAILED')
+}
+async function refreshReceivableStatus(client: Awaited<ReturnType<typeof createServerSupabaseClient>>, receivableId: string) {
+  const [{ data: receivable }, { data: adjustments }, { data: payments }, { data: refunds }] = await Promise.all([
+    client.from('receivables').select('original_amount_cents').eq('id', receivableId).single(),
+    client.from('receivable_adjustments').select('adjustment_cents').eq('receivable_id', receivableId),
+    client.from('payments').select('amount_cents').eq('receivable_id', receivableId),
+    client.from('payment_refunds').select('amount_cents,payment:payments!payment_refunds_payment_id_fkey(receivable_id)').eq('payment.receivable_id', receivableId),
+  ])
+  if (!receivable) throw new Error('FINANCE_RECEIVABLE_NOT_FOUND')
+  const total = receivable.original_amount_cents + (adjustments ?? []).reduce((sum, row) => sum + row.adjustment_cents, 0)
+  const paid = (payments ?? []).reduce((sum, row) => sum + row.amount_cents, 0)
+  const refunded = (refunds ?? []).reduce((sum, row) => sum + row.amount_cents, 0)
+  const netPaid = paid - refunded
+  const status = netPaid <= 0 && refunded > 0 ? 'refunded' : netPaid >= total ? 'paid' : netPaid > 0 ? 'partial' : 'open'
+  const { error } = await client.from('receivables').update({ status }).eq('id', receivableId)
+  if (error) throw new Error('FINANCE_STATUS_UPDATE_FAILED')
+}
+
+export async function recordPaymentAction(formData: FormData) {
+  const { authorized, client } = await context(['psychologist_owner'])
+  const receivableId = text(formData, 'receivable_id'); const amountCents = cents(formData.get('amount'))
+  const method = text(formData, 'method'); const idempotencyKey = text(formData, 'idempotency_key')
+  if (!PAYMENT_METHODS.has(method)) throw new Error('FINANCE_INVALID_PAYMENT_METHOD')
+  const { data: existing } = await client.from('payments').select('id').eq('idempotency_key', idempotencyKey).maybeSingle()
+  if (!existing) {
+    const { data: receivable } = await client.from('receivables').select('id,original_amount_cents').eq('id', receivableId).single()
+    if (!receivable) throw new Error('FINANCE_RECEIVABLE_NOT_FOUND')
+    const { data: payment, error } = await client.from('payments').insert({ receivable_id: receivableId, amount_cents: amountCents, method, idempotency_key: idempotencyKey, actor_id: authorized.userId }).select('id').single()
+    if (error || !payment) throw new Error('FINANCE_PAYMENT_CREATE_FAILED')
+    await audit(client, authorized.userId, 'payment.recorded', 'payment', payment.id, { receivableId, amountCents, method })
+  }
+  await refreshReceivableStatus(client, receivableId); redirect('/financeiro/operacoes')
+}
+
+export async function applyAdjustmentAction(formData: FormData) {
+  const { authorized, client } = await context(['psychologist_owner'])
+  const receivableId = text(formData, 'receivable_id'); const amountCents = cents(formData.get('amount'))
+  const direction = text(formData, 'direction'); const reason = text(formData, 'reason')
+  const adjustmentCents = direction === 'discount' ? -amountCents : amountCents
+  const { data: row, error } = await client.from('receivable_adjustments').insert({ receivable_id: receivableId, adjustment_cents: adjustmentCents, reason, actor_id: authorized.userId }).select('id').single()
+  if (error || !row) throw new Error('FINANCE_ADJUSTMENT_CREATE_FAILED')
+  await audit(client, authorized.userId, 'receivable.adjusted', 'receivable_adjustment', row.id, { receivableId, adjustmentCents, reason })
+  await refreshReceivableStatus(client, receivableId); redirect('/financeiro/operacoes')
+}
+
+export async function refundPaymentAction(formData: FormData) {
+  const { authorized, client } = await context(['psychologist_owner'])
+  const paymentId = text(formData, 'payment_id'); const amountCents = cents(formData.get('amount')); const reason = text(formData, 'reason')
+  const method = text(formData, 'method'); const idempotencyKey = text(formData, 'idempotency_key')
+  if (!PAYMENT_METHODS.has(method)) throw new Error('FINANCE_INVALID_PAYMENT_METHOD')
+  const { data: payment } = await client.from('payments').select('id,receivable_id,amount_cents').eq('id', paymentId).single()
+  if (!payment) throw new Error('FINANCE_PAYMENT_NOT_FOUND')
+  const { data: prior } = await client.from('payment_refunds').select('amount_cents').eq('payment_id', paymentId)
+  if ((prior ?? []).reduce((sum, row) => sum + row.amount_cents, 0) + amountCents > payment.amount_cents) throw new Error('FINANCE_REFUND_EXCEEDS_PAYMENT')
+  const { data: existing } = await client.from('payment_refunds').select('id').eq('idempotency_key', idempotencyKey).maybeSingle()
+  if (!existing) {
+    const { data: refund, error } = await client.from('payment_refunds').insert({ payment_id: paymentId, amount_cents: amountCents, method, reason, idempotency_key: idempotencyKey, actor_id: authorized.userId }).select('id').single()
+    if (error || !refund) throw new Error('FINANCE_REFUND_CREATE_FAILED')
+    await audit(client, authorized.userId, 'payment.refunded', 'payment_refund', refund.id, { paymentId, amountCents, reason })
+  }
+  await refreshReceivableStatus(client, payment.receivable_id); redirect('/financeiro/operacoes')
+}
+
+export async function createPayableAction(formData: FormData) {
+  const { authorized, client } = await context(['psychologist_owner', 'accounting'])
+  const vendorId = text(formData, 'vendor_id'); const categoryId = text(formData, 'category_id'); const description = text(formData, 'description')
+  const amountCents = cents(formData.get('amount')); const dueDate = text(formData, 'due_date'); const competence = text(formData, 'competence'); const idempotencyKey = text(formData, 'idempotency_key')
+  const { data: existing } = await client.from('payables').select('id').eq('idempotency_key', idempotencyKey).maybeSingle()
+  if (!existing) {
+    const { data: payable, error } = await client.from('payables').insert({ vendor_id: vendorId, category_id: categoryId, description, amount_cents: amountCents, due_date: dueDate, competence, idempotency_key: idempotencyKey }).select('id').single()
+    if (error || !payable) throw new Error('FINANCE_PAYABLE_CREATE_FAILED')
+    await audit(client, authorized.userId, 'payable.created', 'payable', payable.id, { vendorId, categoryId, amountCents, dueDate, competence })
+  }
+  redirect('/financeiro/operacoes')
+}
+
+export async function payPayableAction(formData: FormData) {
+  const { authorized, client } = await context(['psychologist_owner', 'accounting'])
+  const payableId = text(formData, 'payable_id'); const amountCents = cents(formData.get('amount')); const method = text(formData, 'method'); const idempotencyKey = text(formData, 'idempotency_key')
+  const { data: payable } = await client.from('payables').select('id,amount_cents,paid_cents').eq('id', payableId).single()
+  if (!payable || amountCents > payable.amount_cents - payable.paid_cents) throw new Error('FINANCE_PAYABLE_PAYMENT_INVALID')
+  const { data: existing } = await client.from('payable_payments').select('id').eq('idempotency_key', idempotencyKey).maybeSingle()
+  if (!existing) {
+    const { data: payment, error } = await client.from('payable_payments').insert({ payable_id: payableId, amount_cents: amountCents, method, idempotency_key: idempotencyKey, actor_id: authorized.userId }).select('id').single()
+    if (error || !payment) throw new Error('FINANCE_PAYABLE_PAYMENT_CREATE_FAILED')
+    const nextPaid = payable.paid_cents + amountCents; const status = nextPaid === payable.amount_cents ? 'paid' : 'partial'
+    const { error: updateError } = await client.from('payables').update({ paid_cents: nextPaid, status }).eq('id', payableId)
+    if (updateError) throw new Error('FINANCE_PAYABLE_UPDATE_FAILED')
+    await audit(client, authorized.userId, 'payable.payment_recorded', 'payable_payment', payment.id, { payableId, amountCents, method })
+  }
+  redirect('/financeiro/operacoes')
+}
+
+export async function createRecurrenceAction(formData: FormData) {
+  const { authorized, client } = await context(['psychologist_owner', 'accounting'])
+  const vendorId = text(formData, 'vendor_id'); const categoryId = text(formData, 'category_id'); const description = text(formData, 'description'); const amountCents = cents(formData.get('amount'))
+  const startDate = text(formData, 'start_date'); const dayOfMonth = Number(text(formData, 'day_of_month')); const fallback = text(formData, 'month_end_fallback')
+  if (!Number.isInteger(dayOfMonth) || dayOfMonth < 1 || dayOfMonth > 31 || !['last_day', 'reject'].includes(fallback)) throw new Error('FINANCE_RECURRENCE_INVALID')
+  const { data: rule, error } = await client.from('recurrence_rules').insert({ vendor_id: vendorId, category_id: categoryId, description, amount_cents: amountCents, start_date: startDate, day_of_month: dayOfMonth, month_end_fallback: fallback }).select('id').single()
+  if (error || !rule) throw new Error('FINANCE_RECURRENCE_CREATE_FAILED')
+  await audit(client, authorized.userId, 'payable.recurrence_created', 'recurrence_rule', rule.id, { vendorId, categoryId, amountCents, startDate, dayOfMonth, fallback })
+  redirect('/financeiro/operacoes')
+}
