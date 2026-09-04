@@ -1,5 +1,5 @@
 import { createServiceRoleSupabaseClient } from '@/platform/supabase/service-role'
-import { sendBirthdayGreetings, type BirthdayPerson, type BirthdayMessage } from '@/modules/automations/public'
+import { sendBirthdayGreetings, type BirthdayPerson, type BirthdayMessage } from '../modules/automations/public'
 
 export async function loadBirthdayCandidates(): Promise<BirthdayPerson[]> {
   const client = createServiceRoleSupabaseClient()
