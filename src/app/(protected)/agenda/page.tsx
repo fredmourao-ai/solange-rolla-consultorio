@@ -131,12 +131,15 @@ async function chargeAppointmentAction(formData: FormData) {
     noShowChargeEnabled: policy.noShowChargeEnabled,
     lateCancellationChargeEnabled: policy.lateCancellationChargeEnabled,
   }
-  const charge = buildAppointmentCharge(chargeable, row.service?.price_cents ?? 0)
+  const servicePriceCents = row.service?.price_cents
+  if (typeof servicePriceCents !== 'number' || !Number.isInteger(servicePriceCents) || servicePriceCents <= 0) throw new Error('AGENDA_SERVICE_PRICE_INVALID')
+  const charge = buildAppointmentCharge(chargeable, servicePriceCents)
 
   if (charge) {
     const repository: ReceivableRepository = {
       async findByIdempotencyKey(key) {
-        const { data } = await client.from('receivables').select('id,source_type,source_id,person_id,payer_person_id,original_amount_cents').eq('idempotency_key', key).maybeSingle()
+        const { data, error } = await client.from('receivables').select('id,source_type,source_id,person_id,payer_person_id,original_amount_cents').eq('idempotency_key', key).maybeSingle()
+        if (error) throw new Error('AGENDA_CHARGE_LOOKUP_FAILED')
         if (!data) return null
         return { id: data.id, sourceType: data.source_type, sourceId: data.source_id, personId: data.person_id, payerPersonId: data.payer_person_id, originalAmountCents: data.original_amount_cents, adjustmentCents: 0, paidCents: 0 }
       },
@@ -147,9 +150,6 @@ async function chargeAppointmentAction(formData: FormData) {
           original_amount_cents: receivable.originalAmountCents, idempotency_key: receivable.idempotencyKey,
         }).select('id,source_type,source_id,person_id,payer_person_id,original_amount_cents').single()
         if (error?.code === '23505') {
-          // Concurrent double-click: another request already created this
-          // charge under the same idempotency key. Return that row instead
-          // of a duplicate-charge error.
           const { data: existing, error: reselectError } = await client.from('receivables')
             .select('id,source_type,source_id,person_id,payer_person_id,original_amount_cents')
             .eq('idempotency_key', receivable.idempotencyKey).single()
@@ -179,6 +179,7 @@ async function chargeAppointmentAction(formData: FormData) {
       correlationId: appointmentId,
       metadata: {
         appointmentId, appointmentStatus: row.status, amountCents: charge.amountCents,
+        cancellationPolicySnapshot: policy,
         consentEvidenceConfirmationId: confirmation?.id ?? null,
         consentEvidenceRespondedAt: confirmation?.responded_at ?? null,
       },
@@ -215,7 +216,11 @@ export default async function AgendaPage({ searchParams }: {
     status: row.status as AppointmentCalendarItem['status'],
     cancellationDeadlineAt: row.cancellation_deadline_at,
     availableCommands: availableAppointmentCommands(row.status as AppointmentCalendarItem['status']),
-    chargeable: row.status === 'no_show' || row.status === 'cancelled_late',
+    chargeable: row.status === 'no_show'
+      ? Boolean((row.cancellation_policy_snapshot as unknown as CancellationPolicy).noShowChargeEnabled)
+      : row.status === 'cancelled_late'
+        ? Boolean((row.cancellation_policy_snapshot as unknown as CancellationPolicy).lateCancellationChargeEnabled)
+        : false,
   }))
 
   return <>
