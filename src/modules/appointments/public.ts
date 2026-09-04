@@ -6,6 +6,7 @@ export {
 export {
   APPOINTMENT_STATUSES,
   transitionAppointment,
+  availableAppointmentCommands,
   type AppointmentCommand,
   type AppointmentStatus,
 } from './domain/status'
