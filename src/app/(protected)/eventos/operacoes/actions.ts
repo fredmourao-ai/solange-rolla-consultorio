@@ -1,0 +1,41 @@
+'use server'
+
+import { redirect } from 'next/navigation'
+import { authorizeStaffSession, getStaffSession } from '@/modules/identity/public'
+import { createServerSupabaseClient } from '@/platform/supabase/server'
+
+function txt(formData: FormData, key: string): string { const v = String(formData.get(key) ?? '').trim(); if (!v) throw new Error(`EVENT_${key.toUpperCase()}_REQUIRED`); return v }
+function cents(value: FormDataEntryValue | null): number { const n = Math.round(Number(String(value ?? '').replace(',', '.')) * 100); if (!Number.isSafeInteger(n) || n < 0) throw new Error('EVENT_INVALID_AMOUNT'); return n }
+function localIso(value: string): string { if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)) throw new Error('EVENT_INVALID_TIME'); const d = new Date(`${value}:00-03:00`); if (Number.isNaN(d.getTime())) throw new Error('EVENT_INVALID_TIME'); return d.toISOString() }
+async function ctx(roles: Array<'psychologist_owner'|'secretary'|'accounting'>) { const s = await getStaffSession(); const a = authorizeStaffSession(s, roles); return { a, client: await createServerSupabaseClient() } }
+async function audit(client: Awaited<ReturnType<typeof createServerSupabaseClient>>, actorId: string, action: string, entityType: string, entityId: string, metadata: Record<string,unknown>) { const { error } = await client.from('audit_events').insert({ actor_user_id: actorId, action, entity_type: entityType, entity_id: entityId, correlation_id: entityId, metadata }); if (error) throw new Error('EVENT_AUDIT_FAILED') }
+
+export async function createEventAction(formData: FormData) {
+  const { a, client } = await ctx(['psychologist_owner','secretary'])
+  const startsAt = localIso(txt(formData,'starts_at_local')); const endsAt = localIso(txt(formData,'ends_at_local')); if (endsAt <= startsAt) throw new Error('EVENT_INVALID_INTERVAL')
+  const capacity = Number(txt(formData,'capacity')); if (!Number.isInteger(capacity) || capacity <= 0) throw new Error('EVENT_INVALID_CAPACITY')
+  const { data, error } = await client.from('events').insert({ title: txt(formData,'title'), description: String(formData.get('description') ?? ''), type: txt(formData,'type'), starts_at: startsAt, ends_at: endsAt, timezone: 'America/Sao_Paulo', location: String(formData.get('location') ?? ''), modality: txt(formData,'modality'), capacity, default_price_cents: cents(formData.get('price')), status: 'open' }).select('id').single()
+  if (error || !data) throw new Error('EVENT_CREATE_FAILED'); await audit(client,a.userId,'event.created','event',data.id,{startsAt,endsAt,capacity}); redirect('/eventos/operacoes')
+}
+export async function updateEventAction(formData: FormData) {
+  const { a, client } = await ctx(['psychologist_owner','secretary']); const id = txt(formData,'event_id'); const startsAt = localIso(txt(formData,'starts_at_local')); const endsAt = localIso(txt(formData,'ends_at_local')); const capacity = Number(txt(formData,'capacity'))
+  const { count } = await client.from('event_registrations').select('id',{count:'exact',head:true}).eq('event_id',id).neq('status','cancelled'); if ((count ?? 0) > capacity) throw new Error('EVENT_CAPACITY_BELOW_REGISTRATIONS')
+  const { error } = await client.from('events').update({ title: txt(formData,'title'), starts_at: startsAt, ends_at: endsAt, capacity, modality: txt(formData,'modality'), location: String(formData.get('location') ?? ''), default_price_cents: cents(formData.get('price')) }).eq('id',id); if(error) throw new Error('EVENT_UPDATE_FAILED'); await audit(client,a.userId,'event.updated','event',id,{startsAt,endsAt,capacity}); redirect('/eventos/operacoes')
+}
+export async function registerParticipantAction(formData: FormData) {
+  const { a, client } = await ctx(['psychologist_owner','secretary']); const eventId = txt(formData,'event_id'); const personId = txt(formData,'person_id')
+  const { data: event } = await client.from('events').select('capacity,default_price_cents,status').eq('id',eventId).single(); if(!event || !['open','planned'].includes(event.status)) throw new Error('EVENT_NOT_OPEN')
+  const { count } = await client.from('event_registrations').select('id',{count:'exact',head:true}).eq('event_id',eventId).neq('status','cancelled'); if((count ?? 0) >= event.capacity) throw new Error('EVENT_FULL')
+  const priceCents = formData.get('price') ? cents(formData.get('price')) : event.default_price_cents; const status = priceCents > 0 ? 'pending_payment' : 'confirmed'
+  const { data: registration,error } = await client.from('event_registrations').insert({event_id:eventId,person_id:personId,price_cents:priceCents,status}).select('id').single(); if(error || !registration) throw new Error('EVENT_REGISTRATION_FAILED')
+  if(priceCents>0){ const key=`event-registration:${registration.id}`; const { error: recError }=await client.from('receivables').insert({source_type:'event_registration',source_id:registration.id,person_id:personId,payer_person_id:personId,original_amount_cents:priceCents,idempotency_key:key}).select('id').single(); if(recError?.code!=='23505' && recError) throw new Error('EVENT_RECEIVABLE_FAILED') }
+  await audit(client,a.userId,'event.registration_created','event_registration',registration.id,{eventId,personId,priceCents,status}); redirect('/eventos/operacoes')
+}
+export async function updateRegistrationAction(formData: FormData) {
+  const { a, client } = await ctx(['psychologist_owner','secretary']); const id=txt(formData,'registration_id'); const status=txt(formData,'status'); const attendance=txt(formData,'attendance_status'); if(!['confirmed','pending_payment','waitlisted','cancelled'].includes(status)||!['present','absent','unknown'].includes(attendance)) throw new Error('EVENT_REGISTRATION_STATE_INVALID')
+  const { error }=await client.from('event_registrations').update({status,attendance_status:attendance}).eq('id',id); if(error) throw new Error('EVENT_REGISTRATION_UPDATE_FAILED'); await audit(client,a.userId,'event.registration_updated','event_registration',id,{status,attendance}); redirect('/eventos/operacoes')
+}
+export async function addExpenseAction(formData: FormData) {
+  const { a, client }=await ctx(['psychologist_owner','accounting']); const eventId=txt(formData,'event_id'); const description=txt(formData,'description'); const amountCents=cents(formData.get('amount')); if(amountCents<=0) throw new Error('EVENT_EXPENSE_INVALID')
+  const { data,error }=await client.from('event_expenses').insert({event_id:eventId,description,amount_cents:amountCents,paid_at: formData.get('paid')==='yes'?new Date().toISOString():null}).select('id').single(); if(error||!data) throw new Error('EVENT_EXPENSE_FAILED'); await audit(client,a.userId,'event.expense_created','event_expense',data.id,{eventId,amountCents,description}); redirect('/eventos/operacoes')
+}
