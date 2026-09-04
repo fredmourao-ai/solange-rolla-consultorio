@@ -8,9 +8,9 @@ Na auditoria de 04/09/2026, a rotina estava **parcialmente incluída**:
 - existe script para validar/restaurar um dump já existente;
 - existe gate de go-live exigindo backup recente e restore comprovado;
 - existe um volume separado montado no host para receber backups;
-- **não existe/estava ativo um job Solange responsável por gerar backups automaticamente**.
+- **não existia ou não estava ativo um job Solange responsável por gerar backups automaticamente**.
 
-Portanto, backup não pode ser marcado como homologado até existir automação real e um restore a partir de um backup produzido por ela.
+Portanto, backup não pode ser marcado como homologado até existir automação real e um restore a partir de um backup produzido por ela. A implementação está rastreada na Issue #80.
 
 ## Evidência do ambiente auditado
 
