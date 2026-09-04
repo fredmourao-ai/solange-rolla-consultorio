@@ -52,5 +52,6 @@ available in this repository execution. No values were generated or recorded.
 - WhatsApp send is disabled unless `WHATSAPP_LIVE_ENABLED=true`; email send is disabled unless `EMAIL_LIVE_ENABLED=true`. Both default to `false` and are gated by the same environment-isolation assertion (`scripts/assert-environment.mjs`) as `NFSE_LIVE_ENABLED`: never on outside production, and production requires `GO_LIVE_APPROVED=true`.
 - `MESSAGING_WORKER_POLL_MS` and `MESSAGING_WORKER_BATCH_SIZE` are non-secret runtime tuning values, matching the document worker's `DOCUMENT_WORKER_*` pair.
 - `MESSAGING_WORKER_HEALTH_FILE` is a local heartbeat path and must not contain payload data.
+- `APPOINTMENT_CONFIRMATION_SCHEDULER_INTERVAL_MS` is a non-secret tuning value (default 120000ms) throttling how often the same worker process checks for appointments 23-25h out and issues their confirmation capability link; it does not need its own queue or deployment, it runs inside the messaging worker's existing poll loop.
 - Worker env files stay outside Git with mode `0600`; do not pass secret values on command lines or logs.
 - See `docs/CREDENTIALS-ROTATION-BEFORE-PRODUCTION.md` for the temporary Shop Vivaliz SMTP credentials currently used to validate real email delivery, and what must replace them before production go-live.
