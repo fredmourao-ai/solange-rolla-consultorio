@@ -1,1 +1,10 @@
-{"id":"birthday-automation","issue":81,"owners":["automations","messaging"],"summary":"Ativar seleção diária de aniversariantes com opt-out, canal real e idempotência anual."}
+{
+  "version": 1,
+  "status": "approved",
+  "issue": 81,
+  "migration": "20260904020000_activate_birthday_templates.sql",
+  "owners": ["messaging"],
+  "objects": [
+    {"name": "public.message_templates", "owner": "messaging"}
+  ]
+}
