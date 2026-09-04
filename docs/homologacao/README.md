@@ -5,9 +5,10 @@ Este diretório é a fonte de verdade para a homologação funcional do sistema 
 ## Documentos
 
 1. [`AUDITORIA_PRE_HOMOLOGACAO_2026-09-04.md`](AUDITORIA_PRE_HOMOLOGACAO_2026-09-04.md) — estado real do código, ambiente, CI, integrações, segurança, rotinas e backup/restore.
-2. [`MANUAL_TESTES_HOMOLOGACAO.md`](MANUAL_TESTES_HOMOLOGACAO.md) — roteiro completo das rotinas a testar, inclusive cenários negativos, falhas, segurança e operação.
-3. [`MATRIZ_EVIDENCIAS_HOMOLOGACAO.md`](MATRIZ_EVIDENCIAS_HOMOLOGACAO.md) — checklist rastreável de PASS/FAIL/BLOCKED e evidências.
-4. [`BACKUP_RESTORE_HOMOLOGACAO.md`](BACKUP_RESTORE_HOMOLOGACAO.md) — estado atual, rotina obrigatória e teste de restauração.
+2. [`PENDENCIAS_TECNICAS_HOMOLOGACAO.md`](PENDENCIAS_TECNICAS_HOMOLOGACAO.md) — status técnico mais recente e rastreamento por PR/issue. **Em caso de divergência de estado inicial com o manual, este arquivo prevalece.**
+3. [`MANUAL_TESTES_HOMOLOGACAO.md`](MANUAL_TESTES_HOMOLOGACAO.md) — roteiro completo das rotinas a testar, inclusive cenários negativos, falhas, segurança e operação.
+4. [`MATRIZ_EVIDENCIAS_HOMOLOGACAO.md`](MATRIZ_EVIDENCIAS_HOMOLOGACAO.md) — checklist rastreável de PASS/FAIL/BLOCKED e evidências.
+5. [`BACKUP_RESTORE_HOMOLOGACAO.md`](BACKUP_RESTORE_HOMOLOGACAO.md) — estado atual, rotina obrigatória e teste de restauração.
 
 ## Regra de status
 
@@ -31,6 +32,8 @@ Um teste não vira PASS porque existe unit test, migration ou módulo correspond
 ## Critério para iniciar
 
 A homologação é dividida em fases. Smoke tests e fluxos já alcançáveis podem começar mesmo existindo pendências externas de produção. Entretanto, uma rotina marcada como tecnicamente não alcançável não pode ser aprovada por inferência: deve ser corrigida, implantada e testada de verdade antes da homologação final.
+
+Antes de usar dados pessoais do testador em um ambiente acessível por rede, a pendência P0 de autenticação indicada em `PENDENCIAS_TECNICAS_HOMOLOGACAO.md` deve estar resolvida, implantada e retestada.
 
 ## Critério para encerrar a homologação
 
