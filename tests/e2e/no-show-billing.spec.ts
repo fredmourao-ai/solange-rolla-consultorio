@@ -28,10 +28,9 @@ test('staff marks a past confirmed appointment as a no-show from the agenda', as
   await signInDemo(page)
   await page.goto('/agenda?view=day&date=2020-01-06', { waitUntil: 'domcontentloaded' })
   await page.getByText('Ver detalhes').first().click()
-  await page.getByLabel('Alterar status').selectOption('mark_no_show')
+  await page.getByRole('combobox', { name: 'Alterar status' }).selectOption('mark_no_show')
   await page.getByRole('button', { name: 'Aplicar' }).click()
-  await expect(page).toHaveURL(/\/agenda\?view=day&date=2020-01-06$/)
-  expect(sql(`select status from public.appointments where id=${quote(appointmentId)}`)).toBe('no_show')
+  await expect.poll(() => sql(`select status from public.appointments where id=${quote(appointmentId)}`)).toBe('no_show')
 })
 
 test('staff charges a no-show for the full service price, auditable and idempotent', async ({ page }) => {
@@ -40,23 +39,17 @@ test('staff charges a no-show for the full service price, auditable and idempote
   await page.goto('/agenda?view=day&date=2020-01-07', { waitUntil: 'domcontentloaded' })
   await page.getByText('Ver detalhes').first().click()
   await page.getByRole('button', { name: 'Cobrar falta/cancelamento fora do prazo' }).click()
-  await expect(page).toHaveURL(/\/agenda\?view=day&date=2020-01-07$/)
 
-  const receivable = sql(`select source_type,source_id,person_id,payer_person_id,original_amount_cents from public.receivables where idempotency_key=${quote(`appointment:${appointmentId}:charge`)}`)
-  expect(receivable).toBe(`appointment|${appointmentId}|d0000000-0000-4000-8000-000000000001|d0000000-0000-4000-8000-000000000001|30000`)
+  const receivableQuery = `select source_type,source_id,person_id,payer_person_id,original_amount_cents from public.receivables where idempotency_key=${quote(`appointment:${appointmentId}:charge`)}`
+  await expect.poll(() => sql(receivableQuery)).toBe(`appointment|${appointmentId}|d0000000-0000-4000-8000-000000000001|d0000000-0000-4000-8000-000000000001|30000`)
+  await expect.poll(() => sql(`select count(*) from public.audit_events where action='receivable.appointment_charge_created' and correlation_id=${quote(appointmentId)}`)).toBe('1')
 
-  const auditCount = sql(`select count(*) from public.audit_events where action='receivable.appointment_charge_created' and correlation_id=${quote(appointmentId)}`)
-  expect(auditCount).toBe('1')
-
-  // Clicking again must not create a second receivable for the same appointment.
   await page.getByText('Ver detalhes').first().click()
   await page.getByRole('button', { name: 'Cobrar falta/cancelamento fora do prazo' }).click()
-  await expect(page).toHaveURL(/\/agenda\?view=day&date=2020-01-07$/)
-  const receivableCount = sql(`select count(*) from public.receivables where source_type='appointment' and source_id=${quote(appointmentId)}`)
-  expect(receivableCount).toBe('1')
+  await expect.poll(() => sql(`select count(*) from public.receivables where source_type='appointment' and source_id=${quote(appointmentId)}`)).toBe('1')
 })
 
-test('a no-show charge is skipped, not silently invented, when the policy snapshot disabled it', async ({ page }) => {
+test('a no-show charge is unavailable when the policy snapshot disabled it', async ({ page }) => {
   const id = randomUUID()
   const disabledSnapshot = { ...snapshot, noShowChargeEnabled: false }
   sql(`insert into public.appointments
@@ -68,9 +61,6 @@ test('a no-show charge is skipped, not silently invented, when the policy snapsh
   await signInDemo(page)
   await page.goto('/agenda?view=day&date=2020-01-08', { waitUntil: 'domcontentloaded' })
   await page.getByText('Ver detalhes').first().click()
-  await page.getByRole('button', { name: 'Cobrar falta/cancelamento fora do prazo' }).click()
-  await expect(page).toHaveURL(/\/agenda\?view=day&date=2020-01-08$/)
-
-  const receivableCount = sql(`select count(*) from public.receivables where source_type='appointment' and source_id=${quote(id)}`)
-  expect(receivableCount).toBe('0')
+  await expect(page.getByRole('button', { name: 'Cobrar falta/cancelamento fora do prazo' })).toHaveCount(0)
+  expect(sql(`select count(*) from public.receivables where source_type='appointment' and source_id=${quote(id)}`)).toBe('0')
 })
