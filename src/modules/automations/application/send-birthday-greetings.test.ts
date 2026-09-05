@@ -11,7 +11,7 @@ describe('birthday automation', () => {
     })
     expect(count).toBe(1)
     expect(messages).toEqual([{
-      idempotencyKey: 'birthday:p1:2026',
+      idempotencyKey: 'birthday:p1:2026-08-26:birthday_greeting',
       recipient: 'test@example.com',
       channel: 'email',
       templateKey: 'birthday_greeting',
