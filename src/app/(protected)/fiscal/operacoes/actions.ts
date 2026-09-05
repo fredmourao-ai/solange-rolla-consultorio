@@ -14,7 +14,14 @@ async function audit(client:Awaited<ReturnType<typeof createServerSupabaseClient
 export async function issueMockNfseAction(formData:FormData){
  const {authorized,client}=await context(); if(formData.get('review_ack')!=='yes') throw new Error('FISCAL_REVIEW_ACK_REQUIRED')
  const sourceType=text(formData,'source_type'); const sourceId=text(formData,'source_id'); const personId=text(formData,'person_id'); const payerPersonId=text(formData,'payer_person_id'); const amountCents=cents(formData.get('amount')); const profileId=text(formData,'profile_id'); const treatmentId=text(formData,'treatment_id')
- const [{data:profile},{data:treatment},{data:payer}]=await Promise.all([client.from('fiscal_profiles').select('id,version,active,issuer_document,municipality_code,service_code,tax_regime,fiscal_address').eq('id',profileId).single(),client.from('fiscal_treatments').select('id,source_kind,version,issuance_rule,service_code,approved,enabled_for_live').eq('id',treatmentId).single(),client.from('people').select('id,cpf_normalized,fiscal_address').eq('id',payerPersonId).single()])
+ const payerQuery=authorized.role==='accounting'
+  ? client.from('accounting_people_view').select('id,cpf_normalized,fiscal_address').eq('id',payerPersonId).single()
+  : client.from('people').select('id,cpf_normalized,fiscal_address').eq('id',payerPersonId).single()
+ const [profileResult,treatmentResult,payerResult]=await Promise.all([client.from('fiscal_profiles').select('id,version,active,issuer_document,municipality_code,service_code,tax_regime,fiscal_address').eq('id',profileId).single(),client.from('fiscal_treatments').select('id,source_kind,version,issuance_rule,service_code,approved,enabled_for_live').eq('id',treatmentId).single(),payerQuery])
+ if(profileResult.error) throw new Error(`FISCAL_PROFILE_READ_FAILED:${profileResult.error.code}`)
+ if(treatmentResult.error) throw new Error(`FISCAL_TREATMENT_READ_FAILED:${treatmentResult.error.code}`)
+ if(payerResult.error) throw new Error(`FISCAL_PAYER_READ_FAILED:${payerResult.error.code}`)
+ const profile=profileResult.data; const treatment=treatmentResult.data; const payer=payerResult.data
  if(!profile?.active||!profile.issuer_document||!profile.municipality_code||!profile.service_code||!profile.tax_regime) throw new Error('FISCAL_PROFILE_INCOMPLETE')
  if(!treatment||treatment.source_kind!==sourceType||treatment.issuance_rule==='not_issuable') throw new Error('FISCAL_TREATMENT_NOT_ISSUABLE')
  if(!payer?.cpf_normalized||!payer.fiscal_address||Object.keys(payer.fiscal_address as Record<string,unknown>).length===0) throw new Error('FISCAL_PAYER_NOT_CONFIGURED')
@@ -28,7 +35,7 @@ export async function issueMockNfseAction(formData:FormData){
 }
 
 export async function cancelMockNfseAction(formData:FormData){
- const {authorized,client}=await context(); const id=text(formData,'fiscal_document_id'); const reason=text(formData,'reason'); const key=text(formData,'idempotency_key'); const {data:doc}=await client.from('fiscal_documents').select('id,status,provider,protocol').eq('id',id).single(); if(!doc||doc.provider!=='mock') throw new Error('FISCAL_MOCK_ONLY'); if(doc.status==='cancelled') redirect('/fiscal/operacoes'); if(doc.status!=='issued'&&doc.status!=='cancel_requested') throw new Error('FISCAL_CANCELLATION_INVALID_STATE')
+ const {authorized,client}=await context(); const id=text(formData,'fiscal_document_id'); const reason=text(formData,'reason'); const key=`fiscal-cancel:${id}`; const {data:doc,error:docError}=await client.from('fiscal_documents').select('id,status,provider,protocol').eq('id',id).single(); if(docError) throw new Error(`FISCAL_DOCUMENT_READ_FAILED:${docError.code}`); if(!doc||doc.provider!=='mock') throw new Error('FISCAL_MOCK_ONLY'); if(doc.status==='cancelled') redirect('/fiscal/operacoes'); if(doc.status!=='issued'&&doc.status!=='cancel_requested') throw new Error('FISCAL_CANCELLATION_INVALID_STATE')
  const {data:existing}=await client.from('fiscal_cancellation_events').select('id').eq('idempotency_key',key).maybeSingle(); if(existing) redirect('/fiscal/operacoes')
  if(doc.status==='issued'){const {error}=await client.from('fiscal_documents').update({status:'cancel_requested'}).eq('id',id); if(error) throw new Error('FISCAL_CANCEL_REQUEST_FAILED')}
  const {error:eventError}=await client.from('fiscal_cancellation_events').insert({fiscal_document_id:id,idempotency_key:key,reason,requested_by:authorized.userId,provider_protocol:doc.protocol,status:'cancelled',completed_at:new Date().toISOString()}); if(eventError) throw new Error('FISCAL_CANCEL_EVENT_FAILED')
