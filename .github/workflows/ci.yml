@@ -147,7 +147,7 @@ jobs:
         run: npm ci
       - name: Start and reset isolated local Supabase
         run: |
-          npx supabase@2.115.0 db start
+          npx supabase@2.115.0 start
           npx supabase@2.115.0 db reset
       - name: Prepare local E2E environment
         shell: bash
