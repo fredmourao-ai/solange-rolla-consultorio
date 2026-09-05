@@ -26,3 +26,12 @@ export { cancellationPolicyCopy, type CancellationPolicyCopy } from './domain/po
 export { calendarRange } from './application/calendar-range'
 export type { CalendarView } from './application/calendar-range'
 export { respondToPublicConfirmation } from './application/public-confirmation'
+
+export {
+  appointmentWindow,
+  hasAppointmentConflict,
+  formatSaoPauloDateTimeLocal,
+  parseSaoPauloLocalDateTime,
+  type AppointmentWindow,
+  type ExistingAppointmentWindow,
+} from './application/appointment-management'
