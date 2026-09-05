@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { createServerSupabaseClient } from '@/platform/supabase/server'
 import { PageHeader } from '@/shared/ui/page-header'
-import { applyAdjustmentAction, createPayableAction, createRecurrenceAction, payPayableAction, recordPaymentAction, refundPaymentAction } from './actions'
+import { applyAdjustmentAction, createExpenseCategoryAction, createPayableAction, createRecurrenceAction, createVendorAction, payPayableAction, recordPaymentAction, refundPaymentAction } from './actions'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -25,12 +25,17 @@ export default async function FinanceOperationsPage() {
       {(receivables ?? []).map((row) => <article key={row.id} className="card">
         <h3>{row.person?.preferred_name || row.person?.civil_name || 'Paciente'} — R$ {(row.original_amount_cents / 100).toFixed(2)}</h3><p>Status: {row.status}</p>
         <form action={recordPaymentAction} className="stack-form"><input type="hidden" name="receivable_id" value={row.id}/><input type="hidden" name="idempotency_key" value={`ui-payment:${crypto.randomUUID()}`}/><label>Pagamento <input name="amount" inputMode="decimal" required /></label><label>Método <select name="method">{methods.map(m => <option key={m} value={m}>{m}</option>)}</select></label><button type="submit">Registrar pagamento</button></form>
-        <form action={applyAdjustmentAction} className="stack-form"><input type="hidden" name="receivable_id" value={row.id}/><label>Ajuste <input name="amount" inputMode="decimal" required /></label><label>Tipo <select name="direction"><option value="discount">Desconto/isencão</option><option value="increase">Acréscimo</option></select></label><label>Justificativa <input name="reason" required /></label><button type="submit">Aplicar ajuste</button></form>
+        <form action={applyAdjustmentAction} className="stack-form"><input type="hidden" name="receivable_id" value={row.id}/><label>Ajuste <input name="amount" inputMode="decimal" required /></label><label>Tipo <select name="direction"><option value="discount">Desconto/isenção</option><option value="increase">Acréscimo</option></select></label><label>Justificativa <input name="reason" required /></label><button type="submit">Aplicar ajuste</button></form>
       </article>)}
     </section>
 
     <section><h2>Pagamentos e estornos</h2>
       {(payments ?? []).map((payment) => <form key={payment.id} action={refundPaymentAction} className="stack-form card"><input type="hidden" name="payment_id" value={payment.id}/><input type="hidden" name="idempotency_key" value={`ui-refund:${crypto.randomUUID()}`}/><p>Pagamento R$ {(payment.amount_cents/100).toFixed(2)} — {payment.method}</p><label>Valor do estorno <input name="amount" required /></label><label>Método <select name="method" defaultValue={payment.method}>{methods.map(m => <option key={m} value={m}>{m}</option>)}</select></label><label>Motivo <input name="reason" required /></label><button type="submit">Registrar estorno</button></form>)}
+    </section>
+
+    <section><h2>Cadastros para despesas</h2><p>Cadastre fornecedores e categorias antes de lançar uma nova conta a pagar.</p>
+      <form action={createVendorAction} className="stack-form"><label>Nome do fornecedor<input name="legal_name" required /></label><button type="submit">Cadastrar fornecedor</button></form>
+      <form action={createExpenseCategoryAction} className="stack-form"><label>Nome da categoria<input name="name" required /></label><button type="submit">Cadastrar categoria</button></form>
     </section>
 
     <section><h2>Nova conta a pagar</h2>
