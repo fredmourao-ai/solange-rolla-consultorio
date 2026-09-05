@@ -8,7 +8,7 @@ import {
   type AppointmentRepository,
   type CancellationPolicy,
 } from '@/modules/appointments/public'
-import { appointmentWindow, hasAppointmentConflict } from '@/modules/appointments/application/appointment-management'
+import { appointmentWindow, hasAppointmentConflict } from '@/modules/appointments/public'
 import { recordAuditEvent, type AuditEvent, type AuditEventRepository } from '@/modules/audit/public'
 import { authorizeStaffSession, getStaffSession } from '@/modules/identity/public'
 import { createServerSupabaseClient } from '@/platform/supabase/server'
