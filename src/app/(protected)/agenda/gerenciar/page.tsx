@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { createServerSupabaseClient } from '@/platform/supabase/server'
 import { PageHeader } from '@/shared/ui/page-header'
-import { formatSaoPauloDateTimeLocal } from '@/modules/appointments/application/appointment-management'
+import { formatSaoPauloDateTimeLocal } from '@/modules/appointments/public'
 import { createAppointmentAction, updateAppointmentAction } from './actions'
 
 export const dynamic = 'force-dynamic'
