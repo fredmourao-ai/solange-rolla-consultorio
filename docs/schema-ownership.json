@@ -131,6 +131,7 @@
     "public.event_expenses": "events",
     "public.event_registrations": "events",
     "public.events": "events",
+    "public.register_event_participant_atomic": "events",
     "public.fiscal_attempts": "fiscal",
     "public.fiscal_cancellation_events": "fiscal",
     "public.fiscal_documents": "fiscal",
