@@ -109,6 +109,18 @@ describe('repository governance contract', () => {
     expect(workflow).not.toContain('command -v gh')
   })
 
+  it('gates auto-merge through REST check-runs and commit statuses instead of GraphQL', () => {
+    const workflow = projectFile('.github/workflows/pr-auto-merge.yml')
+
+    expect(workflow).toContain('repos/$REPO/commits/$HEAD_SHA/check-runs?filter=latest&per_page=100')
+    expect(workflow).toContain('repos/$REPO/commits/$HEAD_SHA/status')
+    expect(workflow).toContain('.status == "completed"')
+    expect(workflow).toContain('.conclusion == "success"')
+    expect(workflow).toContain('.conclusion == "skipped"')
+    expect(workflow).toContain('.conclusion == "neutral"')
+    expect(workflow).not.toContain('gh pr checks')
+  })
+
   it('runs repository-specific structural gates before merge', () => {
     const script = projectFile('scripts/repository-governance-validate.sh')
 
