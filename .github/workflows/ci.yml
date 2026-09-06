@@ -146,8 +146,14 @@ jobs:
       - name: Install locked dependencies
         run: npm ci
       - name: Start and reset isolated local Supabase
+        shell: bash
         run: |
-          npx supabase@2.115.0 stop --no-backup || true
+          set -euo pipefail
+          if docker ps -a --format '{{.Names}}' | grep -q '_solange-rolla-consultorio$'; then
+            npx supabase@2.115.0 stop --no-backup
+          else
+            echo "No local Supabase stack to stop."
+          fi
           npx supabase@2.115.0 start
           npx supabase@2.115.0 db reset
       - name: Prepare local E2E environment
