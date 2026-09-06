@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 
 export function PageHeader({ title, description, actions }: { title: string; description?: string; actions?: ReactNode }) {
   return (
-    <header
+    <section
       className="page-header"
       aria-labelledby="page-title"
       aria-describedby={description ? 'page-description' : undefined}
@@ -11,7 +11,7 @@ export function PageHeader({ title, description, actions }: { title: string; des
         <h1 id="page-title">{title}</h1>
         {description && <p id="page-description">{description}</p>}
       </div>
-      {actions && <div className="page-header__actions" aria-label="Ações da página">{actions}</div>}
-    </header>
+      {actions && <div className="page-header__actions" role="group" aria-label="Ações da página">{actions}</div>}
+    </section>
   )
 }
