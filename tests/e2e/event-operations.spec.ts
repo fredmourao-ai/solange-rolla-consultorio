@@ -31,6 +31,7 @@ async function createEvent(page: Page, title: string, capacity: number, price: s
   await expect.poll(() => sql(`select id from public.events where title=${q(title)} limit 1`)).not.toBe('')
   return sql(`select id from public.events where title=${q(title)} limit 1`)
 }
+
 test('staff creates event, enrolls browser-created participant, creates receivable and marks attendance', async ({ page }) => {
   const personName = `Participante ${randomUUID().slice(0, 8)}`
   const title = `Evento E2E ${randomUUID().slice(0, 6)}`
@@ -54,6 +55,7 @@ test('staff creates event, enrolls browser-created participant, creates receivab
   await expect.poll(() => sql(`select status||'|'||attendance_status from public.event_registrations where id=${q(registrationId)}`)).toBe('confirmed|present')
   await expect.poll(() => sql(`select count(*) from public.audit_events where action='event.registration_updated' and entity_id=${q(registrationId)}`)).toBe('1')
 })
+
 test('capacity is enforced atomically and explained in the UI', async ({ page }) => {
   const firstName = `Lotação A ${randomUUID().slice(0, 8)}`
   const secondName = `Lotação B ${randomUUID().slice(0, 8)}`
@@ -76,6 +78,6 @@ test('capacity is enforced atomically and explained in the UI', async ({ page })
   await registration.locator('select[name="person_id"]').selectOption(secondId)
   await registration.getByRole('button', { name: 'Inscrever participante' }).click()
   await expect(page).toHaveURL(/error=event_full/)
-  await expect(page.getByRole('alert')).toContainText('atingiu a capacidade')
+  await expect(page.getByRole('alert').filter({ hasText: 'atingiu a capacidade' })).toContainText('atingiu a capacidade')
   expect(sql(`select count(*) from public.event_registrations where event_id=${q(eventId)} and status<>'cancelled'`)).toBe('1')
 })
