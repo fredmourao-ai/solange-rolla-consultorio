@@ -13,7 +13,8 @@ Este arquivo registra decisões operacionais persistentes do projeto que devem s
 - Depois do merge, validar o SHA exato de `main` e usar o auto-gate canônico para promover exatamente esse SHA.
 - Deploy disparado não significa deploy concluído; é obrigatório validar o ambiente implantado.
 - Homologação exige, conforme aplicável: migrations, workers/filas, heartbeat, preflight, smoke autenticado, fluxo funcional crítico e backup/restore.
-- Cloudflare pode ser usado para DNS, TLS, proxy ou Tunnel quando necessário ao ambiente, sem expor tokens em logs, commits ou chat.
+- O Cloudflare Quick Tunnel já existente pode continuar como transporte temporário de homologação. Qualquer nova alteração estrutural de DNS, proxy, Tunnel nomeado, WAF ou TLS gerenciado por Cloudflare exige ADR aceito antes da implementação.
+- Nunca expor tokens, chaves ou segredos em logs, commits ou chat.
 - Nunca usar bypass para obter verde: sem `--no-verify`, `|| true`, `exit 0`, force merge ou desativação de proteção.
 - Segurança clínica, RLS, MFA/AAL2, idempotência financeira/fiscal, isolamento de ambiente e feature flags live prevalecem sobre conveniência operacional.
 
