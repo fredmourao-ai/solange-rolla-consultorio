@@ -1,0 +1,28 @@
+name: PR87 Types Finalize
+
+on:
+  pull_request:
+    types: [synchronize]
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    if: github.event.pull_request.number == 87
+    runs-on: [self-hosted, Linux, ARM64, solange-ci]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+      - name: Match generated types formatting and self-remove
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          printf '\n' >> src/platform/supabase/types.ts
+          git rm .github/workflows/pr87-types-finalize.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/platform/supabase/types.ts
+          git commit -m 'fix(db): sync generated types formatting'
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
