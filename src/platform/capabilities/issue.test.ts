@@ -52,7 +52,7 @@ describe('issueCapability', () => {
   it('mints a fresh, unpredictable raw token on every call', async () => {
     const input = {
       purpose: 'appointment_response' as const,
-      subjectType: 'appointment',
+      subjectType: 'appointment' as const,
       subjectId: 'appt-1',
       expiresAt: new Date('2026-09-05T12:00:00Z'),
       now: new Date('2026-09-03T12:00:00Z'),
