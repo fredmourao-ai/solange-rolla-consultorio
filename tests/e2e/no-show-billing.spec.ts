@@ -31,6 +31,7 @@ test('staff marks a past confirmed appointment as a no-show from the agenda', as
   await page.getByRole('combobox', { name: 'Alterar status' }).selectOption('mark_no_show')
   await page.getByRole('button', { name: 'Aplicar' }).click()
   await expect.poll(() => sql(`select status from public.appointments where id=${quote(appointmentId)}`)).toBe('no_show')
+  await expect.poll(() => sql(`select count(*) from public.audit_events where action='appointment.status_changed' and correlation_id=${quote(appointmentId)}`)).toBe('1')
 })
 
 test('staff charges a no-show for the full service price, auditable and idempotent', async ({ page }) => {
