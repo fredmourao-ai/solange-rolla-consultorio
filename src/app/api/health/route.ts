@@ -1,4 +1,4 @@
-import { createCorrelationId } from '@/platform/observability/logger'
+import { createCorrelationId } from '../../../platform/observability/logger'
 
 export const dynamic = 'force-dynamic'
 
