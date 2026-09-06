@@ -12,7 +12,13 @@ export type AdministrativeExport = { content: Uint8Array; mediaType: string; ext
 
 const encoder = new TextEncoder()
 function xml(value: string): string { return value.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&apos;') }
-function csv(value: string): string { return /[;"\r\n]/.test(value) ? `"${value.replaceAll('"','""')}"` : value }
+function neutralizeSpreadsheetFormula(value: string): string {
+  return /^[=+\-@\t\r]/.test(value) ? `'${value}` : value
+}
+function csv(value: string): string {
+  const safe = neutralizeSpreadsheetFormula(value)
+  return /[;"\r\n]/.test(safe) ? `"${safe.replaceAll('"','""')}"` : safe
+}
 function money(cents: number): string { return (cents / 100).toFixed(2).replace('.', ',') }
 
 export function buildAdministrativeCsv(rows: readonly AdministrativeExportRow[]): Uint8Array {
@@ -62,7 +68,7 @@ export async function buildAdministrativePdf(rows: readonly AdministrativeExport
   let page=doc.addPage([595,842]); let y=800
   const line=(text:string,strong=false)=>{ if(y<50){page=doc.addPage([595,842]);y=800} page.drawText(text.slice(0,105),{x:40,y,size:9,font:strong?bold:font}); y-=14 }
   line('Relatório administrativo',true); line(`Período: ${period}`); line('Data | Categoria | Descrição | Valor (R$) | Status',true)
-  for(const r of rows) line(`${r.data} | ${r.categoria} | ${r.descricao} | ${(r.valorCents/100).toFixed(2)} | ${r.status}`)
+  for(const r of rows) line(`${r.data} | ${r.categoria} | ${r.descricao} | ${money(r.valorCents)} | ${r.status}`)
   return doc.save()
 }
 
