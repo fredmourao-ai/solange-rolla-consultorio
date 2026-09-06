@@ -11,7 +11,6 @@ describe('operational UX primitives', () => {
     const markup = renderToStaticMarkup(
       <PageHeader title="Agenda" description="Organize as consultas do dia." actions={<button>Agendar consulta</button>} />,
     )
-
     expect(markup).toContain('aria-labelledby="page-title"')
     expect(markup).toContain('aria-describedby="page-description"')
     expect(markup).toContain('id="page-title"')
@@ -20,10 +19,10 @@ describe('operational UX primitives', () => {
     expect(markup).toContain('aria-label="Ações da página"')
   })
 
-  it('announces operational status to assistive technology', () => {
+  it('labels persistent status without turning every badge into a live region', () => {
     const markup = renderToStaticMarkup(<StatusBadge status="warning">Aguardando confirmação</StatusBadge>)
-    expect(markup).toContain('role="status"')
     expect(markup).toContain('aria-label="Status: Aguardando confirmação"')
+    expect(markup).not.toContain('role="status"')
   })
 
   it('identifies the private product as Solange Rolla consultório management', () => {
@@ -38,7 +37,6 @@ describe('operational UX primitives', () => {
     const globals = readFileSync(new URL('../../app/globals.css', import.meta.url), 'utf8').toLowerCase()
     const brand = readFileSync(new URL('../../app/solange-brand.css', import.meta.url), 'utf8').toLowerCase()
     const css = `${globals}\n${brand}`
-
     expect(css).toContain('--background: #f7f5e1')
     expect(css).toContain('--surface: #fffdf4')
     expect(css).toContain('--foreground: #2f2e2e')
