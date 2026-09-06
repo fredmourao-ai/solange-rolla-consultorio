@@ -14,6 +14,24 @@ export function PersonForm({ action }: { action: (formData: FormData) => void | 
     <input id="email" name="email" type="email" />
     <label htmlFor="phone">Telefone</label>
     <input id="phone" name="phone" inputMode="tel" />
+
+    <fieldset className="person-form__fiscal" aria-describedby="fiscal-address-help">
+      <legend>Dados fiscais</legend>
+      <p id="fiscal-address-help">Preencha o endereço completo quando a pessoa precisar receber NFS-e.</p>
+      <label htmlFor="fiscal-street">Logradouro</label>
+      <input id="fiscal-street" name="fiscal_street" autoComplete="street-address" />
+      <label htmlFor="fiscal-number">Número</label>
+      <input id="fiscal-number" name="fiscal_number" />
+      <label htmlFor="fiscal-district">Bairro</label>
+      <input id="fiscal-district" name="fiscal_district" />
+      <label htmlFor="fiscal-city">Cidade</label>
+      <input id="fiscal-city" name="fiscal_city" autoComplete="address-level2" />
+      <label htmlFor="fiscal-state">UF</label>
+      <input id="fiscal-state" name="fiscal_state" maxLength={2} autoComplete="address-level1" />
+      <label htmlFor="fiscal-postal-code">CEP</label>
+      <input id="fiscal-postal-code" name="fiscal_postal_code" inputMode="numeric" autoComplete="postal-code" />
+    </fieldset>
+
     <button type="submit">Cadastrar pessoa</button>
   </form>
 }
