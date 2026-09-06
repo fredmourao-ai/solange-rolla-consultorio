@@ -219,6 +219,11 @@ jobs:
           rsync -a --delete "$STAGE/" "$APP/"
           docker start solange-client-demo-web >/dev/null
           ROOT="$GITHUB_WORKSPACE" DEMO="$ROOT" bash ops/document-worker/run-demo-worker.sh
+          ROOT="$GITHUB_WORKSPACE" DEMO="$ROOT" bash ops/messaging-worker/run-demo-worker.sh
+          test "$(docker inspect -f '{{.State.Status}}' solange-document-worker)" = running
+          test "$(docker inspect -f '{{.State.Status}}' solange-messaging-worker)" = running
+          test -s "$ROOT/state/document-worker.heartbeat"
+          test -s "$ROOT/state/messaging-worker.heartbeat"
           printf '%s\n' "$PROMOTE_SHA" > "$ROOT/state/deployed-sha.txt"
           rm -rf "$STAGE"
 
