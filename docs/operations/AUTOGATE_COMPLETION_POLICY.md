@@ -16,7 +16,7 @@ Diagnóstico, código local, commit, PR aberta, CI parcial ou deploy iniciado s�
 Antes de declarar conclusão, o agente deve verificar e zerar no escopo da tarefa:
 
 - PRs aplicáveis abertas;
-- issues técnicas relacionadas ainda abertas;
+- issues técnicas relacionadas ainda abertas, exceto o tracker ativo de promoção/evidência enquanto ele próprio estiver sendo executado;
 - Actions/checks `queued`, `in_progress`, `failure`, `cancelled` ou `timed_out` no SHA candidato;
 - conflitos de merge;
 - alterações locais não commitadas;
@@ -38,6 +38,10 @@ Se lint, typecheck, testes, build, migration, E2E, review, gate, merge, deploy, 
 
 É proibido abandonar a execução após registrar apenas a falha.
 
+### Circuit breaker operacional
+
+Retentativas automáticas devem respeitar limites de segurança, custo e plataforma. Ao atingir um limite imposto pela ferramenta, runner, API ou orçamento de execução, o agente deve registrar um checkpoint reproduzível e interromper apenas aquela sequência de retentativas; isso não transforma a tarefa em `CONCLUÍDO`. Uma execução subsequente deve retomar do checkpoint, corrigir a causa e continuar. Nunca contornar limites com loops infinitos, force, `|| true`, `exit 0` ou desativação de proteção.
+
 ## Fluxo Git obrigatório
 
 Para qualquer mudança de código, configuração, workflow, infraestrutura ou documentação:
@@ -51,14 +55,16 @@ Antes do merge e antes da conclusão, `git status --porcelain=v1` deve estar vaz
 Depois do merge:
 
 1. identificar o SHA exato resultante em `main`;
-2. validar os Actions desse SHA;
-3. o auto-gate canônico deve promover exatamente esse SHA para o ambiente alvo autorizado;
-4. migrations, workers e artefatos devem corresponder ao mesmo SHA;
-5. qualquer falha do auto-gate ou deploy volta imediatamente para investigação/correção;
-6. após correção, o novo SHA deve percorrer novamente os gates e o deploy;
-7. a tarefa só termina quando o ambiente implantado estiver saudável e validado.
+2. exigir que os workflows canônicos `CI`, `Database` e `Repository Governance Gate` do mesmo SHA estejam `completed/success`;
+3. rejeitar qualquer SHA que não seja o `refs/heads/main` atual;
+4. o auto-gate canônico deve promover exatamente esse SHA para o ambiente alvo autorizado;
+5. migrations, aplicação, workers e artefatos devem corresponder ao mesmo SHA;
+6. o ambiente deve expor o `buildSha` e ele deve ser idêntico ao SHA promovido;
+7. qualquer falha do auto-gate ou deploy volta imediatamente para investigação/correção;
+8. após correção, o novo SHA deve percorrer novamente os gates e o deploy;
+9. a tarefa só termina quando o ambiente implantado estiver saudável e validado.
 
-Nunca considerar um deploy concluído apenas porque a etapa de publicação foi disparada.
+Nunca considerar um deploy concluído apenas porque a etapa de publicação foi disparada. O gate não pode promover enquanto algum check canônico do mesmo SHA estiver ausente, pendente, cancelado ou falhando.
 
 ## Validação pós-deploy
 
@@ -66,7 +72,7 @@ Quando aplicável, executar no SHA implantado:
 
 - preflight;
 - smoke autenticado;
-- health checks;
+- health checks e comparação do `buildSha` com o SHA candidato;
 - migrations verificadas;
 - workers/filas em execução e heartbeat atual;
 - fluxo funcional crítico;
