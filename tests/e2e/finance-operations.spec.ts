@@ -19,7 +19,7 @@ test('owner records partial payment and audited adjustment from UI', async ({ pa
   await signInDemo(page)
   await page.goto('/financeiro/operacoes', { waitUntil: 'domcontentloaded' })
   const card = page.locator('article').filter({ has: page.locator(`input[name="receivable_id"][value="${id}"]`) })
-  const paymentForm = card.locator('form').filter({ has: card.getByRole('button', { name: 'Registrar pagamento' }) })
+  const paymentForm = card.locator('form:has(button:has-text("Registrar pagamento"))')
   await paymentForm.locator('input[name="amount"]').fill('40.00')
   await paymentForm.locator('select[name="method"]').selectOption('pix')
   await paymentForm.getByRole('button', { name: 'Registrar pagamento' }).click()
@@ -28,7 +28,7 @@ test('owner records partial payment and audited adjustment from UI', async ({ pa
   await expect.poll(() => sql(`select count(*) from public.audit_events where action='payment.recorded' and metadata->>'receivableId'=${q(id)}`)).toBe('1')
 
   const updatedCard = page.locator('article').filter({ has: page.locator(`input[name="receivable_id"][value="${id}"]`) })
-  const adjustmentForm = updatedCard.locator('form').filter({ has: updatedCard.getByRole('button', { name: 'Aplicar ajuste' }) })
+  const adjustmentForm = updatedCard.locator('form:has(button:has-text("Aplicar ajuste"))')
   await adjustmentForm.locator('input[name="amount"]').fill('10.00')
   await adjustmentForm.locator('select[name="direction"]').selectOption('discount')
   await adjustmentForm.locator('input[name="reason"]').fill('Cortesia de homologação')
