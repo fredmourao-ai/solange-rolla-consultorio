@@ -930,7 +930,7 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "form_template_versions_template_id_fkey"
-            columns: ["template_id"]
+            columns: ["template_version_id"]
             isOneToOne: false
             referencedRelation: "form_templates"
             referencedColumns: ["id"]
@@ -1967,6 +1967,15 @@ export type Database = {
         }
         Returns: string
       }
+      register_event_participant_atomic: {
+        Args: {
+          p_event_id: string
+          p_person_id: string
+          p_price_cents: number
+          p_status: string
+        }
+        Returns: string[]
+      }
       sign_form_submission: {
         Args: {
           p_canonical_hash_sha256: string
@@ -2106,7 +2115,7 @@ export type CompositeTypes<
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    ? keyof DatabaseWithoutInternals[DefaultSchemaCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
     : never = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
@@ -2126,4 +2135,3 @@ export const Constants = {
     },
   },
 } as const
-
