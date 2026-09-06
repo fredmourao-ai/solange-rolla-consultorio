@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { authorizeStaffSession, getStaffSession } from '@/modules/identity/public'
 import { createServerSupabaseClient } from '@/platform/supabase/server'
 import { PageHeader } from '@/shared/ui/page-header'
 import { formatSaoPauloDateTimeLocal } from '@/modules/appointments/public'
@@ -8,6 +9,8 @@ export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
 export default async function AgendaManagementPage() {
+  const session = await getStaffSession()
+  authorizeStaffSession(session, ['psychologist_owner', 'secretary'])
   const client = await createServerSupabaseClient()
   const [{ data: people, error: peopleError }, { data: services, error: servicesError }, { data: appointments, error: appointmentsError }] = await Promise.all([
     client.from('people').select('id,civil_name,preferred_name').order('civil_name'),
