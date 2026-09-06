@@ -2,7 +2,11 @@ name: PR Auto Merge
 
 on:
   workflow_run:
-    workflows: [CI]
+    workflows:
+      - CI
+      - Database
+      - Repository Governance Gate
+      - AI Conflict Resolver
     types: [completed]
 
 permissions:
