@@ -4,22 +4,23 @@ on:
   workflow_dispatch:
     inputs:
       commit_sha:
-        description: Full commit SHA already reviewed and approved for staging
+        description: Full main commit SHA already reviewed and approved for staging
         required: true
         type: string
   workflow_run:
-    workflows: [CI]
+    workflows: [CI, Database, Repository Governance Gate]
     types: [completed]
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: staging
   cancel-in-progress: false
 
 jobs:
-  promote:
+  canonical-gate:
     if: >-
       github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'workflow_run' &&
@@ -28,10 +29,84 @@ jobs:
        vars.STAGING_AUTO_PROMOTE_ENABLED == 'true' &&
        github.event.workflow_run.conclusion == 'success')
     runs-on: [self-hosted, Linux, ARM64, solange-ci]
-    environment: staging
-    timeout-minutes: 30
+    timeout-minutes: 5
+    outputs:
+      ready: ${{ steps.canonical.outputs.ready }}
+      sha: ${{ steps.canonical.outputs.sha }}
     env:
       PROMOTE_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || inputs.commit_sha }}
+      GITHUB_TOKEN: ${{ github.token }}
+    steps:
+      - name: Verify canonical main SHA and checks
+        id: canonical
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          node <<'NODE'
+          const fs = require('node:fs')
+          const repo = process.env.GITHUB_REPOSITORY
+          const sha = process.env.PROMOTE_SHA || ''
+          const token = process.env.GITHUB_TOKEN
+          const eventName = process.env.GITHUB_EVENT_NAME
+          const output = process.env.GITHUB_OUTPUT
+          const required = ['CI', 'Database', 'Repository Governance Gate']
+          const headers = {
+            Accept: 'application/vnd.github+json',
+            Authorization: `Bearer ${token}`,
+            'X-GitHub-Api-Version': '2022-11-28',
+          }
+          async function get(path) {
+            const response = await fetch(`https://api.github.com/repos/${repo}${path}`, { headers })
+            if (!response.ok) throw new Error(`GitHub API ${response.status} for ${path}`)
+            return response.json()
+          }
+          function emit(ready) {
+            fs.appendFileSync(output, `ready=${ready}\nsha=${sha}\n`)
+          }
+          async function main() {
+            if (!/^[0-9a-f]{40}$/.test(sha)) throw new Error('PROMOTE_SHA must be a full commit SHA')
+            const mainRef = await get('/git/ref/heads/main')
+            if (mainRef.object.sha !== sha) {
+              if (eventName === 'workflow_dispatch') throw new Error(`candidate ${sha} is not current refs/heads/main ${mainRef.object.sha}`)
+              emit(false)
+              return
+            }
+            const query = new URLSearchParams({ head_sha: sha, event: 'push', per_page: '100' })
+            const payload = await get(`/actions/runs?${query}`)
+            const notReady = []
+            for (const name of required) {
+              const runs = payload.workflow_runs
+                .filter((run) => run.name === name && run.head_branch === 'main')
+                .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+              const latest = runs[0]
+              if (!latest || latest.status !== 'completed' || latest.conclusion !== 'success') {
+                notReady.push(`${name}:${latest?.status ?? 'missing'}/${latest?.conclusion ?? 'none'}`)
+              }
+            }
+            if (notReady.length) {
+              if (eventName === 'workflow_dispatch') throw new Error(`canonical checks not green: ${notReady.join(', ')}`)
+              console.log(`promotion not ready: ${notReady.join(', ')}`)
+              emit(false)
+              return
+            }
+            emit(true)
+            console.log(`canonical staging candidate ready: ${sha}`)
+          }
+          main().catch((error) => {
+            console.error(error)
+            process.exit(1)
+          })
+          NODE
+
+  promote:
+    needs: canonical-gate
+    if: needs.canonical-gate.outputs.ready == 'true'
+    runs-on: [self-hosted, Linux, ARM64, solange-ci]
+    environment: staging
+    timeout-minutes: 45
+    env:
+      PROMOTE_SHA: ${{ needs.canonical-gate.outputs.sha }}
+      STAGING_DEPLOY_ROOT: /home/ubuntu/solange-client-demo
     steps:
       - name: Checkout selected revision
         uses: actions/checkout@v7
@@ -44,6 +119,7 @@ jobs:
           set -Eeuo pipefail
           test -n "$PROMOTE_SHA"
           test "$(git rev-parse HEAD)" = "$PROMOTE_SHA"
+          test "$(git rev-parse origin/main)" = "$PROMOTE_SHA"
 
       - name: Use Node 24.19.0
         uses: actions/setup-node@v7
@@ -87,8 +163,85 @@ jobs:
           SUPABASE_STAGING_PROJECT_REF: ${{ secrets.SUPABASE_STAGING_PROJECT_REF }}
         run: node scripts/verify-staging-accounting-rls.mjs
 
+      - name: Deploy exact SHA to homologation
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          ROOT="$STAGING_DEPLOY_ROOT"
+          APP="$ROOT/app"
+          STAGE="$ROOT/app-stage-$PROMOTE_SHA"
+          ENV_FILE="$APP/.env.production.local"
+          test -d "$ROOT/state"
+          test -f "$ENV_FILE"
+          test "$(stat -c '%a' "$ROOT/demo.env")" = 600
+
+          /home/ubuntu/.local/bin/solange-backup.sh
+
+          rm -rf "$STAGE"
+          mkdir -p "$STAGE"
+          rsync -a --delete \
+            --exclude '.git' \
+            --exclude 'node_modules' \
+            --exclude '.next' \
+            --exclude '.env.production.local' \
+            "$GITHUB_WORKSPACE/" "$STAGE/"
+          install -m 600 "$ENV_FILE" "$STAGE/.env.production.local"
+          python3 - "$STAGE/.env.production.local" "$PROMOTE_SHA" <<'PY'
+          import pathlib, sys
+          path = pathlib.Path(sys.argv[1])
+          sha = sys.argv[2]
+          lines = path.read_text().splitlines()
+          values = {'APP_BUILD_SHA': sha, 'STAGING_COMMIT_SHA': sha}
+          output = []
+          seen = set()
+          for line in lines:
+              key = line.split('=', 1)[0] if '=' in line else ''
+              if key in values:
+                  output.append(f'{key}={values[key]}')
+                  seen.add(key)
+              else:
+                  output.append(line)
+          for key, value in values.items():
+              if key not in seen:
+                  output.append(f'{key}={value}')
+          path.write_text('\n'.join(output) + '\n')
+          PY
+
+          set -a
+          . "$ROOT/demo.env"
+          set +a
+          npx supabase@2.115.0 db push --db-url "$DB_URL" --include-all --yes
+
+          docker run --rm --network host -v "$STAGE:/app" -w /app node:24-bookworm-slim npm ci
+          docker run --rm --network host -v "$STAGE:/app" -w /app node:24-bookworm-slim npm run build
+
+          docker stop solange-client-demo-web >/dev/null
+          rsync -a --delete "$STAGE/" "$APP/"
+          docker start solange-client-demo-web >/dev/null
+          ROOT="$GITHUB_WORKSPACE" DEMO="$ROOT" bash ops/document-worker/run-demo-worker.sh
+          printf '%s\n' "$PROMOTE_SHA" > "$ROOT/state/deployed-sha.txt"
+          rm -rf "$STAGE"
+
+      - name: Verify deployed SHA
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          ROOT="$STAGING_DEPLOY_ROOT"
+          test "$(cat "$ROOT/state/deployed-sha.txt")" = "$PROMOTE_SHA"
+          URL=$(cat "$ROOT/state/current-url.txt")
+          for _ in $(seq 1 30); do
+            payload=$(curl --fail --silent --show-error "$URL/api/health" || true)
+            actual=$(printf '%s' "$payload" | jq -r '.buildSha // empty' 2>/dev/null || true)
+            [ "$actual" = "$PROMOTE_SHA" ] && break
+            sleep 2
+          done
+          test "$actual" = "$PROMOTE_SHA"
+          "$ROOT/preflight.sh"
+
       - name: Staging app smoke contract
         if: vars.STAGING_APP_URL != ''
         env:
           STAGING_APP_URL: ${{ vars.STAGING_APP_URL }}
-        run: curl --fail --silent --show-error --retry 3 "$STAGING_APP_URL/api/health"
+        run: |
+          payload=$(curl --fail --silent --show-error --retry 3 "$STAGING_APP_URL/api/health")
+          test "$(printf '%s' "$payload" | jq -r '.buildSha')" = "$PROMOTE_SHA"
