@@ -4,10 +4,25 @@
   --brand-secondary: #8f4778;
 }
 
-html,
-body {
-  max-width: 100%;
-  overflow-x: clip;
+.app-shell__main,
+.app-shell__main > *,
+.page-header,
+.page-header > *,
+li,
+td,
+th,
+article,
+section {
+  min-width: 0;
+}
+
+.app-shell__main p,
+.app-shell__main li,
+.app-shell__main td,
+.app-shell__main th,
+.app-shell__main a,
+.app-shell__main output {
+  overflow-wrap: anywhere;
 }
 
 .app-shell__brand-name {
