@@ -169,7 +169,7 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
-          WHATSAPP_LIVE_ENABLED: ${{ vars.WHATSAPP_LIVE_ENABLED }}
+          WHATSApP_LIVE_ENABLED: ${{ vars.WHATSAPP_LIVE_ENABLED }}
           EMAIL_LIVE_ENABLED: ${{ vars.EMAIL_LIVE_ENABLED }}
           NFSE_LIVE_ENABLED: ${{ vars.NFSE_LIVE_ENABLED }}
         run: |
@@ -191,6 +191,7 @@ jobs:
             rc=$?
             trap - EXIT
             if [ "$rc" -ne 0 ]; then
+              docker rm -f "${DOC}-candidate" "${MSG}-candidate" >/dev/null 2>&1 || true
               if docker inspect "${DOC}-previous" >/dev/null 2>&1; then
                 docker rm -f "$DOC" >/dev/null 2>&1 || true
                 docker rename "${DOC}-previous" "$DOC" || true
@@ -280,16 +281,19 @@ jobs:
           db_url = values.get('DB_URL')
           if not db_url:
               raise SystemExit('DB_URL missing from staging runtime env')
-          subprocess.run(['npx', 'supabase@2.115.0', 'db', 'push', '--db-url', db_url, '--include-all', '--yes'], check=True)
+          result = subprocess.run(['npx', 'supabase@2.115.0', 'db', 'push', '--db-url', db_url, '--include-all', '--yes'])
+          if result.returncode:
+              print('staging migration push failed', file=sys.stderr)
+              raise SystemExit(result.returncode)
           PY
 
           docker run --rm --network host -v "$STAGE:/app" -w /app node:24-bookworm-slim npm ci
           docker run --rm --network host -v "$STAGE:/app" -w /app node:24-bookworm-slim npm run build
 
-          ROOT="$GITHUB_WORKSPACE" DEMO="$ROOT" ENV_FILE="$RUNTIME_ENV" \
+          ROOT="$GITHUB_WORKSPACE" DEMO="$STAGING_DEPLOY_ROOT" ENV_FILE="$RUNTIME_ENV" \
             IMAGE="solange-document-worker:$PROMOTE_SHA" CONTAINER="${DOC}-candidate" \
             STATE_DIR="$CANDIDATE_STATE/document" bash ops/document-worker/run-demo-worker.sh
-          ROOT="$GITHUB_WORKSPACE" DEMO="$ROOT" ENV_FILE="$RUNTIME_ENV" \
+          ROOT="$GITHUB_WORKSPACE" DEMO="$STAGING_DEPLOY_ROOT" ENV_FILE="$RUNTIME_ENV" \
             IMAGE="solange-messaging-worker:$PROMOTE_SHA" CONTAINER="${MSG}-candidate" \
             STATE_DIR="$CANDIDATE_STATE/messaging" bash ops/messaging-worker/run-demo-worker.sh
 
@@ -354,7 +358,9 @@ jobs:
           test "$actual" = "$PROMOTE_SHA"
           "$ROOT/preflight.sh"
           docker rm -f "${DOC}-previous" "${MSG}-previous" >/dev/null 2>&1 || true
-          rm -rf "$PREVIOUS" "$ROOT/state/candidate-$PROMOTE_SHA"
+          rm -rf "$PREVIOUS"
+          # Keep the promoted release state directory: the canonical workers bind-mount it
+          # and need the same host path to exist after container restarts.
 
       - name: Staging app smoke contract
         if: vars.STAGING_APP_URL != ''
