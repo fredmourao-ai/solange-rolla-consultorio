@@ -6,6 +6,7 @@ export function GET() {
   const payload = {
     status: 'ok',
     appVersion: process.env.npm_package_version ?? '0.1.0',
+    buildSha: process.env.APP_BUILD_SHA ?? 'unknown',
     environment: process.env.APP_ENV ?? 'unknown',
     checks: {
       configuration: Boolean(process.env.APP_ENV),
