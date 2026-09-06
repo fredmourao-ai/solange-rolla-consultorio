@@ -121,6 +121,15 @@ describe('repository governance contract', () => {
     expect(workflow).not.toContain('gh pr checks')
   })
 
+  it('retries auto-merge whenever any pull-request gate finishes', () => {
+    const workflow = projectFile('.github/workflows/pr-auto-merge.yml')
+
+    expect(workflow).toContain('- CI')
+    expect(workflow).toContain('- Database')
+    expect(workflow).toContain('- Repository Governance Gate')
+    expect(workflow).toContain('- AI Conflict Resolver')
+  })
+
   it('runs repository-specific structural gates before merge', () => {
     const script = projectFile('scripts/repository-governance-validate.sh')
 
