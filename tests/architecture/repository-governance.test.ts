@@ -109,16 +109,41 @@ describe('repository governance contract', () => {
     expect(workflow).not.toContain('command -v gh')
   })
 
-  it('gates auto-merge through REST check-runs and commit statuses instead of GraphQL', () => {
+  it('gates auto-merge through complete REST checks and statuses', () => {
     const workflow = projectFile('.github/workflows/pr-auto-merge.yml')
 
+    expect(workflow).toContain('actions: read')
+    expect(workflow).toContain('statuses: read')
     expect(workflow).toContain('repos/$REPO/commits/$HEAD_SHA/check-runs?filter=latest&per_page=100')
     expect(workflow).toContain('repos/$REPO/commits/$HEAD_SHA/status')
+    expect(workflow).toContain('(.total_count > 0) and')
+    expect(workflow).toContain('all(.check_runs[];')
     expect(workflow).toContain('.status == "completed"')
     expect(workflow).toContain('.conclusion == "success"')
     expect(workflow).toContain('.conclusion == "skipped"')
     expect(workflow).toContain('.conclusion == "neutral"')
+    expect(workflow).toContain('(.statuses | length == 0) or .state == "success"')
     expect(workflow).not.toContain('gh pr checks')
+  })
+
+  it('requires every canonical pull-request workflow before merge', () => {
+    const workflow = projectFile('.github/workflows/pr-auto-merge.yml')
+
+    expect(workflow).toContain('repos/$REPO/actions/runs?head_sha=$HEAD_SHA&event=pull_request&per_page=100')
+    for (const name of ['CI', 'Database', 'Repository Governance Gate', 'AI Conflict Resolver', 'Preview']) {
+      expect(workflow).toContain(`'${name}'`)
+    }
+    expect(workflow).toContain('all($required[];')
+    expect(workflow).toContain('.status == "completed"')
+  })
+
+  it('pins auto-merge to the validated main-targeting PR head', () => {
+    const workflow = projectFile('.github/workflows/pr-auto-merge.yml')
+
+    expect(workflow).toContain('.base.ref == "main"')
+    expect(workflow).toContain('.head.sha == $sha')
+    expect(workflow).toContain('repos/$REPO/pulls/$pr_number')
+    expect(workflow).toContain('--match-head-commit "$HEAD_SHA"')
   })
 
   it('retries auto-merge whenever any pull-request gate finishes', () => {
@@ -128,6 +153,8 @@ describe('repository governance contract', () => {
     expect(workflow).toContain('- Database')
     expect(workflow).toContain('- Repository Governance Gate')
     expect(workflow).toContain('- AI Conflict Resolver')
+    expect(workflow).toContain('- Preview')
+    expect(workflow).toContain("github.event.workflow_run.conclusion == 'skipped'")
   })
 
   it('runs repository-specific structural gates before merge', () => {
