@@ -50,14 +50,15 @@ describe('issueCapability', () => {
   })
 
   it('mints a fresh, unpredictable raw token on every call', async () => {
-    const a = await issueCapability(
-      { purpose: 'appointment_response', subjectType: 'appointment', subjectId: 'appt-1', expiresAt: new Date('2026-09-05T12:00:00Z') },
-      repository(),
-    )
-    const b = await issueCapability(
-      { purpose: 'appointment_response', subjectType: 'appointment', subjectId: 'appt-1', expiresAt: new Date('2026-09-05T12:00:00Z') },
-      repository(),
-    )
+    const input = {
+      purpose: 'appointment_response' as const,
+      subjectType: 'appointment' as const,
+      subjectId: 'appt-1',
+      expiresAt: new Date('2026-09-05T12:00:00Z'),
+      now: new Date('2026-09-03T12:00:00Z'),
+    }
+    const a = await issueCapability(input, repository())
+    const b = await issueCapability(input, repository())
     expect(a.rawToken).not.toBe(b.rawToken)
   })
 })
