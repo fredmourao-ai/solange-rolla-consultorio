@@ -2,6 +2,10 @@
 
 Este arquivo é a primeira leitura obrigatória de qualquer agente humano ou automatizado que trabalhar neste repositório.
 
+## Acesso a infraestrutura e VMs
+
+Antes de executar qualquer comando em VM Oracle Cloud, leia e siga obrigatoriamente [`AGENTS-VM-ACCESS.md`](AGENTS-VM-ACCESS.md). O runbook define as duas VMs atuais, o helper OCI `sv-oci-vm-run`, o SSH administrativo validado, a ordem de fallback e as regras para não expor secrets. Nunca presuma root no OCI Run Command.
+
 ## 1. Ordem de leitura
 
 Antes de alterar código:
