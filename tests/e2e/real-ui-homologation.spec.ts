@@ -63,3 +63,19 @@ test('canonical operational homologation creates all business data through the U
   await signInDemo(page); const personId = await createFiscalPerson(page, name, cpf); const receivableId = await createPastAppointmentAndCharge(page, personId); await settleReceivable(page, receivableId); await createPayable(page, token); const registrationId = await createEventFlow(page, personId, name, token); await fiscalAndExports(page, personId, registrationId)
   await page.setViewportSize({ width: 390, height: 844 }); await page.goto('/dashboard', { waitUntil: 'domcontentloaded' }); expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true); await page.evaluate(() => { document.documentElement.style.zoom = '2' }); expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true); const menuButton = page.getByRole('button', { name: 'Abrir menu' }); await expect(menuButton).toBeVisible(); await menuButton.focus(); await expect(menuButton).toBeFocused(); const box = await menuButton.boundingBox(); expect(box?.width ?? 0).toBeGreaterThanOrEqual(44); expect(box?.height ?? 0).toBeGreaterThanOrEqual(44)
 })
+
+test('fiscal validation preserves values entered through the UI', async ({ page }) => {
+  const name = `Validação Fiscal ${randomUUID().slice(0, 8)}`
+  await signInDemo(page)
+  await page.goto('/pessoas/nova', { waitUntil: 'domcontentloaded' })
+  await page.getByLabel('Nome civil').fill(name)
+  await page.getByLabel('Data de nascimento').fill('1991-02-03')
+  await page.getByLabel('E-mail').fill('validacao@example.test')
+  await page.getByLabel('Logradouro').fill('Rua Parcial')
+  await page.getByRole('button', { name: 'Cadastrar pessoa' }).click()
+  await expect(page.getByRole('alert').filter({ hasText: 'CPF' })).toContainText('CPF')
+  await expect(page.getByLabel('Nome civil')).toHaveValue(name)
+  await expect(page.getByLabel('Data de nascimento')).toHaveValue('1991-02-03')
+  await expect(page.getByLabel('E-mail')).toHaveValue('validacao@example.test')
+  await expect(page.getByLabel('Logradouro')).toHaveValue('Rua Parcial')
+})
