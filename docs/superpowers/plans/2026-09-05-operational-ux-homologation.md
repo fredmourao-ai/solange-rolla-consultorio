@@ -127,12 +127,14 @@
 **Files:** shared/module UI tests and evidence docs.
 
 **Interfaces:**
-- Consumes: all protected module pages.
-- Produces: consistent branded, responsive, self-explanatory experience.
+- Consumes: all protected module pages plus public capability journeys.
+- Produces: consistent branded, responsive, self-explanatory experience and explicit clinical authorization evidence.
 
 - [ ] Traverse root, login, dashboard, pessoas, agenda, financeiro, eventos, fiscal and relatórios through browser.
+- [ ] Traverse `/clinico/[personId]` with `psychologist_owner` + AAL2 and prove secretary/accounting denial without exposing clinical content.
+- [ ] Traverse public capability routes for appointment response, form draft/review/signature and signed-form completion using synthetic tokens/data.
 - [ ] Validate task description, primary action, human status/error/next action on each page.
-- [ ] Validate keyboard focus, 390 px overflow, 200% zoom and minimum touch target requirements.
+- [ ] Validate keyboard focus, 390 px overflow, 200% zoom and minimum touch target requirements on administrative, clinical and patient-facing routes.
 - [ ] Fix each failure in a focused branch/PR and repeat the audit.
 
 ### Task 9: Auto-gate deploy of exact final SHA
@@ -143,10 +145,11 @@
 - Consumes: final green `main` SHA.
 - Produces: deployed homologation environment with matching migrations/workers.
 
-- [ ] Confirm zero applicable open PRs and technical issues before candidate selection.
+- [ ] Confirm zero applicable implementation PRs/issues before candidate selection; the active promotion/evidence tracker (#82) remains open until Task 10 is complete and is explicitly exempt from this preselection check.
 - [ ] Record exact candidate SHA.
+- [ ] Require CI, Database and Repository Governance Gate to be `completed/success` for that exact SHA and reject any candidate different from current `refs/heads/main`.
 - [ ] Let the canonical auto-gate promote exactly that SHA; if deployment fails, inspect logs, fix via PR and restart from a new green SHA.
-- [ ] Confirm deployed application SHA, migrations, messaging/document workers and Cloudflare/DNS exposure.
+- [ ] Confirm deployed application `buildSha`, migrations, messaging/document workers and existing Cloudflare/DNS exposure all correspond to the promoted candidate.
 
 ### Task 10: Final homologation and operational evidence
 
