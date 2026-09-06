@@ -1,0 +1,6 @@
+import Link from 'next/link'
+import { PageHeader } from '@/shared/ui/page-header'
+
+function today(){return new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())}
+function addDays(value:string,days:number){const d=new Date(`${value}T12:00:00Z`);d.setUTCDate(d.getUTCDate()+days);return d.toISOString().slice(0,10)}
+export default function DownloadReportsPage(){const start=today(),end=addDays(start,30);return <><PageHeader title="Exportar relatórios" description="Arquivos administrativos sem conteúdo clínico, no período selecionado."/><p><Link href="/relatorios">← Voltar aos relatórios</Link></p><form action="/relatorios/exportar" method="get" className="stack-form"><label>Início <input name="start" type="date" defaultValue={start} required/></label><label>Fim <input name="end" type="date" defaultValue={end} required/></label><div><button name="format" value="csv" type="submit">Baixar CSV</button>{' '}<button name="format" value="xlsx" type="submit">Baixar XLSX</button>{' '}<button name="format" value="pdf" type="submit">Baixar PDF</button></div></form><p>Conteúdo: recebimentos, contas a pagar, eventos e situação fiscal. Informações clínicas não fazem parte desta exportação.</p></>}
