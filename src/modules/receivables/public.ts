@@ -2,7 +2,7 @@ export { createReceivableIdempotent, type ReceivableRepository } from './applica
 export { buildAppointmentCharge, type ChargeableAppointment } from './application/build-appointment-charge'
 export { applyAdjustment } from './application/apply-adjustment'
 export { applyPayment, createReceivable, type Receivable, type ReceivableInput } from './domain/receivable'
-export { RECEIVABLE_STATUSES, type ReceivableStatus } from './domain/status'
+export { deriveReceivableStatus, RECEIVABLE_STATUSES, type ReceivableStatus } from './domain/status'
 export { PAYMENT_METHODS, applyRefund, recordPayment, type Payment, type PaymentMethod } from './domain/payment'
 export { recordPaymentIdempotent } from './application/record-payment'
 export { refundPayment } from './application/refund-payment'
