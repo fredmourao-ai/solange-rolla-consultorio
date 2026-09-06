@@ -7,5 +7,5 @@ export default defineConfig({
   timeout: 180_000,
   use: { baseURL: runtime.baseURL, trace: 'retain-on-failure', navigationTimeout: 180_000 },
   webServer: runtime.webServer,
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  projects: [{ name: 'chromium', testMatch: runtime.projectTestMatch, use: { ...devices['Desktop Chrome'] } }],
 })
