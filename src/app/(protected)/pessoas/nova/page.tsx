@@ -7,12 +7,31 @@ import type { Person, PersonId } from '@/modules/people/public'
 import { PageHeader } from '@/shared/ui/page-header'
 import { PersonForm } from '@/modules/people/ui/person-form'
 
+function fiscalAddressFrom(formData: FormData) {
+  const address = {
+    street: String(formData.get('fiscal_street') ?? '').trim(),
+    number: String(formData.get('fiscal_number') ?? '').trim(),
+    district: String(formData.get('fiscal_district') ?? '').trim(),
+    city: String(formData.get('fiscal_city') ?? '').trim(),
+    state: String(formData.get('fiscal_state') ?? '').trim().toUpperCase(),
+    postalCode: String(formData.get('fiscal_postal_code') ?? '').replace(/\D/g, ''),
+  }
+  const values = Object.values(address)
+  if (values.every((value) => !value)) return {}
+  if (values.some((value) => !value)) throw new Error('PERSON_FISCAL_ADDRESS_INCOMPLETE')
+  if (!/^[A-Z]{2}$/.test(address.state) || !/^\d{8}$/.test(address.postalCode)) {
+    throw new Error('PERSON_FISCAL_ADDRESS_INVALID')
+  }
+  return address
+}
+
 async function createPersonAction(formData: FormData) {
   'use server'
 
   const session = await getStaffSession()
   authorizeStaffSession(session, ['psychologist_owner', 'secretary'])
   const client = await createServerSupabaseClient()
+  const fiscalAddress = fiscalAddressFrom(formData)
   const repository = {
     async findByUniqueFields(input: { cpfNormalized: string | null; emailNormalized: string | null; phoneE164: string | null }) {
       for (const [column, value] of Object.entries(input)) {
@@ -32,7 +51,7 @@ async function createPersonAction(formData: FormData) {
         phone_e164: input.phoneE164,
         preferred_channel: input.preferredChannel,
         birthday_messages_enabled: input.birthdayMessagesEnabled,
-        fiscal_address: {},
+        fiscal_address: fiscalAddress,
       }).select('id, civil_name, preferred_name, cpf_normalized, birth_date, email_normalized, phone_e164, preferred_channel, birthday_messages_enabled').single()
       if (error || !data) throw new Error('PERSON_CREATE_FAILED')
       return {
