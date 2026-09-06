@@ -1967,6 +1967,15 @@ export type Database = {
         }
         Returns: string
       }
+      register_event_participant_atomic: {
+        Args: {
+          p_event_id: string
+          p_person_id: string
+          p_price_cents: number
+          p_status: string
+        }
+        Returns: string[]
+      }
       sign_form_submission: {
         Args: {
           p_canonical_hash_sha256: string
