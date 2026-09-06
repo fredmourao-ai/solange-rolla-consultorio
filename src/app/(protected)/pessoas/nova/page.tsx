@@ -5,22 +5,32 @@ import { authorizeStaffSession, getStaffSession } from '@/modules/identity/publi
 import { createPerson } from '@/modules/people/public'
 import type { Person, PersonId } from '@/modules/people/public'
 import { PageHeader } from '@/shared/ui/page-header'
-import { PersonForm } from '@/modules/people/ui/person-form'
+import { PersonForm, type PersonFormState, type PersonFormValues } from '@/modules/people/ui/person-form'
 
-function fiscalAddressFrom(formData: FormData) {
-  const address = { street: String(formData.get('fiscal_street') ?? '').trim(), number: String(formData.get('fiscal_number') ?? '').trim(), district: String(formData.get('fiscal_district') ?? '').trim(), city: String(formData.get('fiscal_city') ?? '').trim(), state: String(formData.get('fiscal_state') ?? '').trim().toUpperCase(), postalCode: String(formData.get('fiscal_postal_code') ?? '').replace(/\D/g, '') }
-  const values = Object.values(address)
-  if (values.every((value) => !value)) return { ok: true as const, address: {} }
-  if (!String(formData.get('cpf') ?? '').trim()) return { ok: false as const, error: 'fiscal_cpf' }
-  if (values.some((value) => !value)) return { ok: false as const, error: 'fiscal_incomplete' }
-  if (!/^[A-Z]{2}$/.test(address.state) || !/^\d{8}$/.test(address.postalCode)) return { ok: false as const, error: 'fiscal_invalid' }
+function valuesFrom(formData: FormData): PersonFormValues {
+  return {
+    civil_name: String(formData.get('civil_name') ?? ''), preferred_name: String(formData.get('preferred_name') ?? ''),
+    birth_date: String(formData.get('birth_date') ?? ''), cpf: String(formData.get('cpf') ?? ''), email: String(formData.get('email') ?? ''), phone: String(formData.get('phone') ?? ''),
+    fiscal_street: String(formData.get('fiscal_street') ?? ''), fiscal_number: String(formData.get('fiscal_number') ?? ''), fiscal_district: String(formData.get('fiscal_district') ?? ''), fiscal_city: String(formData.get('fiscal_city') ?? ''), fiscal_state: String(formData.get('fiscal_state') ?? ''), fiscal_postal_code: String(formData.get('fiscal_postal_code') ?? ''),
+  }
+}
+
+function fiscalAddressFrom(values: PersonFormValues) {
+  const address = { street: values.fiscal_street.trim(), number: values.fiscal_number.trim(), district: values.fiscal_district.trim(), city: values.fiscal_city.trim(), state: values.fiscal_state.trim().toUpperCase(), postalCode: values.fiscal_postal_code.replace(/\D/g, '') }
+  const addressValues = Object.values(address)
+  if (addressValues.every((value) => !value)) return { ok: true as const, address: {} }
+  if (!values.cpf.trim()) return { ok: false as const, error: 'Informe o CPF para preparar a pessoa para NFS-e.' }
+  if (addressValues.some((value) => !value)) return { ok: false as const, error: 'Preencha todos os campos do endereço fiscal ou deixe todos em branco.' }
+  if (!/^[A-Z]{2}$/.test(address.state) || !/^\d{8}$/.test(address.postalCode)) return { ok: false as const, error: 'Confira a UF (2 letras) e o CEP (8 números).' }
   return { ok: true as const, address }
 }
 
-async function createPersonAction(formData: FormData) {
+async function createPersonAction(previous: PersonFormState, formData: FormData): Promise<PersonFormState> {
   'use server'
+  const values = valuesFrom(formData)
+  const invalid = (error: string): PersonFormState => ({ revision: previous.revision + 1, error, values })
   const session = await getStaffSession(); authorizeStaffSession(session, ['psychologist_owner', 'secretary'])
-  const fiscal = fiscalAddressFrom(formData); if (!fiscal.ok) redirect(`/pessoas/nova?error=${fiscal.error}`)
+  const fiscal = fiscalAddressFrom(values); if (!fiscal.ok) return invalid(fiscal.error)
   const client = await createServerSupabaseClient()
   const repository = {
     async findByUniqueFields(input: { cpfNormalized: string | null; emailNormalized: string | null; phoneE164: string | null }) { for (const [column, value] of Object.entries(input)) { if (!value) continue; const { data } = await client.from('people').select('cpf_normalized, email_normalized, phone_e164').eq(column as never, value).maybeSingle(); if (data) return { cpfNormalized: data.cpf_normalized, emailNormalized: data.email_normalized, phoneE164: data.phone_e164 } } return null },
@@ -30,12 +40,16 @@ async function createPersonAction(formData: FormData) {
       return { id: data.id as PersonId, civilName: data.civil_name, preferredName: data.preferred_name, cpfNormalized: data.cpf_normalized, birthDate: data.birth_date, emailNormalized: data.email_normalized, phoneE164: data.phone_e164, preferredChannel: data.preferred_channel as Person['preferredChannel'], birthdayMessagesEnabled: data.birthday_messages_enabled }
     },
   }
-  const result = await createPerson(repository, { civilName: String(formData.get('civil_name') ?? ''), preferredName: String(formData.get('preferred_name') ?? ''), cpf: String(formData.get('cpf') ?? ''), birthDate: String(formData.get('birth_date') ?? ''), email: String(formData.get('email') ?? ''), phone: String(formData.get('phone') ?? '') })
-  if (!result.ok) throw new Error(result.code); redirect('/pessoas')
+  try {
+    const result = await createPerson(repository, { civilName: values.civil_name, preferredName: values.preferred_name, cpf: values.cpf, birthDate: values.birth_date, email: values.email, phone: values.phone })
+    if (!result.ok) return invalid(result.code === 'DUPLICATE_CPF' ? 'Já existe uma pessoa com este CPF.' : 'Já existe uma pessoa com este e-mail ou telefone.')
+  } catch (error) {
+    if (error instanceof Error && error.message === 'INVALID_CPF') return invalid('Informe um CPF válido.')
+    throw error
+  }
+  redirect('/pessoas')
 }
 
-const ERRORS: Record<string, string> = { fiscal_cpf: 'Informe o CPF para preparar a pessoa para NFS-e.', fiscal_incomplete: 'Preencha todos os campos do endereço fiscal ou deixe todos em branco.', fiscal_invalid: 'Confira a UF (2 letras) e o CEP (8 números).' }
-export default async function NewPersonPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
-  const { error } = await searchParams
-  return <><PageHeader title="Nova pessoa" description="Cadastre uma pessoa uma única vez para reutilizar em outros fluxos." actions={<Link className="ui-button ui-button--outline" href="/pessoas">Voltar</Link>} />{error && ERRORS[error] && <p role="alert">{ERRORS[error]}</p>}<PersonForm action={createPersonAction} /></>
+export default function NewPersonPage() {
+  return <><PageHeader title="Nova pessoa" description="Cadastre uma pessoa uma única vez para reutilizar em outros fluxos." actions={<Link className="ui-button ui-button--outline" href="/pessoas">Voltar</Link>} /><PersonForm action={createPersonAction} /></>
 }
