@@ -4,22 +4,23 @@ on:
   workflow_dispatch:
     inputs:
       commit_sha:
-        description: Full commit SHA already reviewed and approved for staging
+        description: Full main commit SHA already reviewed and approved for staging
         required: true
         type: string
   workflow_run:
-    workflows: [CI]
+    workflows: [CI, Database, Repository Governance Gate]
     types: [completed]
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: staging
   cancel-in-progress: false
 
 jobs:
-  promote:
+  canonical-gate:
     if: >-
       github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'workflow_run' &&
@@ -28,10 +29,84 @@ jobs:
        vars.STAGING_AUTO_PROMOTE_ENABLED == 'true' &&
        github.event.workflow_run.conclusion == 'success')
     runs-on: [self-hosted, Linux, ARM64, solange-ci]
-    environment: staging
-    timeout-minutes: 30
+    timeout-minutes: 5
+    outputs:
+      ready: ${{ steps.canonical.outputs.ready }}
+      sha: ${{ steps.canonical.outputs.sha }}
     env:
       PROMOTE_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || inputs.commit_sha }}
+      GITHUB_TOKEN: ${{ github.token }}
+    steps:
+      - name: Verify canonical main SHA and checks
+        id: canonical
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          node <<'NODE'
+          const fs = require('node:fs')
+          const repo = process.env.GITHUB_REPOSITORY
+          const sha = process.env.PROMOTE_SHA || ''
+          const token = process.env.GITHUB_TOKEN
+          const eventName = process.env.GITHUB_EVENT_NAME
+          const output = process.env.GITHUB_OUTPUT
+          const required = ['CI', 'Database', 'Repository Governance Gate']
+          const headers = {
+            Accept: 'application/vnd.github+json',
+            Authorization: `Bearer ${token}`,
+            'X-GitHub-Api-Version': '2022-11-28',
+          }
+          async function get(path) {
+            const response = await fetch(`https://api.github.com/repos/${repo}${path}`, { headers })
+            if (!response.ok) throw new Error(`GitHub API ${response.status} for ${path}`)
+            return response.json()
+          }
+          function emit(ready) {
+            fs.appendFileSync(output, `ready=${ready}\nsha=${sha}\n`)
+          }
+          async function main() {
+            if (!/^[0-9a-f]{40}$/.test(sha)) throw new Error('PROMOTE_SHA must be a full commit SHA')
+            const mainRef = await get('/git/ref/heads/main')
+            if (mainRef.object.sha !== sha) {
+              if (eventName === 'workflow_dispatch') throw new Error(`candidate ${sha} is not current refs/heads/main ${mainRef.object.sha}`)
+              emit(false)
+              return
+            }
+            const query = new URLSearchParams({ head_sha: sha, event: 'push', per_page: '100' })
+            const payload = await get(`/actions/runs?${query}`)
+            const notReady = []
+            for (const name of required) {
+              const runs = payload.workflow_runs
+                .filter((run) => run.name === name && run.head_branch === 'main')
+                .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+              const latest = runs[0]
+              if (!latest || latest.status !== 'completed' || latest.conclusion !== 'success') {
+                notReady.push(`${name}:${latest?.status ?? 'missing'}/${latest?.conclusion ?? 'none'}`)
+              }
+            }
+            if (notReady.length) {
+              if (eventName === 'workflow_dispatch') throw new Error(`canonical checks not green: ${notReady.join(', ')}`)
+              console.log(`promotion not ready: ${notReady.join(', ')}`)
+              emit(false)
+              return
+            }
+            emit(true)
+            console.log(`canonical staging candidate ready: ${sha}`)
+          }
+          main().catch((error) => {
+            console.error(error)
+            process.exit(1)
+          })
+          NODE
+
+  promote:
+    needs: canonical-gate
+    if: needs.canonical-gate.outputs.ready == 'true'
+    runs-on: [self-hosted, Linux, ARM64, solange-ci]
+    environment: staging
+    timeout-minutes: 45
+    env:
+      PROMOTE_SHA: ${{ needs.canonical-gate.outputs.sha }}
+      STAGING_DEPLOY_ROOT: /home/ubuntu/solange-client-demo
     steps:
       - name: Checkout selected revision
         uses: actions/checkout@v7
@@ -44,6 +119,7 @@ jobs:
           set -Eeuo pipefail
           test -n "$PROMOTE_SHA"
           test "$(git rev-parse HEAD)" = "$PROMOTE_SHA"
+          test "$(git rev-parse origin/main)" = "$PROMOTE_SHA"
 
       - name: Use Node 24.19.0
         uses: actions/setup-node@v7
@@ -87,8 +163,209 @@ jobs:
           SUPABASE_STAGING_PROJECT_REF: ${{ secrets.SUPABASE_STAGING_PROJECT_REF }}
         run: node scripts/verify-staging-accounting-rls.mjs
 
+      - name: Deploy exact SHA to homologation
+        shell: bash
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          WHATSApP_LIVE_ENABLED: ${{ vars.WHATSAPP_LIVE_ENABLED }}
+          EMAIL_LIVE_ENABLED: ${{ vars.EMAIL_LIVE_ENABLED }}
+          NFSE_LIVE_ENABLED: ${{ vars.NFSE_LIVE_ENABLED }}
+        run: |
+          set -Eeuo pipefail
+          ROOT="$STAGING_DEPLOY_ROOT"
+          APP="$ROOT/app"
+          STAGE="$ROOT/app-stage-$PROMOTE_SHA"
+          PREVIOUS="$ROOT/app-previous"
+          RUNTIME_ENV="$ROOT/staging.env"
+          CANDIDATE_STATE="$ROOT/state/candidate-$PROMOTE_SHA"
+          WEB=solange-client-demo-web
+          DOC=solange-document-worker
+          MSG=solange-messaging-worker
+
+          cleanup_stage() {
+            rm -rf "$STAGE"
+          }
+          rollback() {
+            rc=$?
+            trap - EXIT
+            if [ "$rc" -ne 0 ]; then
+              docker rm -f "${DOC}-candidate" "${MSG}-candidate" >/dev/null 2>&1 || true
+              if docker inspect "${DOC}-previous" >/dev/null 2>&1; then
+                docker rm -f "$DOC" >/dev/null 2>&1 || true
+                docker rename "${DOC}-previous" "$DOC" || true
+                docker start "$DOC" >/dev/null 2>&1 || true
+              fi
+              if docker inspect "${MSG}-previous" >/dev/null 2>&1; then
+                docker rm -f "$MSG" >/dev/null 2>&1 || true
+                docker rename "${MSG}-previous" "$MSG" || true
+                docker start "$MSG" >/dev/null 2>&1 || true
+              fi
+              if [ -d "$PREVIOUS" ]; then
+                docker stop "$WEB" >/dev/null 2>&1 || true
+                rm -rf "$APP"
+                mv "$PREVIOUS" "$APP"
+                docker start "$WEB" >/dev/null 2>&1 || true
+              fi
+            fi
+            cleanup_stage
+            exit "$rc"
+          }
+          trap rollback EXIT
+
+          test -d "$ROOT/state"
+          test -f "$ROOT/demo.env"
+          test "$(stat -c '%a' "$ROOT/demo.env")" = 600
+          /home/ubuntu/.local/bin/solange-backup.sh
+
+          rm -rf "$STAGE" "$PREVIOUS" "$CANDIDATE_STATE"
+          mkdir -p "$STAGE" "$CANDIDATE_STATE/document" "$CANDIDATE_STATE/messaging"
+          rsync -a --delete \
+            --exclude '.git' \
+            --exclude 'node_modules' \
+            --exclude '.next' \
+            --exclude '.env.production.local' \
+            "$GITHUB_WORKSPACE/" "$STAGE/"
+
+          python3 - "$ROOT/demo.env" "$RUNTIME_ENV" "$PROMOTE_SHA" <<'PY'
+          import os, pathlib, sys
+          source = pathlib.Path(sys.argv[1])
+          target = pathlib.Path(sys.argv[2])
+          sha = sys.argv[3]
+          values = {}
+          for raw in source.read_text().splitlines():
+              line = raw.strip()
+              if not line or line.startswith('#') or '=' not in line:
+                  continue
+              key, value = line.split('=', 1)
+              values[key] = value
+          overrides = {
+              'APP_ENV': 'staging',
+              'APP_BUILD_SHA': sha,
+              'STAGING_COMMIT_SHA': sha,
+              'NEXT_PUBLIC_SUPABASE_URL': os.environ['NEXT_PUBLIC_SUPABASE_URL'],
+              'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY': os.environ['NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY'],
+              'SUPABASE_SECRET_KEY': os.environ['SUPABASE_SECRET_KEY'],
+              'WHATSAPP_LIVE_ENABLED': os.environ.get('WHATSAPP_LIVE_ENABLED') or 'false',
+              'EMAIL_LIVE_ENABLED': os.environ.get('EMAIL_LIVE_ENABLED') or 'false',
+              'NFSE_LIVE_ENABLED': os.environ.get('NFSE_LIVE_ENABLED') or 'false',
+          }
+          for key, value in overrides.items():
+              if key in {'NEXT_PUBLIC_SUPABASE_URL', 'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY', 'SUPABASE_SECRET_KEY'} and not value:
+                  raise SystemExit(f'missing validated staging value for {key}')
+              values[key] = value
+          target.write_text(''.join(f'{key}={value}\n' for key, value in values.items()))
+          target.chmod(0o600)
+          PY
+          install -m 600 "$RUNTIME_ENV" "$STAGE/.env.production.local"
+
+          python3 - "$STAGE/.env.production.local" "$GITHUB_WORKSPACE" <<'PY'
+          import os, pathlib, subprocess, sys
+          env = os.environ.copy()
+          for raw in pathlib.Path(sys.argv[1]).read_text().splitlines():
+              if not raw or raw.startswith('#') or '=' not in raw:
+                  continue
+              key, value = raw.split('=', 1)
+              env[key] = value
+          subprocess.run(['npm', 'run', 'environment:check'], cwd=sys.argv[2], env=env, check=True)
+          PY
+
+          python3 - "$RUNTIME_ENV" <<'PY'
+          import pathlib, subprocess, sys
+          values = {}
+          for raw in pathlib.Path(sys.argv[1]).read_text().splitlines():
+              if raw and not raw.startswith('#') and '=' in raw:
+                  key, value = raw.split('=', 1)
+                  values[key] = value
+          db_url = values.get('DB_URL')
+          if not db_url:
+              raise SystemExit('DB_URL missing from staging runtime env')
+          result = subprocess.run(['npx', 'supabase@2.115.0', 'db', 'push', '--db-url', db_url, '--include-all', '--yes'])
+          if result.returncode:
+              print('staging migration push failed', file=sys.stderr)
+              raise SystemExit(result.returncode)
+          PY
+
+          docker run --rm --network host -v "$STAGE:/app" -w /app node:24-bookworm-slim npm ci
+          docker run --rm --network host -v "$STAGE:/app" -w /app node:24-bookworm-slim npm run build
+
+          ROOT="$GITHUB_WORKSPACE" DEMO="$STAGING_DEPLOY_ROOT" ENV_FILE="$RUNTIME_ENV" \
+            IMAGE="solange-document-worker:$PROMOTE_SHA" CONTAINER="${DOC}-candidate" \
+            STATE_DIR="$CANDIDATE_STATE/document" bash ops/document-worker/run-demo-worker.sh
+          ROOT="$GITHUB_WORKSPACE" DEMO="$STAGING_DEPLOY_ROOT" ENV_FILE="$RUNTIME_ENV" \
+            IMAGE="solange-messaging-worker:$PROMOTE_SHA" CONTAINER="${MSG}-candidate" \
+            STATE_DIR="$CANDIDATE_STATE/messaging" bash ops/messaging-worker/run-demo-worker.sh
+
+          docker stop "$WEB" >/dev/null
+          mv "$APP" "$PREVIOUS"
+          mv "$STAGE" "$APP"
+          docker start "$WEB" >/dev/null
+
+          docker rm -f "${DOC}-previous" "${MSG}-previous" >/dev/null 2>&1 || true
+          if docker inspect "$DOC" >/dev/null 2>&1; then docker rename "$DOC" "${DOC}-previous"; fi
+          if docker inspect "$MSG" >/dev/null 2>&1; then docker rename "$MSG" "${MSG}-previous"; fi
+          docker rename "${DOC}-candidate" "$DOC"
+          docker rename "${MSG}-candidate" "$MSG"
+          test "$(docker inspect -f '{{.State.Status}}' "$DOC")" = running
+          test "$(docker inspect -f '{{.State.Status}}' "$MSG")" = running
+          test -s "$CANDIDATE_STATE/document/document-worker.heartbeat"
+          test -s "$CANDIDATE_STATE/messaging/messaging-worker.heartbeat"
+          printf '%s\n' "$PROMOTE_SHA" > "$ROOT/state/deployed-sha.txt"
+
+      - name: Verify deployed SHA
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          ROOT="$STAGING_DEPLOY_ROOT"
+          APP="$ROOT/app"
+          PREVIOUS="$ROOT/app-previous"
+          WEB=solange-client-demo-web
+          DOC=solange-document-worker
+          MSG=solange-messaging-worker
+          rollback_verified_release() {
+            rc=$?
+            trap - ERR
+            if [ -d "$PREVIOUS" ]; then
+              docker stop "$WEB" >/dev/null 2>&1 || true
+              rm -rf "$APP"
+              mv "$PREVIOUS" "$APP"
+              docker start "$WEB" >/dev/null 2>&1 || true
+            fi
+            if docker inspect "${DOC}-previous" >/dev/null 2>&1; then
+              docker rm -f "$DOC" >/dev/null 2>&1 || true
+              docker rename "${DOC}-previous" "$DOC" || true
+              docker start "$DOC" >/dev/null 2>&1 || true
+            fi
+            if docker inspect "${MSG}-previous" >/dev/null 2>&1; then
+              docker rm -f "$MSG" >/dev/null 2>&1 || true
+              docker rename "${MSG}-previous" "$MSG" || true
+              docker start "$MSG" >/dev/null 2>&1 || true
+            fi
+            exit "$rc"
+          }
+          trap rollback_verified_release ERR
+
+          test "$(cat "$ROOT/state/deployed-sha.txt")" = "$PROMOTE_SHA"
+          URL=$(cat "$ROOT/state/current-url.txt")
+          actual=''
+          for _ in $(seq 1 30); do
+            payload=$(curl --fail --silent --show-error "$URL/api/health" || true)
+            actual=$(printf '%s' "$payload" | jq -r '.buildSha // empty' 2>/dev/null || true)
+            [ "$actual" = "$PROMOTE_SHA" ] && break
+            sleep 2
+          done
+          test "$actual" = "$PROMOTE_SHA"
+          "$ROOT/preflight.sh"
+          docker rm -f "${DOC}-previous" "${MSG}-previous" >/dev/null 2>&1 || true
+          rm -rf "$PREVIOUS"
+          # Keep the promoted release state directory: the canonical workers bind-mount it
+          # and need the same host path to exist after container restarts.
+
       - name: Staging app smoke contract
         if: vars.STAGING_APP_URL != ''
         env:
           STAGING_APP_URL: ${{ vars.STAGING_APP_URL }}
-        run: curl --fail --silent --show-error --retry 3 "$STAGING_APP_URL/api/health"
+        run: |
+          payload=$(curl --fail --silent --show-error --retry 3 "$STAGING_APP_URL/api/health")
+          test "$(printf '%s' "$payload" | jq -r '.buildSha')" = "$PROMOTE_SHA"
