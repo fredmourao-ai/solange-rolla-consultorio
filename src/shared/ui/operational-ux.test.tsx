@@ -16,6 +16,7 @@ describe('operational UX primitives', () => {
     expect(markup).toContain('aria-describedby="page-description"')
     expect(markup).toContain('id="page-title"')
     expect(markup).toContain('id="page-description"')
+    expect(markup).toContain('role="group"')
     expect(markup).toContain('aria-label="Ações da página"')
   })
 
@@ -47,6 +48,7 @@ describe('operational UX primitives', () => {
     expect(css).toContain('min-height: 44px')
     expect(css).toContain(':focus-visible')
     expect(css).toContain('@media (prefers-reduced-motion: reduce)')
-    expect(css).toContain('overflow-x: clip')
+    expect(css).toContain('overflow-wrap: anywhere')
+    expect(css).not.toContain('overflow-x: clip')
   })
 })
