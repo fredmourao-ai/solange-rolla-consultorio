@@ -136,13 +136,17 @@ export async function updateAppointmentAction(formData: FormData) {
   const personId = String(formData.get('person_id') ?? '')
   const serviceId = String(formData.get('service_id') ?? '')
   const startsAtLocal = String(formData.get('starts_at_local') ?? '')
-  const { startsAt, endsAt } = await serviceWindow(client, serviceId, startsAtLocal)
-  await assertNoConflict(client, startsAt, endsAt, appointmentId)
 
   const { data: current, error: readError } = await client.from('appointments')
     .select('id,person_id,service_id,starts_at,ends_at,status,policy_version,cancellation_policy_snapshot')
     .eq('id', appointmentId).single()
   if (readError || !current) throw new Error('AGENDA_APPOINTMENT_NOT_FOUND')
+  if (['cancelled_in_time', 'cancelled_late', 'cancelled_by_provider', 'completed', 'no_show'].includes(current.status)) {
+    throw new Error('AGENDA_TERMINAL_APPOINTMENT_IMMUTABLE')
+  }
+
+  const { startsAt, endsAt } = await serviceWindow(client, serviceId, startsAtLocal)
+  await assertNoConflict(client, startsAt, endsAt, appointmentId)
   const policy = current.cancellation_policy_snapshot as unknown as CancellationPolicy
   const nextStatus = current.status === 'reschedule_requested' ? 'rescheduled' : current.status
   const cancellationDeadlineAt = calculateCancellationDeadline(startsAt, policy).toISOString()
