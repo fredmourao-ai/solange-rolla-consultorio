@@ -1,3 +1,5 @@
+import { redirect } from 'next/navigation'
+import { getStaffSession } from '@/modules/identity/public'
 import { EventCalendar, type EventCalendarItem } from '@/modules/events/ui/event-calendar'
 import { createServerSupabaseClient } from '@/platform/supabase/server'
 import { PageHeader } from '@/shared/ui/page-header'
@@ -6,6 +8,9 @@ export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
 export default async function EventosPage() {
+  const session = await getStaffSession()
+  if (!session) redirect('/login')
+
   const supabase = await createServerSupabaseClient()
   const { data, error } = await supabase
     .from('events')

@@ -22,9 +22,10 @@ export function PersonResults({ people, canAccessClinical = false }: { people: P
           {person.phone ? <span>{person.phone}</span> : null}
         </> : <span>Contato não informado</span>}
       </div>
-      {canAccessClinical ? <div>
-        <Link className="ui-button ui-button--secondary" href={`/clinico/${person.id}`}>Clínico</Link>
-      </div> : null}
+      <div className="people-results__actions">
+        <Link className="ui-button ui-button--outline" href={`/pessoas/${person.id}/gerenciar`}>Gerenciar cadastro</Link>
+        {canAccessClinical ? <Link className="ui-button ui-button--secondary" href={`/clinico/${person.id}`}>Clínico</Link> : null}
+      </div>
     </li>)}
   </ul>
 }

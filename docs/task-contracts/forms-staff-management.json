@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "status": "approved",
+  "issue": 96,
+  "migration": "20260906030000_forms_staff_management.sql",
+  "owners": ["forms"],
+  "objects": [
+    {"name": "public.form_templates", "owner": "forms"},
+    {"name": "public.form_template_versions", "owner": "forms"}
+  ]
+}

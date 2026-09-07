@@ -1,3 +1,5 @@
+import { redirect } from 'next/navigation'
+import { getStaffSession } from '@/modules/identity/public'
 import { Card, CardDescription, CardTitle } from '@/shared/ui/card'
 import { PageHeader } from '@/shared/ui/page-header'
 import { FiscalQueue } from '@/modules/fiscal/ui/fiscal-queue'
@@ -6,6 +8,9 @@ import type { FiscalDocumentStatus } from '@/modules/fiscal/domain/fiscal-docume
 import { createServerSupabaseClient } from '@/platform/supabase/server'
 
 export default async function FiscalPage() {
+  const session = await getStaffSession()
+  if (!session) redirect('/login')
+
   const supabase = await createServerSupabaseClient()
   const { data, error } = await supabase
     .from('fiscal_documents')

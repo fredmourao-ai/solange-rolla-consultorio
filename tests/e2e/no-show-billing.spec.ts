@@ -11,6 +11,14 @@ function sql(statement: string): string {
 }
 function quote(value: string): string { return `'${value.replaceAll("'", "''")}'` }
 
+async function ensureAppointmentDetailsOpen(page: import('@playwright/test').Page, appointmentId: string) {
+  const item = page.locator(`li.appointment-calendar__item[data-appointment-id="${appointmentId}"]`)
+  const details = item.locator('details')
+  if (!(await details.evaluate((element) => (element as HTMLDetailsElement).open))) {
+    await details.getByText('Ver detalhes').click()
+  }
+}
+
 const snapshot = { policyVersion: 1, countableHours: 48, excludedWeekdays: [6, 0], businessTimezone: 'America/Sao_Paulo', lateCancellationChargeEnabled: true, noShowChargeEnabled: true }
 
 function appointment(status: string, startsAtIso: string) {
@@ -27,7 +35,7 @@ test('staff marks a past confirmed appointment as a no-show from the agenda', as
   const appointmentId = appointment('confirmed', '2020-01-06T15:00:00-03:00')
   await signInDemo(page)
   await page.goto('/agenda?view=day&date=2020-01-06', { waitUntil: 'domcontentloaded' })
-  await page.getByText('Ver detalhes').first().click()
+  await ensureAppointmentDetailsOpen(page, appointmentId)
   await page.getByRole('combobox', { name: 'Alterar status' }).selectOption('mark_no_show')
   await page.getByRole('button', { name: 'Aplicar' }).click()
   await expect.poll(() => sql(`select status from public.appointments where id=${quote(appointmentId)}`)).toBe('no_show')
@@ -38,14 +46,14 @@ test('staff charges a no-show for the full service price, auditable and idempote
   const appointmentId = appointment('no_show', '2020-01-07T15:00:00-03:00')
   await signInDemo(page)
   await page.goto('/agenda?view=day&date=2020-01-07', { waitUntil: 'domcontentloaded' })
-  await page.getByText('Ver detalhes').first().click()
+  await ensureAppointmentDetailsOpen(page, appointmentId)
   await page.getByRole('button', { name: 'Cobrar falta/cancelamento fora do prazo' }).click()
 
   const receivableQuery = `select source_type,source_id,person_id,payer_person_id,original_amount_cents from public.receivables where idempotency_key=${quote(`appointment:${appointmentId}:charge`)}`
   await expect.poll(() => sql(receivableQuery)).toBe(`appointment|${appointmentId}|d0000000-0000-4000-8000-000000000001|d0000000-0000-4000-8000-000000000001|30000`)
   await expect.poll(() => sql(`select count(*) from public.audit_events where action='receivable.appointment_charge_created' and correlation_id=${quote(appointmentId)}`)).toBe('1')
 
-  await page.getByText('Ver detalhes').first().click()
+  await ensureAppointmentDetailsOpen(page, appointmentId)
   await page.getByRole('button', { name: 'Cobrar falta/cancelamento fora do prazo' }).click()
   await expect.poll(() => sql(`select count(*) from public.receivables where source_type='appointment' and source_id=${quote(appointmentId)}`)).toBe('1')
 })
@@ -61,7 +69,7 @@ test('a no-show charge is unavailable when the policy snapshot disabled it', asy
 
   await signInDemo(page)
   await page.goto('/agenda?view=day&date=2020-01-08', { waitUntil: 'domcontentloaded' })
-  await page.getByText('Ver detalhes').first().click()
+  await ensureAppointmentDetailsOpen(page, id)
   await expect(page.getByRole('button', { name: 'Cobrar falta/cancelamento fora do prazo' })).toHaveCount(0)
   expect(sql(`select count(*) from public.receivables where source_type='appointment' and source_id=${quote(id)}`)).toBe('0')
 })

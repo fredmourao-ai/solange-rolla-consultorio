@@ -41,7 +41,7 @@ export function AppointmentCalendar({ items, redirectTo, changeStatusAction, cha
 
   return <ul className="appointment-calendar" aria-label="Agenda de consultas">
     {items.map((item) => (
-      <li key={item.id} className="appointment-calendar__item">
+      <li key={item.id} className="appointment-calendar__item" data-appointment-id={item.id}>
         <div>
           <strong>{item.patientName}</strong>
           <span>{item.serviceName}</span>

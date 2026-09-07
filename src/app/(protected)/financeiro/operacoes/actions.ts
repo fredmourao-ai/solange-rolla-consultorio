@@ -15,8 +15,8 @@ async function refreshReceivableStatus(client: Awaited<ReturnType<typeof createS
   const [{ data: receivable }, { data: adjustments }, { data: payments }, { data: refunds }] = await Promise.all([
     client.from('receivables').select('original_amount_cents,status').eq('id', receivableId).single(),
     client.from('receivable_adjustments').select('adjustment_cents').eq('receivable_id', receivableId),
-    client.from('payments').select('amount_cents').eq('receivable_id', receivableId),
-    client.from('payment_refunds').select('amount_cents,payment:payments!payment_refunds_payment_id_fkey(receivable_id)').eq('payment.receivable_id', receivableId),
+    client.from('payments').select('id,amount_cents').eq('receivable_id', receivableId),
+    client.from('payment_refunds').select('amount_cents,payment:payments!inner(receivable_id)').eq('payment.receivable_id', receivableId),
   ])
   if (!receivable) throw new Error('FINANCE_RECEIVABLE_NOT_FOUND')
   const chargeCents = Math.max(0, receivable.original_amount_cents + (adjustments ?? []).reduce((sum, row) => sum + row.adjustment_cents, 0))

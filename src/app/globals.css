@@ -211,7 +211,7 @@ textarea {
 .receivables-list > li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-6); align-items: center; }
 .people-results__item { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) auto; gap: var(--space-4); align-items: center; }
 @media (max-width: 900px) { .appointment-calendar__item, .people-results__item { grid-template-columns: 1fr 1fr; } }
-@media (max-width: 640px) { .appointment-calendar__item, .receivables-list > li, .people-results__item { grid-template-columns: 1fr; } .calendar-view-switch { display: flex; width: 100%; } .calendar-view-switch a { flex: 1; text-align: center; } }
+@media (max-width: 640px) { .dashboard-grid, .appointment-calendar__item, .receivables-list > li, .people-results__item { grid-template-columns: minmax(0, 1fr); } .calendar-view-switch { display: flex; width: 100%; } .calendar-view-switch a { flex: 1; text-align: center; } }
 
 .home-page { min-height: 100vh; display: grid; place-items: center; padding: clamp(1.5rem, 5vw, 5rem); background: radial-gradient(circle at top right, #f0dfd9 0, transparent 35%), var(--background); }
 .home-hero { width: min(100%, 70rem); display: grid; gap: var(--space-6); border: 1px solid var(--border); border-radius: 18px; background: var(--surface); padding: clamp(1.5rem, 4vw, 4rem); box-shadow: 0 22px 60px rgb(40 37 34 / 12%); }
@@ -314,3 +314,14 @@ body {
 }
 
 .ui-button { text-decoration: none; }
+
+.session-controls { display: grid; gap: var(--space-2); margin-top: var(--space-4); }
+.session-controls .ui-button { width: 100%; }
+.app-shell__sidebar .session-controls .ui-button { color: #fff; border-color: rgb(255 255 255 / 22%); }
+.app-shell__sidebar .session-controls .ui-button:hover { background: rgb(255 255 255 / 10%); }
+.mfa-panel { display: grid; gap: var(--space-4); max-width: 42rem; }
+.mfa-panel > p { margin: 0; color: var(--muted); }
+.mfa-enrollment, .mfa-challenge { display: grid; gap: var(--space-4); }
+.mfa-enrollment p, .mfa-challenge p { margin: 0; }
+.mfa-qr { width: min(16rem, 100%); height: auto; border: 1px solid var(--border); border-radius: var(--radius-md); background: #fff; padding: var(--space-2); }
+@media (max-width: 800px) { .mobile-nav__panel .session-controls { border-top: 1px solid var(--border); padding-top: var(--space-3); } }

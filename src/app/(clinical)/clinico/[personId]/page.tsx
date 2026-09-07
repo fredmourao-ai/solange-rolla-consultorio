@@ -82,7 +82,8 @@ export default async function ClinicalPersonPage({ params }: { params: Promise<{
     authorizeStaffSession(session, ['psychologist_owner'], { aal2: true })
   } catch (error) {
     if (error instanceof AuthorizationError && error.code === 'MFA_REQUIRED') {
-      redirect('/login?reason=mfa_required')
+      const returnTo = encodeURIComponent(`/clinico/${personId}`)
+      redirect(`/seguranca?reason=mfa_required&returnTo=${returnTo}`)
     }
     notFound()
   }

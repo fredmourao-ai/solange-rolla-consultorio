@@ -1,187 +1,45 @@
 'use server'
 
 import { redirect } from 'next/navigation'
-import {
-  calculateCancellationDeadline,
-  createAppointment,
-  type Appointment,
-  type AppointmentRepository,
-  type CancellationPolicy,
-} from '@/modules/appointments/public'
+import { calculateCancellationDeadline, createAppointment, type Appointment, type AppointmentRepository, type CancellationPolicy } from '@/modules/appointments/public'
 import { appointmentWindow, hasAppointmentConflict } from '@/modules/appointments/public'
 import { recordAuditEvent, type AuditEvent, type AuditEventRepository } from '@/modules/audit/public'
 import { authorizeStaffSession, getStaffSession } from '@/modules/identity/public'
 import { createServerSupabaseClient } from '@/platform/supabase/server'
 import type { Database } from '@/platform/supabase/types'
+import { parsePositiveMoneyToCents } from '@/shared/kernel/format/money'
 
-function auditRepository(client: Awaited<ReturnType<typeof createServerSupabaseClient>>): AuditEventRepository {
-  return {
-    async insert(event: AuditEvent): Promise<void> {
-      const { error } = await client.from('audit_events').insert({
-        actor_user_id: event.actorId,
-        action: event.action,
-        entity_type: event.entityType,
-        entity_id: event.entityId,
-        correlation_id: event.correlationId,
-        metadata: event.metadata as Database['public']['Tables']['audit_events']['Insert']['metadata'],
-        created_at: event.createdAt,
-      })
-      if (error) throw new Error('AGENDA_AUDIT_FAILED')
-    },
-  }
+function auditRepository(client: Awaited<ReturnType<typeof createServerSupabaseClient>>): AuditEventRepository { return { async insert(event: AuditEvent): Promise<void> { const { error } = await client.from('audit_events').insert({ actor_user_id: event.actorId, action: event.action, entity_type: event.entityType, entity_id: event.entityId, correlation_id: event.correlationId, metadata: event.metadata as Database['public']['Tables']['audit_events']['Insert']['metadata'], created_at: event.createdAt }); if (error) throw new Error('AGENDA_AUDIT_FAILED') } } }
+async function authorizedClient() { const session = await getStaffSession(); const authorized = authorizeStaffSession(session, ['psychologist_owner', 'secretary']); return { authorized, client: await createServerSupabaseClient() } }
+function moneyToCents(value: string) { try { return parsePositiveMoneyToCents(value) } catch { throw new Error('AGENDA_SERVICE_PRICE_INVALID') } }
+
+export async function createServiceAction(formData: FormData) {
+  const { client } = await authorizedClient()
+  const name = String(formData.get('name') ?? '').trim()
+  const durationMinutes = Number(formData.get('duration_minutes'))
+  const priceCents = moneyToCents(String(formData.get('price') ?? ''))
+  if (!name || !Number.isInteger(durationMinutes) || durationMinutes <= 0 || priceCents <= 0) throw new Error('AGENDA_SERVICE_INVALID')
+  const { data, error } = await client.from('services').insert({ name, duration_minutes: durationMinutes, price_cents: priceCents, active: true }).select('id').single()
+  if (error || !data) throw new Error('AGENDA_SERVICE_CREATE_FAILED')
+  redirect('/agenda/gerenciar')
 }
 
-async function authorizedClient() {
-  const session = await getStaffSession()
-  const authorized = authorizeStaffSession(session, ['psychologist_owner', 'secretary'])
-  return { authorized, client: await createServerSupabaseClient() }
-}
-
-async function serviceWindow(client: Awaited<ReturnType<typeof createServerSupabaseClient>>, serviceId: string, startsAtLocal: string) {
-  const { data: service, error } = await client.from('services').select('id,duration_minutes,active').eq('id', serviceId).single()
-  if (error || !service || !service.active) throw new Error('AGENDA_SERVICE_NOT_AVAILABLE')
-  return appointmentWindow(startsAtLocal, service.duration_minutes)
-}
-
-async function assertNoConflict(client: Awaited<ReturnType<typeof createServerSupabaseClient>>, startsAt: Date, endsAt: Date, editingAppointmentId?: string) {
-  const { data, error } = await client.from('appointments')
-    .select('id,starts_at,ends_at,status')
-    .lt('starts_at', endsAt.toISOString())
-    .gt('ends_at', startsAt.toISOString())
-  if (error) throw new Error('AGENDA_CONFLICT_CHECK_FAILED')
-  const rows = (data ?? []).map((row) => ({ id: row.id, startsAt: row.starts_at, endsAt: row.ends_at, status: row.status }))
-  if (hasAppointmentConflict({ startsAt, endsAt }, rows, editingAppointmentId)) throw new Error('AGENDA_TIME_CONFLICT')
-}
-
-function policyFromRow(row: {
-  policy_version: number
-  countable_hours: number
-  excluded_weekdays: unknown
-  business_timezone: string
-  late_cancellation_charge_enabled: boolean
-  no_show_charge_enabled: boolean
-}): CancellationPolicy {
-  return {
-    policyVersion: row.policy_version,
-    countableHours: row.countable_hours,
-    excludedWeekdays: Array.isArray(row.excluded_weekdays) ? row.excluded_weekdays.map(Number) : [],
-    businessTimezone: row.business_timezone as 'America/Sao_Paulo',
-    lateCancellationChargeEnabled: row.late_cancellation_charge_enabled,
-    noShowChargeEnabled: row.no_show_charge_enabled,
-  }
-}
+async function serviceWindow(client: Awaited<ReturnType<typeof createServerSupabaseClient>>, serviceId: string, startsAtLocal: string) { const { data: service, error } = await client.from('services').select('id,duration_minutes,active').eq('id', serviceId).single(); if (error || !service || !service.active) throw new Error('AGENDA_SERVICE_NOT_AVAILABLE'); return appointmentWindow(startsAtLocal, service.duration_minutes) }
+async function assertNoConflict(client: Awaited<ReturnType<typeof createServerSupabaseClient>>, startsAt: Date, endsAt: Date, editingAppointmentId?: string) { const { data, error } = await client.from('appointments').select('id,starts_at,ends_at,status').lt('starts_at', endsAt.toISOString()).gt('ends_at', startsAt.toISOString()); if (error) throw new Error('AGENDA_CONFLICT_CHECK_FAILED'); const rows = (data ?? []).map((row) => ({ id: row.id, startsAt: row.starts_at, endsAt: row.ends_at, status: row.status })); if (hasAppointmentConflict({ startsAt, endsAt }, rows, editingAppointmentId)) throw new Error('AGENDA_TIME_CONFLICT') }
+function policyFromRow(row: { policy_version: number; countable_hours: number; excluded_weekdays: unknown; business_timezone: string; late_cancellation_charge_enabled: boolean; no_show_charge_enabled: boolean }): CancellationPolicy { return { policyVersion: row.policy_version, countableHours: row.countable_hours, excludedWeekdays: Array.isArray(row.excluded_weekdays) ? row.excluded_weekdays.map(Number) : [], businessTimezone: row.business_timezone as 'America/Sao_Paulo', lateCancellationChargeEnabled: row.late_cancellation_charge_enabled, noShowChargeEnabled: row.no_show_charge_enabled } }
 
 export async function createAppointmentAction(formData: FormData) {
-  const { authorized, client } = await authorizedClient()
-  const personId = String(formData.get('person_id') ?? '')
-  const serviceId = String(formData.get('service_id') ?? '')
-  const startsAtLocal = String(formData.get('starts_at_local') ?? '')
-  const { startsAt, endsAt } = await serviceWindow(client, serviceId, startsAtLocal)
-  await assertNoConflict(client, startsAt, endsAt)
-
-  const { data: policyRow, error: policyError } = await client.from('cancellation_policies')
-    .select('policy_version,countable_hours,excluded_weekdays,business_timezone,late_cancellation_charge_enabled,no_show_charge_enabled,effective_from')
-    .lte('effective_from', startsAt.toISOString())
-    .order('effective_from', { ascending: false })
-    .limit(1)
-    .single()
-  if (policyError || !policyRow) throw new Error('AGENDA_POLICY_NOT_FOUND')
-  const policy = policyFromRow(policyRow)
-  const id = crypto.randomUUID()
-
-  const repository: AppointmentRepository = {
-    async insert(input) {
-      const { data, error } = await client.from('appointments').insert({
-        id: input.id,
-        person_id: input.personId,
-        service_id: input.serviceId,
-        starts_at: input.startsAt.toISOString(),
-        ends_at: input.endsAt.toISOString(),
-        status: input.status,
-        policy_version: input.policyVersion,
-        cancellation_deadline_at: input.cancellationDeadlineAt,
-        business_timezone: 'America/Sao_Paulo',
-        cancellation_policy_snapshot: input.cancellationPolicySnapshot as unknown as Database['public']['Tables']['appointments']['Insert']['cancellation_policy_snapshot'],
-      }).select('id,person_id,service_id,starts_at,ends_at,status,policy_version,cancellation_deadline_at,cancellation_policy_snapshot').single()
-      if (error || !data) throw new Error('AGENDA_CREATE_FAILED')
-      return {
-        id: data.id,
-        personId: data.person_id,
-        serviceId: data.service_id,
-        startsAt: data.starts_at,
-        endsAt: data.ends_at,
-        status: data.status as Appointment['status'],
-        policyVersion: data.policy_version,
-        cancellationDeadlineAt: data.cancellation_deadline_at,
-        cancellationPolicy: data.cancellation_policy_snapshot as unknown as CancellationPolicy,
-      }
-    },
-  }
-
-  await createAppointment({ id, personId, serviceId, startsAt, endsAt, policy }, repository)
-  await recordAuditEvent({
-    actorId: authorized.userId,
-    action: 'appointment.created',
-    entityType: 'appointment',
-    entityId: id,
-    correlationId: id,
-    metadata: { personId, serviceId, startsAt: startsAt.toISOString(), endsAt: endsAt.toISOString(), policyVersion: policy.policyVersion },
-  }, auditRepository(client))
-  redirect('/agenda/gerenciar')
+  const { authorized, client } = await authorizedClient(); const personId = String(formData.get('person_id') ?? ''); const serviceId = String(formData.get('service_id') ?? ''); const startsAtLocal = String(formData.get('starts_at_local') ?? ''); const { startsAt, endsAt } = await serviceWindow(client, serviceId, startsAtLocal); await assertNoConflict(client, startsAt, endsAt)
+  const { data: policyRow, error: policyError } = await client.from('cancellation_policies').select('policy_version,countable_hours,excluded_weekdays,business_timezone,late_cancellation_charge_enabled,no_show_charge_enabled,effective_from').lte('effective_from', startsAt.toISOString()).order('effective_from', { ascending: false }).limit(1).single(); if (policyError || !policyRow) throw new Error('AGENDA_POLICY_NOT_FOUND'); const policy = policyFromRow(policyRow); const id = crypto.randomUUID()
+  const repository: AppointmentRepository = { async insert(input) { const { data, error } = await client.from('appointments').insert({ id: input.id, person_id: input.personId, service_id: input.serviceId, starts_at: input.startsAt.toISOString(), ends_at: input.endsAt.toISOString(), status: input.status, policy_version: input.policyVersion, cancellation_deadline_at: input.cancellationDeadlineAt, business_timezone: 'America/Sao_Paulo', cancellation_policy_snapshot: input.cancellationPolicySnapshot as unknown as Database['public']['Tables']['appointments']['Insert']['cancellation_policy_snapshot'] }).select('id,person_id,service_id,starts_at,ends_at,status,policy_version,cancellation_deadline_at,cancellation_policy_snapshot').single(); if (error || !data) throw new Error('AGENDA_CREATE_FAILED'); return { id: data.id, personId: data.person_id, serviceId: data.service_id, startsAt: data.starts_at, endsAt: data.ends_at, status: data.status as Appointment['status'], policyVersion: data.policy_version, cancellationDeadlineAt: data.cancellation_deadline_at, cancellationPolicy: data.cancellation_policy_snapshot as unknown as CancellationPolicy } } }
+  await createAppointment({ id, personId, serviceId, startsAt, endsAt, policy }, repository); await recordAuditEvent({ actorId: authorized.userId, action: 'appointment.created', entityType: 'appointment', entityId: id, correlationId: id, metadata: { personId, serviceId, startsAt: startsAt.toISOString(), endsAt: endsAt.toISOString(), policyVersion: policy.policyVersion } }, auditRepository(client)); redirect('/agenda/gerenciar')
 }
 
 export async function updateAppointmentAction(formData: FormData) {
-  const { authorized, client } = await authorizedClient()
-  const appointmentId = String(formData.get('appointment_id') ?? '')
-  const personId = String(formData.get('person_id') ?? '')
-  const serviceId = String(formData.get('service_id') ?? '')
-  const startsAtLocal = String(formData.get('starts_at_local') ?? '')
-
-  const { data: current, error: readError } = await client.from('appointments')
-    .select('id,person_id,service_id,starts_at,ends_at,status,policy_version,cancellation_policy_snapshot')
-    .eq('id', appointmentId).single()
-  if (readError || !current) throw new Error('AGENDA_APPOINTMENT_NOT_FOUND')
-  if (['cancelled_in_time', 'cancelled_late', 'cancelled_by_provider', 'completed', 'no_show'].includes(current.status)) {
-    throw new Error('AGENDA_TERMINAL_APPOINTMENT_IMMUTABLE')
-  }
-
-  const { startsAt, endsAt } = await serviceWindow(client, serviceId, startsAtLocal)
-  await assertNoConflict(client, startsAt, endsAt, appointmentId)
-  const policy = current.cancellation_policy_snapshot as unknown as CancellationPolicy
-  const nextStatus = current.status === 'reschedule_requested' ? 'rescheduled' : current.status
-  const cancellationDeadlineAt = calculateCancellationDeadline(startsAt, policy).toISOString()
-
-  const { error: updateError } = await client.from('appointments').update({
-    person_id: personId,
-    service_id: serviceId,
-    starts_at: startsAt.toISOString(),
-    ends_at: endsAt.toISOString(),
-    status: nextStatus,
-    cancellation_deadline_at: cancellationDeadlineAt,
-  }).eq('id', appointmentId)
-  if (updateError) throw new Error('AGENDA_UPDATE_FAILED')
-
-  if (nextStatus !== current.status) {
-    const { error: historyError } = await client.from('appointment_status_history').insert({
-      appointment_id: appointmentId,
-      from_status: current.status,
-      to_status: nextStatus,
-      changed_by_user_id: authorized.userId,
-    })
-    if (historyError) throw new Error('AGENDA_STATUS_HISTORY_FAILED')
-  }
-
-  await recordAuditEvent({
-    actorId: authorized.userId,
-    action: 'appointment.updated',
-    entityType: 'appointment',
-    entityId: appointmentId,
-    correlationId: appointmentId,
-    metadata: {
-      before: { personId: current.person_id, serviceId: current.service_id, startsAt: current.starts_at, endsAt: current.ends_at, status: current.status },
-      after: { personId, serviceId, startsAt: startsAt.toISOString(), endsAt: endsAt.toISOString(), status: nextStatus, cancellationDeadlineAt },
-      policyVersion: current.policy_version,
-    },
-  }, auditRepository(client))
-  redirect('/agenda/gerenciar')
+  const { authorized, client } = await authorizedClient(); const appointmentId = String(formData.get('appointment_id') ?? ''); const personId = String(formData.get('person_id') ?? ''); const serviceId = String(formData.get('service_id') ?? ''); const startsAtLocal = String(formData.get('starts_at_local') ?? '')
+  const { data: current, error: readError } = await client.from('appointments').select('id,person_id,service_id,starts_at,ends_at,status,policy_version,cancellation_policy_snapshot').eq('id', appointmentId).single(); if (readError || !current) throw new Error('AGENDA_APPOINTMENT_NOT_FOUND'); if (['cancelled_in_time', 'cancelled_late', 'cancelled_by_provider', 'completed', 'no_show'].includes(current.status)) throw new Error('AGENDA_TERMINAL_APPOINTMENT_IMMUTABLE')
+  const { startsAt, endsAt } = await serviceWindow(client, serviceId, startsAtLocal); await assertNoConflict(client, startsAt, endsAt, appointmentId); const policy = current.cancellation_policy_snapshot as unknown as CancellationPolicy; const nextStatus = current.status === 'reschedule_requested' ? 'rescheduled' : current.status; const cancellationDeadlineAt = calculateCancellationDeadline(startsAt, policy).toISOString()
+  const { error: updateError } = await client.from('appointments').update({ person_id: personId, service_id: serviceId, starts_at: startsAt.toISOString(), ends_at: endsAt.toISOString(), status: nextStatus, cancellation_deadline_at: cancellationDeadlineAt }).eq('id', appointmentId); if (updateError) throw new Error('AGENDA_UPDATE_FAILED')
+  if (nextStatus !== current.status) { const { error: historyError } = await client.from('appointment_status_history').insert({ appointment_id: appointmentId, from_status: current.status, to_status: nextStatus, changed_by_user_id: authorized.userId }); if (historyError) throw new Error('AGENDA_STATUS_HISTORY_FAILED') }
+  await recordAuditEvent({ actorId: authorized.userId, action: 'appointment.updated', entityType: 'appointment', entityId: appointmentId, correlationId: appointmentId, metadata: { before: { personId: current.person_id, serviceId: current.service_id, startsAt: current.starts_at, endsAt: current.ends_at, status: current.status }, after: { personId, serviceId, startsAt: startsAt.toISOString(), endsAt: endsAt.toISOString(), status: nextStatus, cancellationDeadlineAt }, policyVersion: current.policy_version } }, auditRepository(client)); redirect('/agenda/gerenciar')
 }
