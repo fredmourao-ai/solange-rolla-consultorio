@@ -17,7 +17,7 @@ export async function createServiceAction(formData: FormData) {
   const name = String(formData.get('name') ?? '').trim()
   const durationMinutes = Number(formData.get('duration_minutes'))
   const priceCents = moneyToCents(String(formData.get('price') ?? ''))
-  if (!name || !Number.isInteger(durationMinutes) || durationMinutes <= 0) throw new Error('AGENDA_SERVICE_INVALID')
+  if (!name || !Number.isInteger(durationMinutes) || durationMinutes <= 0 || priceCents <= 0) throw new Error('AGENDA_SERVICE_INVALID')
   const { data, error } = await client.from('services').insert({ name, duration_minutes: durationMinutes, price_cents: priceCents, active: true }).select('id').single()
   if (error || !data) throw new Error('AGENDA_SERVICE_CREATE_FAILED')
   await recordAuditEvent({ actorId: authorized.userId, action: 'service.created', entityType: 'service', entityId: data.id, correlationId: data.id, metadata: { name, durationMinutes, priceCents } }, auditRepository(client))

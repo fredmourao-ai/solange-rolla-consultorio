@@ -4,6 +4,8 @@ import { createServerSupabaseClient } from '@/platform/supabase/server'
 import { authorizeStaffSession, getStaffSession } from '@/modules/identity/public'
 import { createPerson } from '@/modules/people/public'
 import type { Person, PersonId } from '@/modules/people/public'
+import { recordAuditEvent, type AuditEvent, type AuditEventRepository } from '@/modules/audit/public'
+import type { Database } from '@/platform/supabase/types'
 import { PageHeader } from '@/shared/ui/page-header'
 import { PersonForm, type PersonFormState, type PersonFormValues } from '@/modules/people/ui/person-form'
 
@@ -25,11 +27,28 @@ function fiscalAddressFrom(values: PersonFormValues) {
   return { ok: true as const, address }
 }
 
+function auditRepository(client: Awaited<ReturnType<typeof createServerSupabaseClient>>): AuditEventRepository {
+  return {
+    async insert(event: AuditEvent): Promise<void> {
+      const { error } = await client.from('audit_events').insert({
+        actor_user_id: event.actorId,
+        action: event.action,
+        entity_type: event.entityType,
+        entity_id: event.entityId,
+        correlation_id: event.correlationId,
+        metadata: event.metadata as Database['public']['Tables']['audit_events']['Insert']['metadata'],
+        created_at: event.createdAt,
+      })
+      if (error) throw new Error('PERSON_AUDIT_FAILED')
+    },
+  }
+}
+
 async function createPersonAction(previous: PersonFormState, formData: FormData): Promise<PersonFormState> {
   'use server'
   const values = valuesFrom(formData)
   const invalid = (error: string): PersonFormState => ({ revision: previous.revision + 1, error, values })
-  const session = await getStaffSession(); authorizeStaffSession(session, ['psychologist_owner', 'secretary'])
+  const session = await getStaffSession(); const authorized = authorizeStaffSession(session, ['psychologist_owner', 'secretary'])
   const fiscal = fiscalAddressFrom(values); if (!fiscal.ok) return invalid(fiscal.error)
   const client = await createServerSupabaseClient()
   const repository = {
@@ -43,6 +62,14 @@ async function createPersonAction(previous: PersonFormState, formData: FormData)
   try {
     const result = await createPerson(repository, { civilName: values.civil_name, preferredName: values.preferred_name, cpf: values.cpf, birthDate: values.birth_date, email: values.email, phone: values.phone })
     if (!result.ok) return invalid(result.code === 'DUPLICATE_CPF' ? 'Já existe uma pessoa com este CPF.' : 'Já existe uma pessoa com este e-mail ou telefone.')
+    await recordAuditEvent({
+      actorId: authorized.userId,
+      action: 'person.created',
+      entityType: 'person',
+      entityId: result.person.id,
+      correlationId: result.person.id,
+      metadata: { fiscalReady: Object.keys(fiscal.address).length > 0 },
+    }, auditRepository(client))
   } catch (error) {
     if (error instanceof Error && error.message === 'INVALID_CPF') return invalid('Informe um CPF válido.')
     throw error
