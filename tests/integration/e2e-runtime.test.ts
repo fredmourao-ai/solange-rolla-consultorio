@@ -26,4 +26,10 @@ describe('resolveE2eRuntime', () => {
     const fetcher = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ buildSha: sha }) })
     await expect(assertExternalBuild(runtime, fetcher as unknown as typeof fetch)).resolves.toBeUndefined()
   })
+  it('bounds the external health preflight with an abort signal', async () => {
+    const runtime = resolveE2eRuntime(staging)
+    const fetcher = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ buildSha: sha }) })
+    await assertExternalBuild(runtime, fetcher as unknown as typeof fetch)
+    expect(fetcher).toHaveBeenCalledWith(`${runtime.baseURL}/api/health`, expect.objectContaining({ cache: 'no-store', signal: expect.any(AbortSignal) }))
+  })
 })
