@@ -1,11 +1,11 @@
-import { execFileSync } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
 import { expect, test, type Page } from '@playwright/test'
 import { signInDemo } from './demo-auth'
+import { runSql } from './db-command'
 
 const dbUrl = process.env.DB_URL ?? ''
 if (!dbUrl) throw new Error('DB_URL is required for read-only verification and fiscal bootstrap')
-function sql(statement: string) { return execFileSync('psql', [dbUrl, '-At', '-v', 'ON_ERROR_STOP=1', '-c', statement], { encoding: 'utf8' }).trim() }
+function sql(statement: string) { return runSql(statement, dbUrl) }
 function q(value: string) { return `'${value.replaceAll("'", "''")}'` }
 function validCpf(seed: string) {
   const digits = seed.replace(/\D/g, '').padEnd(9, '1').slice(0, 9).split('').map(Number)
@@ -23,8 +23,17 @@ async function createFiscalPerson(page: Page, name: string, cpf: string) {
   return id
 }
 async function createPastAppointmentAndCharge(page: Page, personId: string) {
+  const serviceName = `Consulta homologação UI ${randomUUID().slice(0, 8)}`
+  await page.goto('/agenda/gerenciar', { waitUntil: 'domcontentloaded' })
+  const serviceForm = page.locator('section[aria-labelledby="service-setup-heading"] form')
+  await serviceForm.getByLabel('Nome do serviço').fill(serviceName)
+  await serviceForm.getByLabel('Duração em minutos').fill('50')
+  await serviceForm.getByLabel('Valor da consulta').fill('300.00')
+  await serviceForm.getByRole('button', { name: 'Cadastrar serviço' }).click()
+  await expect.poll(() => sql(`select id from public.services where name=${q(serviceName)} and active=true order by created_at desc limit 1`)).not.toBe('')
+  const serviceId = sql(`select id from public.services where name=${q(serviceName)} and active=true order by created_at desc limit 1`)
   await page.goto('/agenda/gerenciar', { waitUntil: 'domcontentloaded' }); const form = page.locator('section[aria-labelledby="new-appointment-heading"] form')
-  await form.locator('select[name="person_id"]').selectOption(personId); await form.locator('select[name="service_id"]').selectOption('d0200000-0000-4000-8000-000000000001'); await form.locator('input[name="starts_at_local"]').fill('2026-09-02T13:17'); await form.getByRole('button', { name: 'Criar consulta' }).click()
+  await form.locator('select[name="person_id"]').selectOption(personId); await form.locator('select[name="service_id"]').selectOption(serviceId); await form.locator('input[name="starts_at_local"]').fill('2026-09-02T13:17'); await form.getByRole('button', { name: 'Criar consulta' }).click()
   await expect.poll(() => sql(`select id from public.appointments where person_id=${q(personId)} order by created_at desc limit 1`)).not.toBe(''); const id = sql(`select id from public.appointments where person_id=${q(personId)} order by created_at desc limit 1`)
   await page.goto('/agenda?view=day&date=2026-09-02', { waitUntil: 'domcontentloaded' }); const item = page.locator('li.appointment-calendar__item').filter({ has: page.locator(`input[value="${id}"]`) }); await item.getByText('Ver detalhes').click(); const status = item.getByRole('form', { name: 'Alterar status da consulta' }); await status.locator('select[name="command"]').selectOption('cancel_late'); await status.getByRole('button', { name: 'Aplicar' }).click()
   await expect.poll(() => sql(`select status from public.appointments where id=${q(id)}`)).toBe('cancelled_late'); await page.goto('/agenda?view=day&date=2026-09-02', { waitUntil: 'domcontentloaded' }); const charged = page.locator('li.appointment-calendar__item').filter({ hasText: nameFrom(personId) }); await charged.getByText('Ver detalhes').click(); await charged.getByRole('button', { name: 'Cobrar falta/cancelamento fora do prazo' }).click()
