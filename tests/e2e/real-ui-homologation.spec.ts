@@ -12,6 +12,14 @@ function validCpf(seed: string) {
   const check = (base: number[], factor: number) => { const sum = base.reduce((acc, digit, i) => acc + digit * (factor - i), 0); const r = (sum * 10) % 11; return r === 10 ? 0 : r }
   digits.push(check(digits, 10)); digits.push(check(digits, 11)); return digits.join('')
 }
+function uniquePastAppointmentSlot() {
+  const token = randomUUID().replaceAll('-', '')
+  const spanMinutes = 180 * 24 * 60
+  const offsetMinutes = Number.parseInt(token.slice(0, 8), 16) % spanMinutes
+  const instant = new Date(Date.UTC(2026, 1, 1, 8, 0) + offsetMinutes * 60_000)
+  const local = instant.toISOString().slice(0, 16)
+  return { local, date: local.slice(0, 10) }
+}
 async function createFiscalPerson(page: Page, name: string, cpf: string) {
   await page.goto('/pessoas/nova', { waitUntil: 'domcontentloaded' })
   await page.getByLabel('Nome civil').fill(name); await page.getByLabel('Data de nascimento').fill('1990-01-01'); await page.getByLabel('CPF').fill(cpf)
@@ -20,6 +28,8 @@ async function createFiscalPerson(page: Page, name: string, cpf: string) {
   await expect.poll(() => sql(`select id from public.people where civil_name=${q(name)} order by created_at desc limit 1`)).not.toBe('')
   const id = sql(`select id from public.people where civil_name=${q(name)} order by created_at desc limit 1`)
   expect(sql(`select cpf_normalized||'|'||(fiscal_address->>'city')||'|'||(fiscal_address->>'state') from public.people where id=${q(id)}`)).toBe(`${cpf}|Divinópolis|MG`)
+  await expect.poll(() => sql(`select action from public.audit_events where entity_type='person' and entity_id=${q(id)} order by created_at desc limit 1`)).toBe('person.created')
+  expect(sql(`select metadata->>'fiscalReady' from public.audit_events where entity_type='person' and entity_id=${q(id)} order by created_at desc limit 1`)).toBe('true')
   return id
 }
 async function createPastAppointmentAndCharge(page: Page, personId: string) {
@@ -33,10 +43,11 @@ async function createPastAppointmentAndCharge(page: Page, personId: string) {
   await expect.poll(() => sql(`select id from public.services where name=${q(serviceName)} and active=true order by created_at desc limit 1`)).not.toBe('')
   const serviceId = sql(`select id from public.services where name=${q(serviceName)} and active=true order by created_at desc limit 1`)
   await page.goto('/agenda/gerenciar', { waitUntil: 'domcontentloaded' }); const form = page.locator('section[aria-labelledby="new-appointment-heading"] form')
-  await form.locator('select[name="person_id"]').selectOption(personId); await form.locator('select[name="service_id"]').selectOption(serviceId); await form.locator('input[name="starts_at_local"]').fill('2026-09-02T13:17'); await form.getByRole('button', { name: 'Criar consulta' }).click()
+  const slot = uniquePastAppointmentSlot()
+  await form.locator('select[name="person_id"]').selectOption(personId); await form.locator('select[name="service_id"]').selectOption(serviceId); await form.locator('input[name="starts_at_local"]').fill(slot.local); await form.getByRole('button', { name: 'Criar consulta' }).click()
   await expect.poll(() => sql(`select id from public.appointments where person_id=${q(personId)} order by created_at desc limit 1`)).not.toBe(''); const id = sql(`select id from public.appointments where person_id=${q(personId)} order by created_at desc limit 1`)
-  await page.goto('/agenda?view=day&date=2026-09-02', { waitUntil: 'domcontentloaded' }); const item = page.locator('li.appointment-calendar__item').filter({ has: page.locator(`input[value="${id}"]`) }); await item.getByText('Ver detalhes').click(); const status = item.getByRole('form', { name: 'Alterar status da consulta' }); await status.locator('select[name="command"]').selectOption('cancel_late'); await status.getByRole('button', { name: 'Aplicar' }).click()
-  await expect.poll(() => sql(`select status from public.appointments where id=${q(id)}`)).toBe('cancelled_late'); await page.goto('/agenda?view=day&date=2026-09-02', { waitUntil: 'domcontentloaded' }); const charged = page.locator('li.appointment-calendar__item').filter({ hasText: nameFrom(personId) }); await charged.getByText('Ver detalhes').click(); await charged.getByRole('button', { name: 'Cobrar falta/cancelamento fora do prazo' }).click()
+  await page.goto(`/agenda?view=day&date=${slot.date}`, { waitUntil: 'domcontentloaded' }); const item = page.locator('li.appointment-calendar__item').filter({ has: page.locator(`input[value="${id}"]`) }); await item.getByText('Ver detalhes').click(); const status = item.getByRole('form', { name: 'Alterar status da consulta' }); await status.locator('select[name="command"]').selectOption('cancel_late'); await status.getByRole('button', { name: 'Aplicar' }).click()
+  await expect.poll(() => sql(`select status from public.appointments where id=${q(id)}`)).toBe('cancelled_late'); await page.goto(`/agenda?view=day&date=${slot.date}`, { waitUntil: 'domcontentloaded' }); const charged = page.locator('li.appointment-calendar__item').filter({ hasText: nameFrom(personId) }); await charged.getByText('Ver detalhes').click(); await charged.getByRole('button', { name: 'Cobrar falta/cancelamento fora do prazo' }).click()
   await expect.poll(() => sql(`select id from public.receivables where source_type='appointment' and source_id=${q(id)} limit 1`)).not.toBe(''); return sql(`select id from public.receivables where source_type='appointment' and source_id=${q(id)} limit 1`)
 }
 function nameFrom(personId: string) { return sql(`select civil_name from public.people where id=${q(personId)}`) }
