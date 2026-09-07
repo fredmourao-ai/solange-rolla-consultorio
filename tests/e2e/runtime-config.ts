@@ -1,7 +1,7 @@
 type Env = Record<string, string | undefined>
 
 type WebServer = { command: string; url: string; reuseExistingServer: boolean; timeout: number }
-type E2eRuntime = { baseURL: string; webServer: WebServer | undefined; projectTestMatch: string | undefined }
+type E2eRuntime = { baseURL: string; webServer: WebServer | undefined; projectTestMatch: string | undefined; expectedBuildSha: string | undefined }
 
 function normalizedUrl(value: string | undefined): string { return value?.trim().replace(/\/+$/, '') ?? '' }
 
@@ -18,10 +18,20 @@ export function resolveE2eRuntime(env: Env = process.env): E2eRuntime {
     const dbUrl = env.DB_URL?.trim() ?? ''
     const allowedDbUrl = env.E2E_ALLOWED_DB_URL?.trim() ?? ''
     if (!dbUrl || !allowedDbUrl || dbUrl !== allowedDbUrl) throw new Error('E2E_EXTERNAL_DATABASE_NOT_ALLOWLISTED')
-    return { baseURL: external, webServer: undefined, projectTestMatch: '**/real-ui-homologation.spec.ts' }
+    const expectedBuildSha = env.E2E_EXPECTED_BUILD_SHA?.trim() ?? ''
+    if (!/^[0-9a-f]{40}$/i.test(expectedBuildSha)) throw new Error('E2E_EXPECTED_BUILD_SHA_REQUIRED')
+    return { baseURL: external, webServer: undefined, projectTestMatch: '**/real-ui-homologation.spec.ts', expectedBuildSha }
   }
   const port = Number(env.E2E_PORT ?? '3000')
   if (!Number.isInteger(port) || port <= 0 || port > 65535) throw new Error('E2E_PORT_INVALID')
   const baseURL = `http://127.0.0.1:${port}`
-  return { baseURL, webServer: { command: `npm run start -- --hostname 127.0.0.1 --port ${port}`, url: baseURL, reuseExistingServer: false, timeout: 120_000 }, projectTestMatch: undefined }
+  return { baseURL, webServer: { command: `npm run start -- --hostname 127.0.0.1 --port ${port}`, url: baseURL, reuseExistingServer: false, timeout: 120_000 }, projectTestMatch: undefined, expectedBuildSha: undefined }
+}
+
+export async function assertExternalBuild(runtime: E2eRuntime, fetcher: typeof fetch = fetch): Promise<void> {
+  if (!runtime.expectedBuildSha) return
+  const response = await fetcher(`${runtime.baseURL}/api/health`, { cache: 'no-store' })
+  if (!response.ok) throw new Error('E2E_HEALTH_CHECK_FAILED')
+  const payload = await response.json() as { buildSha?: string }
+  if (payload.buildSha !== runtime.expectedBuildSha) throw new Error('E2E_DEPLOYED_SHA_MISMATCH')
 }
