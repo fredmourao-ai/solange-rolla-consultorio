@@ -109,6 +109,14 @@
     ],
     "signatures_document_result_atomic": [
       "signatures"
+    ],
+    "appointments_service_audit": [
+      "appointments",
+      "audit"
+    ],
+    "people_creation_audit": [
+      "audit",
+      "people"
     ]
   },
   "objects": {
@@ -176,6 +184,8 @@
     "public.exchange_capability": "forms",
     "public.persist_appointment_response": "appointments",
     "public.claim_document_jobs": "signatures",
-    "public.persist_document_job_result": "signatures"
+    "public.persist_document_job_result": "signatures",
+    "public.create_service_with_audit": "appointments",
+    "public.create_person_with_audit": "people"
   }
 }

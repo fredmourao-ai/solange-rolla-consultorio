@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "status": "approved",
+  "issue": 98,
+  "migration": "20260907012000_people_creation_audit.sql",
+  "owners": ["audit", "people"],
+  "objects": [
+    {"name": "public.create_person_with_audit", "owner": "people"},
+    {"name": "public.people", "owner": "people"},
+    {"name": "public.audit_events", "owner": "audit"}
+  ]
+}

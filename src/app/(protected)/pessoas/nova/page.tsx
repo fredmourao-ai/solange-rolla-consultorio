@@ -4,8 +4,6 @@ import { createServerSupabaseClient } from '@/platform/supabase/server'
 import { authorizeStaffSession, getStaffSession } from '@/modules/identity/public'
 import { createPerson } from '@/modules/people/public'
 import type { Person, PersonId } from '@/modules/people/public'
-import { recordAuditEvent, type AuditEvent, type AuditEventRepository } from '@/modules/audit/public'
-import type { Database } from '@/platform/supabase/types'
 import { PageHeader } from '@/shared/ui/page-header'
 import { PersonForm, type PersonFormState, type PersonFormValues } from '@/modules/people/ui/person-form'
 
@@ -27,49 +25,27 @@ function fiscalAddressFrom(values: PersonFormValues) {
   return { ok: true as const, address }
 }
 
-function auditRepository(client: Awaited<ReturnType<typeof createServerSupabaseClient>>): AuditEventRepository {
-  return {
-    async insert(event: AuditEvent): Promise<void> {
-      const { error } = await client.from('audit_events').insert({
-        actor_user_id: event.actorId,
-        action: event.action,
-        entity_type: event.entityType,
-        entity_id: event.entityId,
-        correlation_id: event.correlationId,
-        metadata: event.metadata as Database['public']['Tables']['audit_events']['Insert']['metadata'],
-        created_at: event.createdAt,
-      })
-      if (error) throw new Error('PERSON_AUDIT_FAILED')
-    },
-  }
-}
-
 async function createPersonAction(previous: PersonFormState, formData: FormData): Promise<PersonFormState> {
   'use server'
   const values = valuesFrom(formData)
   const invalid = (error: string): PersonFormState => ({ revision: previous.revision + 1, error, values })
-  const session = await getStaffSession(); const authorized = authorizeStaffSession(session, ['psychologist_owner', 'secretary'])
+  const session = await getStaffSession(); authorizeStaffSession(session, ['psychologist_owner', 'secretary'])
   const fiscal = fiscalAddressFrom(values); if (!fiscal.ok) return invalid(fiscal.error)
   const client = await createServerSupabaseClient()
   const repository = {
     async findByUniqueFields(input: { cpfNormalized: string | null; emailNormalized: string | null; phoneE164: string | null }) { for (const [column, value] of Object.entries(input)) { if (!value) continue; const { data } = await client.from('people').select('cpf_normalized, email_normalized, phone_e164').eq(column as never, value).maybeSingle(); if (data) return { cpfNormalized: data.cpf_normalized, emailNormalized: data.email_normalized, phoneE164: data.phone_e164 } } return null },
     async insert(input: Omit<Person, 'id'>): Promise<Person> {
-      const { data, error } = await client.from('people').insert({ civil_name: input.civilName, preferred_name: input.preferredName, cpf_normalized: input.cpfNormalized, birth_date: input.birthDate, email_normalized: input.emailNormalized, phone_e164: input.phoneE164, preferred_channel: input.preferredChannel, birthday_messages_enabled: input.birthdayMessagesEnabled, fiscal_address: fiscal.address }).select('id, civil_name, preferred_name, cpf_normalized, birth_date, email_normalized, phone_e164, preferred_channel, birthday_messages_enabled').single()
-      if (error || !data) throw new Error('PERSON_CREATE_FAILED')
-      return { id: data.id as PersonId, civilName: data.civil_name, preferredName: data.preferred_name, cpfNormalized: data.cpf_normalized, birthDate: data.birth_date, emailNormalized: data.email_normalized, phoneE164: data.phone_e164, preferredChannel: data.preferred_channel as Person['preferredChannel'], birthdayMessagesEnabled: data.birthday_messages_enabled }
+      type CreatePersonRpc = (name: 'create_person_with_audit', args: { p_id: string; p_civil_name: string; p_preferred_name: string | null; p_cpf_normalized: string | null; p_birth_date: string; p_email_normalized: string | null; p_phone_e164: string | null; p_preferred_channel: string; p_birthday_messages_enabled: boolean; p_fiscal_address: Record<string, string> }) => PromiseLike<{ data: string | null; error: { code: string; message: string } | null }>
+      const personRpc = client.rpc.bind(client) as unknown as CreatePersonRpc
+      const id = crypto.randomUUID()
+      const { data: createdId, error } = await personRpc('create_person_with_audit', { p_id: id, p_civil_name: input.civilName, p_preferred_name: input.preferredName, p_cpf_normalized: input.cpfNormalized, p_birth_date: input.birthDate, p_email_normalized: input.emailNormalized, p_phone_e164: input.phoneE164, p_preferred_channel: input.preferredChannel, p_birthday_messages_enabled: input.birthdayMessagesEnabled, p_fiscal_address: fiscal.address })
+      if (error || createdId !== id) throw new Error('PERSON_CREATE_FAILED')
+      return { id: id as PersonId, ...input }
     },
   }
   try {
     const result = await createPerson(repository, { civilName: values.civil_name, preferredName: values.preferred_name, cpf: values.cpf, birthDate: values.birth_date, email: values.email, phone: values.phone })
     if (!result.ok) return invalid(result.code === 'DUPLICATE_CPF' ? 'Já existe uma pessoa com este CPF.' : 'Já existe uma pessoa com este e-mail ou telefone.')
-    await recordAuditEvent({
-      actorId: authorized.userId,
-      action: 'person.created',
-      entityType: 'person',
-      entityId: result.person.id,
-      correlationId: result.person.id,
-      metadata: { fiscalReady: Object.keys(fiscal.address).length > 0 },
-    }, auditRepository(client))
   } catch (error) {
     if (error instanceof Error && error.message === 'INVALID_CPF') return invalid('Informe um CPF válido.')
     throw error
