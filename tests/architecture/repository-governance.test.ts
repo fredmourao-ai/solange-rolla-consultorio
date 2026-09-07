@@ -157,6 +157,21 @@ describe('repository governance contract', () => {
     expect(workflow).toContain("github.event.workflow_run.conclusion == 'skipped'")
   })
 
+  it('re-dispatches canonical checks against the merged main SHA, since GITHUB_TOKEN pushes never fire push events', () => {
+    const workflow = projectFile('.github/workflows/pr-auto-merge.yml')
+
+    expect(workflow).toContain('Re-validate merged main at its exact SHA')
+    expect(workflow).toContain('repos/$REPO/git/ref/heads/main')
+    expect(workflow).toContain('for workflow in ci.yml db.yml repository-governance.yml')
+    expect(workflow).toContain('actions/workflows/$workflow/dispatches')
+  })
+
+  it('lets the governance gate be dispatched manually for post-merge re-validation', () => {
+    const workflow = projectFile('.github/workflows/repository-governance.yml')
+
+    expect(workflow).toContain('workflow_dispatch:')
+  })
+
   it('runs repository-specific structural gates before merge', () => {
     const script = projectFile('scripts/repository-governance-validate.sh')
 

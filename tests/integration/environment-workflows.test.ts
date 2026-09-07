@@ -75,6 +75,13 @@ describe('environment workflow contracts', () => {
     expect(workflow).not.toContain('test -n "$STAGING_APP_URL"')
   })
 
+  it('accepts workflow_dispatch re-validation runs, not only push, as proof a SHA was checked', () => {
+    const workflow = readFileSync(stagingWorkflow, 'utf8')
+    expect(workflow).toContain("github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'workflow_dispatch'")
+    expect(workflow).toContain("acceptedEvents = new Set(['push', 'workflow_dispatch'])")
+    expect(workflow).not.toContain("event: 'push'")
+  })
+
   it('requires explicit staging approval and distinct project refs', () => {
     expect(
       run(stagingScript, {
