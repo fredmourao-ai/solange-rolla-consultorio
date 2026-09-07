@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { redirect } from 'next/navigation'
 import { getStaffSession } from '@/modules/identity/public'
 import { PersonResults, type PersonResult } from '@/modules/people/ui/person-results'
 import { PersonSearch } from '@/modules/people/ui/person-search'
@@ -17,7 +18,9 @@ export default async function PeoplePage({ searchParams }: {
 }) {
   const { q } = await searchParams
   const term = safeSearchTerm(q)
-  const [supabase, session] = await Promise.all([createServerSupabaseClient(), getStaffSession()])
+  const session = await getStaffSession()
+  if (!session) redirect('/login')
+  const supabase = await createServerSupabaseClient()
   const canAccessClinical = Boolean(session?.active && session.role === 'psychologist_owner' && session.aal === 'aal2')
   let request = supabase.from('people')
     .select('id,civil_name,preferred_name,email_normalized,phone_e164')

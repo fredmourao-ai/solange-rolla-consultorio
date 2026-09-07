@@ -1,3 +1,5 @@
+import { redirect } from 'next/navigation'
+import { getStaffSession } from '@/modules/identity/public'
 import { createServerSupabaseClient } from '@/platform/supabase/server'
 import { PageHeader } from '@/shared/ui/page-header'
 import { DashboardView } from './dashboard-view'
@@ -6,6 +8,9 @@ export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
 export default async function DashboardPage() {
+  const session = await getStaffSession()
+  if (!session) redirect('/login')
+
   const supabase = await createServerSupabaseClient()
   const now = new Date()
   const horizon = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)

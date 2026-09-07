@@ -110,13 +110,17 @@
     "signatures_document_result_atomic": [
       "signatures"
     ],
-    "appointments_service_audit": [
+    "appointments_default_cancellation_policy": [
       "appointments",
-      "audit"
+      "forms"
     ],
-    "people_creation_audit": [
+    "people_audited_creation": [
       "audit",
       "people"
+    ],
+    "appointments_audited_service_creation": [
+      "appointments",
+      "audit"
     ]
   },
   "objects": {
@@ -185,7 +189,7 @@
     "public.persist_appointment_response": "appointments",
     "public.claim_document_jobs": "signatures",
     "public.persist_document_job_result": "signatures",
-    "public.create_service_with_audit": "appointments",
-    "public.create_person_with_audit": "people"
+    "public.audit_person_created": "audit",
+    "public.audit_service_created": "audit"
   }
 }

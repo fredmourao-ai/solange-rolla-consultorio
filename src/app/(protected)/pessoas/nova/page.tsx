@@ -35,12 +35,9 @@ async function createPersonAction(previous: PersonFormState, formData: FormData)
   const repository = {
     async findByUniqueFields(input: { cpfNormalized: string | null; emailNormalized: string | null; phoneE164: string | null }) { for (const [column, value] of Object.entries(input)) { if (!value) continue; const { data } = await client.from('people').select('cpf_normalized, email_normalized, phone_e164').eq(column as never, value).maybeSingle(); if (data) return { cpfNormalized: data.cpf_normalized, emailNormalized: data.email_normalized, phoneE164: data.phone_e164 } } return null },
     async insert(input: Omit<Person, 'id'>): Promise<Person> {
-      type CreatePersonRpc = (name: 'create_person_with_audit', args: { p_id: string; p_civil_name: string; p_preferred_name: string | null; p_cpf_normalized: string | null; p_birth_date: string; p_email_normalized: string | null; p_phone_e164: string | null; p_preferred_channel: string; p_birthday_messages_enabled: boolean; p_fiscal_address: Record<string, string> }) => PromiseLike<{ data: string | null; error: { code: string; message: string } | null }>
-      const personRpc = client.rpc.bind(client) as unknown as CreatePersonRpc
-      const id = crypto.randomUUID()
-      const { data: createdId, error } = await personRpc('create_person_with_audit', { p_id: id, p_civil_name: input.civilName, p_preferred_name: input.preferredName, p_cpf_normalized: input.cpfNormalized, p_birth_date: input.birthDate, p_email_normalized: input.emailNormalized, p_phone_e164: input.phoneE164, p_preferred_channel: input.preferredChannel, p_birthday_messages_enabled: input.birthdayMessagesEnabled, p_fiscal_address: fiscal.address })
-      if (error || createdId !== id) throw new Error('PERSON_CREATE_FAILED')
-      return { id: id as PersonId, ...input }
+      const { data, error } = await client.from('people').insert({ civil_name: input.civilName, preferred_name: input.preferredName, cpf_normalized: input.cpfNormalized, birth_date: input.birthDate, email_normalized: input.emailNormalized, phone_e164: input.phoneE164, preferred_channel: input.preferredChannel, birthday_messages_enabled: input.birthdayMessagesEnabled, fiscal_address: fiscal.address }).select('id, civil_name, preferred_name, cpf_normalized, birth_date, email_normalized, phone_e164, preferred_channel, birthday_messages_enabled').single()
+      if (error || !data) throw new Error('PERSON_CREATE_FAILED')
+      return { id: data.id as PersonId, civilName: data.civil_name, preferredName: data.preferred_name, cpfNormalized: data.cpf_normalized, birthDate: data.birth_date, emailNormalized: data.email_normalized, phoneE164: data.phone_e164, preferredChannel: data.preferred_channel as Person['preferredChannel'], birthdayMessagesEnabled: data.birthday_messages_enabled }
     },
   }
   try {

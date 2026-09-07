@@ -4,6 +4,7 @@ import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import type { ReactNode } from 'react'
 import { MobileNav } from './mobile-nav'
+import { SessionControls } from './session-controls'
 import { SidebarNav } from './sidebar-nav'
 
 export function AppShell({ children, role = 'staff' }: { children: ReactNode; role?: string }) {
@@ -16,6 +17,7 @@ export function AppShell({ children, role = 'staff' }: { children: ReactNode; ro
       </a>
       <p className="app-shell__brand-context app-shell__context">Gestão do consultório</p>
       <SidebarNav pathname={pathname} role={role} />
+      <SessionControls />
       <p className="app-shell__privacy">Ambiente privado e rastreável</p>
     </aside>
     <div className="app-shell__content"><MobileNav pathname={pathname} role={role} /><main className="app-shell__main">{children}</main></div>

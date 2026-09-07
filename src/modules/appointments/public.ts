@@ -35,5 +35,3 @@ export {
   type AppointmentWindow,
   type ExistingAppointmentWindow,
 } from './application/appointment-management'
-
-export { parsePositiveMoneyToCents } from './domain/money'

@@ -58,21 +58,28 @@ on conflict (key) do nothing;
 insert into public.legal_document_versions (
   id, document_id, version, content, content_hash_sha256, effective_from, is_draft
 )
-values (
-  'd0260000-0000-4000-8000-000000000001', 'd0250000-0000-4000-8000-000000000001', 1,
+select
+  'd0260000-0000-4000-8000-000000000001', d.id, 1,
   'Política sintética de demonstração: cancelamento sem cobrança até 48 horas computáveis antes da consulta; sábados e domingos não reduzem o prazo.',
   repeat('a', 64), '2026-01-01T00:00:00-03:00', false
-)
-on conflict (document_id, version) do nothing;
+from public.legal_documents as d
+where d.key = 'cancellation_policy'
+on conflict (document_id, version) do update set
+  content = excluded.content,
+  content_hash_sha256 = excluded.content_hash_sha256,
+  effective_from = excluded.effective_from,
+  is_draft = false;
 
 insert into public.cancellation_policies (
   id, policy_version, countable_hours, excluded_weekdays, business_timezone,
   late_cancellation_charge_enabled, no_show_charge_enabled, effective_from, legal_document_version_id
 )
-values (
+select
   'd0300000-0000-4000-8000-000000000001', 1, 48, '[6,0]'::jsonb, 'America/Sao_Paulo',
-  true, true, '2026-01-01T00:00:00-03:00', 'd0260000-0000-4000-8000-000000000001'
-)
+  true, true, '2026-01-01T00:00:00-03:00', v.id
+from public.legal_documents as d
+join public.legal_document_versions as v on v.document_id = d.id and v.version = 1
+where d.key = 'cancellation_policy'
 on conflict (policy_version) do update set
   countable_hours = excluded.countable_hours,
   excluded_weekdays = excluded.excluded_weekdays,
@@ -158,3 +165,37 @@ from (values
 ) as values_row(id, source_id, person_id, idempotency_key, status, external_id, protocol, issued_at)
 join public.fiscal_treatments treatment on treatment.source_kind = 'event_registration' and treatment.version = 1
 on conflict (id) do nothing;
+
+-- Local/homologation form configuration. This is technical synthetic configuration,
+-- not patient/business data; submissions themselves must be created through the UI.
+insert into public.form_templates (id, name, active_version)
+values ('d5000000-0000-4000-8000-000000000001', 'Pré-consulta sintética', 1)
+on conflict (id) do update set name = excluded.name, active_version = excluded.active_version;
+
+insert into public.form_template_versions (id, template_id, version, data_classification, schema)
+values (
+  'd5010000-0000-4000-8000-000000000001',
+  'd5000000-0000-4000-8000-000000000001',
+  1,
+  'sensitive',
+  '{"fields":[{"key":"full_name","type":"short_text","required":true,"label":"Nome completo"},{"key":"notes","type":"long_text","required":true,"label":"O que gostaria de compartilhar?"}]}'::jsonb
+)
+on conflict (template_id, version) do update set data_classification = excluded.data_classification, schema = excluded.schema;
+
+insert into public.legal_documents (id, key) values
+  ('d5020000-0000-4000-8000-000000000001', 'service_terms'),
+  ('d5030000-0000-4000-8000-000000000001', 'truthfulness_declaration'),
+  ('d5040000-0000-4000-8000-000000000001', 'privacy_notice')
+on conflict (key) do nothing;
+
+insert into public.legal_document_versions (document_id, version, content, content_hash_sha256, effective_from, is_draft)
+select d.id, 1, cfg.content, cfg.hash, '2026-01-01T00:00:00-03:00', false
+from (values
+  ('service_terms', 'Termos sintéticos de atendimento usados apenas em ambiente local e homologação.', repeat('b', 64)),
+  ('truthfulness_declaration', 'Declaro, para homologação sintética, que as informações preenchidas foram revisadas.', repeat('c', 64)),
+  ('privacy_notice', 'Aviso sintético de privacidade para validar aceite e assinatura sem dados reais.', repeat('d', 64))
+) as cfg(key, content, hash)
+join public.legal_documents d on d.key = cfg.key
+where not exists (
+  select 1 from public.legal_document_versions v where v.document_id = d.id and v.version = 1
+);

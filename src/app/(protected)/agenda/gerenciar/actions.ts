@@ -2,11 +2,12 @@
 
 import { redirect } from 'next/navigation'
 import { calculateCancellationDeadline, createAppointment, type Appointment, type AppointmentRepository, type CancellationPolicy } from '@/modules/appointments/public'
-import { appointmentWindow, hasAppointmentConflict, parsePositiveMoneyToCents } from '@/modules/appointments/public'
+import { appointmentWindow, hasAppointmentConflict } from '@/modules/appointments/public'
 import { recordAuditEvent, type AuditEvent, type AuditEventRepository } from '@/modules/audit/public'
 import { authorizeStaffSession, getStaffSession } from '@/modules/identity/public'
 import { createServerSupabaseClient } from '@/platform/supabase/server'
 import type { Database } from '@/platform/supabase/types'
+import { parsePositiveMoneyToCents } from '@/shared/kernel/format/money'
 
 function auditRepository(client: Awaited<ReturnType<typeof createServerSupabaseClient>>): AuditEventRepository { return { async insert(event: AuditEvent): Promise<void> { const { error } = await client.from('audit_events').insert({ actor_user_id: event.actorId, action: event.action, entity_type: event.entityType, entity_id: event.entityId, correlation_id: event.correlationId, metadata: event.metadata as Database['public']['Tables']['audit_events']['Insert']['metadata'], created_at: event.createdAt }); if (error) throw new Error('AGENDA_AUDIT_FAILED') } } }
 async function authorizedClient() { const session = await getStaffSession(); const authorized = authorizeStaffSession(session, ['psychologist_owner', 'secretary']); return { authorized, client: await createServerSupabaseClient() } }
@@ -18,11 +19,8 @@ export async function createServiceAction(formData: FormData) {
   const durationMinutes = Number(formData.get('duration_minutes'))
   const priceCents = moneyToCents(String(formData.get('price') ?? ''))
   if (!name || !Number.isInteger(durationMinutes) || durationMinutes <= 0 || priceCents <= 0) throw new Error('AGENDA_SERVICE_INVALID')
-  type CreateServiceRpc = (name: 'create_service_with_audit', args: { p_id: string; p_name: string; p_duration_minutes: number; p_price_cents: number }) => PromiseLike<{ data: string | null; error: { code: string; message: string } | null }>
-  const serviceRpc = client.rpc.bind(client) as unknown as CreateServiceRpc
-  const serviceId = crypto.randomUUID()
-  const { data: createdServiceId, error } = await serviceRpc('create_service_with_audit', { p_id: serviceId, p_name: name, p_duration_minutes: durationMinutes, p_price_cents: priceCents })
-  if (error || createdServiceId !== serviceId) throw new Error('AGENDA_SERVICE_CREATE_FAILED')
+  const { data, error } = await client.from('services').insert({ name, duration_minutes: durationMinutes, price_cents: priceCents, active: true }).select('id').single()
+  if (error || !data) throw new Error('AGENDA_SERVICE_CREATE_FAILED')
   redirect('/agenda/gerenciar')
 }
 

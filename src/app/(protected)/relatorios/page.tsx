@@ -1,3 +1,5 @@
+import { redirect } from 'next/navigation'
+import { getStaffSession } from '@/modules/identity/public'
 import { PageHeader } from '@/shared/ui/page-header'
 import { Card, CardDescription, CardTitle } from '@/shared/ui/card'
 import { buildOperationalReports } from '@/modules/reports/public'
@@ -20,6 +22,9 @@ function cents(value: number) {
 }
 
 export default async function ReportsPage() {
+  const session = await getStaffSession()
+  if (!session) redirect('/login')
+
   const start = businessDate(new Date())
   const end = addDays(start, 30)
   const fromIso = new Date(`${start}T00:00:00-03:00`).toISOString()

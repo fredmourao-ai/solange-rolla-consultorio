@@ -314,3 +314,14 @@ body {
 }
 
 .ui-button { text-decoration: none; }
+
+.session-controls { display: grid; gap: var(--space-2); margin-top: var(--space-4); }
+.session-controls .ui-button { width: 100%; }
+.app-shell__sidebar .session-controls .ui-button { color: #fff; border-color: rgb(255 255 255 / 22%); }
+.app-shell__sidebar .session-controls .ui-button:hover { background: rgb(255 255 255 / 10%); }
+.mfa-panel { display: grid; gap: var(--space-4); max-width: 42rem; }
+.mfa-panel > p { margin: 0; color: var(--muted); }
+.mfa-enrollment, .mfa-challenge { display: grid; gap: var(--space-4); }
+.mfa-enrollment p, .mfa-challenge p { margin: 0; }
+.mfa-qr { width: min(16rem, 100%); height: auto; border: 1px solid var(--border); border-radius: var(--radius-md); background: #fff; padding: var(--space-2); }
+@media (max-width: 800px) { .mobile-nav__panel .session-controls { border-top: 1px solid var(--border); padding-top: var(--space-3); } }

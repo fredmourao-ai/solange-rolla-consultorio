@@ -31,14 +31,17 @@ export function resolveE2eRuntime(env: Env = process.env): E2eRuntime {
 
 export async function assertExternalBuild(runtime: E2eRuntime, fetcher: typeof fetch = fetch): Promise<void> {
   if (!runtime.expectedBuildSha) return
-  let response: Response
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), EXTERNAL_HEALTH_TIMEOUT_MS)
   try {
-    response = await fetcher(`${runtime.baseURL}/api/health`, { cache: 'no-store', signal: AbortSignal.timeout(EXTERNAL_HEALTH_TIMEOUT_MS) })
+    const response = await fetcher(`${runtime.baseURL}/api/health`, { cache: 'no-store', signal: controller.signal })
+    if (!response.ok) throw new Error('E2E_HEALTH_CHECK_FAILED')
+    const payload = await response.json() as { buildSha?: string }
+    if (payload.buildSha !== runtime.expectedBuildSha) throw new Error('E2E_DEPLOYED_SHA_MISMATCH')
   } catch (error) {
-    if (error instanceof Error && (error.name === 'TimeoutError' || error.name === 'AbortError')) throw new Error('E2E_HEALTH_CHECK_TIMEOUT')
+    if (controller.signal.aborted || (error instanceof Error && (error.name === 'TimeoutError' || error.name === 'AbortError'))) throw new Error('E2E_HEALTH_CHECK_TIMEOUT')
     throw error
+  } finally {
+    clearTimeout(timeout)
   }
-  if (!response.ok) throw new Error('E2E_HEALTH_CHECK_FAILED')
-  const payload = await response.json() as { buildSha?: string }
-  if (payload.buildSha !== runtime.expectedBuildSha) throw new Error('E2E_DEPLOYED_SHA_MISMATCH')
 }

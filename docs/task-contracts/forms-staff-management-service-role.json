@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "status": "approved",
+  "issue": 96,
+  "migration": "20260907022000_forms_staff_management_service_role.sql",
+  "owners": ["forms"],
+  "objects": [
+    {"name": "public.capabilities", "owner": "forms"}
+  ]
+}

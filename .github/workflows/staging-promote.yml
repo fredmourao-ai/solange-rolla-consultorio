@@ -287,8 +287,6 @@ jobs:
               raise SystemExit(result.returncode)
           PY
 
-          APP_ENV=staging STAGING_RUNTIME_ENV_FILE="$RUNTIME_ENV" node scripts/ensure-staging-cancellation-policy.mjs
-
           docker run --rm --network host -v "$STAGE:/app" -w /app node:24-bookworm-slim npm ci
           docker run --rm --network host -v "$STAGE:/app" -w /app node:24-bookworm-slim npm run build
 

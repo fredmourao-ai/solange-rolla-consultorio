@@ -192,6 +192,9 @@ async function chargeAppointmentAction(formData: FormData) {
 export default async function AgendaPage({ searchParams }: {
   searchParams: Promise<{ view?: string; date?: string }>
 }) {
+  const session = await getStaffSession()
+  if (!session) redirect('/login')
+
   const query = await searchParams
   const view = normalizeView(query.view)
   const anchor = normalizeDate(query.date)
