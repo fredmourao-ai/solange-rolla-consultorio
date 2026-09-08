@@ -112,7 +112,6 @@ describe('repository governance contract', () => {
   it('gates auto-merge through complete REST checks and statuses', () => {
     const workflow = projectFile('.github/workflows/pr-auto-merge.yml')
 
-    expect(workflow).toContain('actions: read')
     expect(workflow).toContain('statuses: read')
     expect(workflow).toContain('repos/$REPO/commits/$HEAD_SHA/check-runs?filter=latest&per_page=100')
     expect(workflow).toContain('repos/$REPO/commits/$HEAD_SHA/status')
@@ -164,6 +163,13 @@ describe('repository governance contract', () => {
     expect(workflow).toContain('repos/$REPO/git/ref/heads/main')
     expect(workflow).toContain('for workflow in ci.yml db.yml repository-governance.yml')
     expect(workflow).toContain('actions/workflows/$workflow/dispatches')
+  })
+
+  it('grants the token write access to Actions, since dispatching a workflow requires it', () => {
+    const workflow = projectFile('.github/workflows/pr-auto-merge.yml')
+
+    expect(workflow).toContain('actions: write')
+    expect(workflow).not.toContain('actions: read')
   })
 
   it('lets the governance gate be dispatched manually for post-merge re-validation', () => {
