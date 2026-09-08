@@ -56,7 +56,16 @@ jobs:
           pulls="$(gh api "repos/$REPO/commits/$HEAD_SHA/pulls")"
           pr_json="$(jq --arg sha "$HEAD_SHA" '[.[] | select(.state == "open") | select(.head.repo.full_name == .base.repo.full_name) | select(.base.ref == "main") | select(.head.sha == $sha)][0]' <<<"$pulls")"
           if [ "$pr_json" = "null" ]; then
-            echo 'No eligible open same-repository PR for this exact head SHA.'
+            merged_json="$(jq --arg sha "$HEAD_SHA" '[.[] | select(.merged_at != null) | select(.head.repo.full_name == .base.repo.full_name) | select(.base.ref == "main") | select(.head.sha == $sha)][0]' <<<"$pulls")"
+            if [ "$merged_json" != "null" ]; then
+              merged_main_sha="$(jq -r '.merge_commit_sha // empty' <<<"$merged_json")"
+              if [ -n "$merged_main_sha" ]; then
+                echo "merged_main_sha=$merged_main_sha" >> "$GITHUB_OUTPUT"
+                echo "Exact PR head was already merged as main@$merged_main_sha."
+              fi
+            else
+              echo 'No eligible same-repository PR for this exact head SHA.'
+            fi
             exit 0
           fi
           pr_number="$(jq -r '.number' <<<"$pr_json")"
@@ -130,15 +139,27 @@ jobs:
         # will deploy an exact SHA. Re-dispatch those three workflows against
         # the new main tip so the commit gets validated in its final,
         # merged form instead of only as a pre-merge PR head.
-        if: steps.pr.outputs.pr_number != ''
+        if: steps.pr.outputs.pr_number != '' || steps.pr.outputs.merged_main_sha != ''
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
         shell: bash
         run: |
           set -Eeuo pipefail
-          sha="$(gh api "repos/$REPO/git/ref/heads/main" --jq .object.sha)"
-          echo "Dispatching post-merge validation for main@$sha"
+          sha="${{ steps.pr.outputs.merged_main_sha }}"
+          [ -n "$sha" ] || sha="$(gh api "repos/$REPO/git/ref/heads/main" --jq .object.sha)"
+          current_main="$(gh api "repos/$REPO/git/ref/heads/main" --jq .object.sha)"
+          if [ "$current_main" != "$sha" ]; then
+            echo "Main advanced to $current_main; refusing to revalidate stale merge $sha."
+            exit 0
+          fi
+          existing="$(gh api "repos/$REPO/actions/runs?head_sha=$sha&event=workflow_dispatch&per_page=100")"
+          echo "Ensuring post-merge validation for main@$sha"
           for workflow in ci.yml db.yml repository-governance.yml; do
+            path=".github/workflows/$workflow"
+            if jq -e --arg path "$path" '.workflow_runs[] | select(.path == $path)' <<<"$existing" >/dev/null; then
+              echo "Skipping already-dispatched $workflow for main@$sha"
+              continue
+            fi
             gh api --method POST "repos/$REPO/actions/workflows/$workflow/dispatches" -f ref=main
           done
