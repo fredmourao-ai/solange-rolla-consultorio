@@ -52,13 +52,14 @@ jobs:
       - name: Verify dependency security gate
         run: npm audit --audit-level=high
 
-      - name: Verify install and build
-        shell: bash
-        run: |
-          set -Eeuo pipefail
-          npm ci
-          npm run typecheck
-          npm run build
+      - name: Verify reproducible install
+        run: npm ci
+
+      - name: Verify typecheck
+        run: npm run typecheck
+
+      - name: Verify production build
+        run: npm run build
 
       - name: Commit lockfile update
         shell: bash
