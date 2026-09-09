@@ -121,6 +121,11 @@
     "appointments_audited_service_creation": [
       "appointments",
       "audit"
+    ],
+    "financial_atomic_mutations": [
+      "receivables",
+      "payables",
+      "audit"
     ]
   },
   "objects": {
@@ -190,6 +195,10 @@
     "public.claim_document_jobs": "signatures",
     "public.persist_document_job_result": "signatures",
     "public.audit_person_created": "audit",
-    "public.audit_service_created": "audit"
+    "public.audit_service_created": "audit",
+    "public.refresh_receivable_status_atomic": "receivables",
+    "public.record_receivable_payment_atomic": "receivables",
+    "public.refund_receivable_payment_atomic": "receivables",
+    "public.record_payable_payment_atomic": "payables"
   }
 }
