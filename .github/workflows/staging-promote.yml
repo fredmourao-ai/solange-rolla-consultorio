@@ -172,10 +172,13 @@ jobs:
       - name: Deploy exact SHA to homologation
         shell: bash
         env:
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_STAGING_PROJECT_REF }}
+          SUPABASE_STAGING_PROJECT_REF: ${{ secrets.SUPABASE_STAGING_PROJECT_REF }}
+          SUPABASE_PRODUCTION_PROJECT_REF: ${{ secrets.SUPABASE_PRODUCTION_PROJECT_REF }}
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
-          WHATSApP_LIVE_ENABLED: ${{ vars.WHATSAPP_LIVE_ENABLED }}
+          WHATSAPP_LIVE_ENABLED: ${{ vars.WHATSAPP_LIVE_ENABLED }}
           EMAIL_LIVE_ENABLED: ${{ vars.EMAIL_LIVE_ENABLED }}
           NFSE_LIVE_ENABLED: ${{ vars.NFSE_LIVE_ENABLED }}
         run: |
@@ -250,6 +253,9 @@ jobs:
               'APP_ENV': 'staging',
               'APP_BUILD_SHA': sha,
               'STAGING_COMMIT_SHA': sha,
+              'SUPABASE_PROJECT_REF': os.environ['SUPABASE_PROJECT_REF'],
+              'SUPABASE_STAGING_PROJECT_REF': os.environ['SUPABASE_STAGING_PROJECT_REF'],
+              'SUPABASE_PRODUCTION_PROJECT_REF': os.environ['SUPABASE_PRODUCTION_PROJECT_REF'],
               'NEXT_PUBLIC_SUPABASE_URL': os.environ['NEXT_PUBLIC_SUPABASE_URL'],
               'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY': os.environ['NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY'],
               'SUPABASE_SECRET_KEY': os.environ['SUPABASE_SECRET_KEY'],
@@ -258,7 +264,14 @@ jobs:
               'NFSE_LIVE_ENABLED': os.environ.get('NFSE_LIVE_ENABLED') or 'false',
           }
           for key, value in overrides.items():
-              if key in {'NEXT_PUBLIC_SUPABASE_URL', 'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY', 'SUPABASE_SECRET_KEY'} and not value:
+              if key in {
+                  'SUPABASE_PROJECT_REF',
+                  'SUPABASE_STAGING_PROJECT_REF',
+                  'SUPABASE_PRODUCTION_PROJECT_REF',
+                  'NEXT_PUBLIC_SUPABASE_URL',
+                  'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY',
+                  'SUPABASE_SECRET_KEY',
+              } and not value:
                   raise SystemExit(f'missing validated staging value for {key}')
               values[key] = value
           target.write_text(''.join(f'{key}={value}\n' for key, value in values.items()))

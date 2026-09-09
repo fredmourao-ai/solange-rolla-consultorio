@@ -32,7 +32,7 @@
   "dependencies": {
     "@supabase/ssr": "0.12.5",
     "@supabase/supabase-js": "2.112.4",
-    "next": "16.2.11",
+    "next": "16.3.4",
     "nodemailer": "9.1.1",
     "pdf-lib": "1.17.1",
     "react": "19.2.8",
@@ -49,15 +49,15 @@
     "@types/react-dom": "^19.2.0",
     "dependency-cruiser": "18.2.0",
     "eslint": "9.39.5",
-    "eslint-config-next": "16.2.11",
+    "eslint-config-next": "16.3.4",
     "js-yaml": "^4.3.2",
     "typescript": "5.9.2",
     "vitest": "4.1.11"
   },
   "overrides": {
-    "next@16.2.11": {
+    "next@16.3.4": {
       "postcss": "8.5.26",
-      "sharp": "0.35.3"
+      "sharp": "0.35.4"
     }
   }
 }
