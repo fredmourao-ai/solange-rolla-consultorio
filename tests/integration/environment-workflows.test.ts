@@ -92,6 +92,19 @@ describe('environment workflow contracts', () => {
     expect(workflow).not.toContain("event: 'push'")
   })
 
+  it('runs browser-driven operational homologation against the exact staged SHA before finalizing the release', () => {
+    const workflow = readFileSync(stagingWorkflow, 'utf8')
+    expect(workflow).toContain('Real UI staging homologation')
+    expect(workflow).toContain('E2E_TARGET_ENV')
+    expect(workflow).toContain('E2E_ALLOWED_BASE_URL')
+    expect(workflow).toContain('E2E_ALLOWED_DB_URL')
+    expect(workflow).toContain('E2E_EXPECTED_BUILD_SHA')
+    expect(workflow).toContain('tests/e2e/real-ui-homologation.spec.ts')
+    expect(workflow).toContain('Rollback staging release after failed validation')
+    expect(workflow).toContain('Finalize promoted release')
+    expect(workflow.indexOf('Real UI staging homologation')).toBeLessThan(workflow.indexOf('Finalize promoted release'))
+  })
+
   it('requires explicit staging approval and distinct project refs', () => {
     expect(
       run(stagingScript, {
