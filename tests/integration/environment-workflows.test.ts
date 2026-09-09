@@ -51,6 +51,16 @@ describe('environment workflow contracts', () => {
     expect(workflow).toContain('buildSha')
   })
 
+  it('propagates staging project identity into the generated runtime environment', () => {
+    const workflow = readFileSync(stagingWorkflow, 'utf8')
+    expect(workflow).toContain("SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_STAGING_PROJECT_REF }}")
+    expect(workflow).toContain("'SUPABASE_PROJECT_REF': os.environ['SUPABASE_PROJECT_REF']")
+    expect(workflow).toContain("'SUPABASE_STAGING_PROJECT_REF': os.environ['SUPABASE_STAGING_PROJECT_REF']")
+    expect(workflow).toContain("'SUPABASE_PRODUCTION_PROJECT_REF': os.environ['SUPABASE_PRODUCTION_PROJECT_REF']")
+    expect(workflow).toContain('WHATSAPP_LIVE_ENABLED: ${{ vars.WHATSAPP_LIVE_ENABLED }}')
+    expect(workflow).not.toContain('WHATSApP_LIVE_ENABLED')
+  })
+
   it('emits a preview association only for a dedicated branch', () => {
     expect(run(previewScript, base)).toContain('"supabasePreviewRef":"preview-ref"')
   })
