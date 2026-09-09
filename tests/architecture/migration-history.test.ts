@@ -590,6 +590,24 @@ describe('migration history', () => {
     expect(result.status, outputOf(result)).toBe(0)
   })
 
+  it('accepts PL/pgSQL SELECT INTO locals in explicitly static routines', () => {
+    const repository = createRepository()
+    const migration = '20260824000350_receivables_static_function.sql'
+    fs.writeFileSync(
+      path.join(repository, 'supabase/migrations', migration),
+      '-- owners: receivables\n-- task-contract: docs/task-contracts/receivables_static_function.json\n-- allow-static-routines: true\ncreate or replace function public.refresh_receivable_status_atomic(p_receivable_id uuid) returns text language plpgsql set search_path = public as $$ declare current_status text; begin select status into current_status from public.receivables where id = p_receivable_id; return current_status; end; $$;\n',
+    )
+    writeTaskContract(repository, 'receivables_static_function.json', {
+      issue: 124, migration, owners: ['receivables'],
+      objects: [
+        { name: 'public.refresh_receivable_status_atomic', owner: 'receivables' },
+        { name: 'public.receivables', owner: 'receivables' },
+      ],
+    })
+    const result = checkMigrations(repository, { baseRef: 'migration-base' })
+    expect(result.status, outputOf(result)).toBe(0)
+  })
+
   it('exposes immutable migration history as an npm and database CI gate', () => {
     const packageJson = JSON.parse(
       fs.readFileSync(path.join(repositoryRoot, 'package.json'), 'utf8'),

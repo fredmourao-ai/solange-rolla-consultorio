@@ -122,10 +122,10 @@
       "appointments",
       "audit"
     ],
-    "financial_atomic_mutations": [
-      "receivables",
+    "receivables_financial_atomic_mutations": [
+      "audit",
       "payables",
-      "audit"
+      "receivables"
     ]
   },
   "objects": {

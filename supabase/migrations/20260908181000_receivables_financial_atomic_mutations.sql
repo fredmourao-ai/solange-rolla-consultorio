@@ -36,11 +36,12 @@ begin
   from public.payments
   where receivable_id = p_receivable_id;
 
-  select coalesce(sum(refund.amount_cents), 0)
+  select coalesce(sum(amount_cents), 0)
   into refunded_cents
-  from public.payment_refunds refund
-  join public.payments payment on payment.id = refund.payment_id
-  where payment.receivable_id = p_receivable_id;
+  from public.payment_refunds
+  where payment_id in (
+    select id from public.payments where receivable_id = p_receivable_id
+  );
 
   charge_cents := greatest(0, original_cents + adjustment_cents);
   net_paid_cents := paid_cents - refunded_cents;
@@ -141,11 +142,12 @@ begin  if actor is null or role_name <> 'psychologist_owner' then
   from public.payments
   where receivable_id = p_receivable_id;
 
-  select coalesce(sum(refund.amount_cents), 0)
+  select coalesce(sum(amount_cents), 0)
   into refunded_cents
-  from public.payment_refunds refund
-  join public.payments payment on payment.id = refund.payment_id
-  where payment.receivable_id = p_receivable_id;
+  from public.payment_refunds
+  where payment_id in (
+    select id from public.payments where receivable_id = p_receivable_id
+  );
 
   charge_cents := greatest(0, locked_receivable.original_amount_cents + adjustment_cents);
   net_paid_cents := paid_cents - refunded_cents;

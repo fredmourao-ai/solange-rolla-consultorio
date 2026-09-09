@@ -2,19 +2,56 @@
   "version": 1,
   "status": "approved",
   "issue": 105,
-  "migration": "20260908181000_financial_atomic_mutations.sql",
-  "owners": ["receivables", "payables", "audit"],
+  "migration": "20260908181000_receivables_financial_atomic_mutations.sql",
+  "owners": [
+    "receivables",
+    "payables",
+    "audit"
+  ],
   "objects": [
-    {"name": "public.receivables", "owner": "receivables"},
-    {"name": "public.receivable_adjustments", "owner": "receivables"},
-    {"name": "public.payments", "owner": "receivables"},
-    {"name": "public.payment_refunds", "owner": "receivables"},
-    {"name": "public.refresh_receivable_status_atomic", "owner": "receivables"},
-    {"name": "public.record_receivable_payment_atomic", "owner": "receivables"},
-    {"name": "public.refund_receivable_payment_atomic", "owner": "receivables"},
-    {"name": "public.payables", "owner": "payables"},
-    {"name": "public.payable_payments", "owner": "payables"},
-    {"name": "public.record_payable_payment_atomic", "owner": "payables"},
-    {"name": "public.audit_events", "owner": "audit"}
+    {
+      "name": "public.receivables",
+      "owner": "receivables"
+    },
+    {
+      "name": "public.receivable_adjustments",
+      "owner": "receivables"
+    },
+    {
+      "name": "public.payments",
+      "owner": "receivables"
+    },
+    {
+      "name": "public.payment_refunds",
+      "owner": "receivables"
+    },
+    {
+      "name": "public.refresh_receivable_status_atomic",
+      "owner": "receivables"
+    },
+    {
+      "name": "public.record_receivable_payment_atomic",
+      "owner": "receivables"
+    },
+    {
+      "name": "public.refund_receivable_payment_atomic",
+      "owner": "receivables"
+    },
+    {
+      "name": "public.payables",
+      "owner": "payables"
+    },
+    {
+      "name": "public.payable_payments",
+      "owner": "payables"
+    },
+    {
+      "name": "public.record_payable_payment_atomic",
+      "owner": "payables"
+    },
+    {
+      "name": "public.audit_events",
+      "owner": "audit"
+    }
   ]
 }
