@@ -5,8 +5,61 @@ const REQUEST_LIMITS = {
   upload: 10 * 1024 * 1024,
 } as const
 
-export function assertRequestSize(sizeBytes: number, kind: keyof typeof REQUEST_LIMITS): void {
+type RequestKind = keyof typeof REQUEST_LIMITS
+
+export function assertRequestSize(sizeBytes: number, kind: RequestKind): void {
   if (!Number.isInteger(sizeBytes) || sizeBytes < 0 || sizeBytes > REQUEST_LIMITS[kind]) throw new Error('REQUEST_TOO_LARGE')
+}
+
+async function readBoundedRequestBody(request: Request, kind: RequestKind): Promise<Uint8Array> {
+  const declaredLength = request.headers.get('content-length')
+  if (declaredLength !== null) {
+    const normalized = declaredLength.trim()
+    if (!/^\d+$/.test(normalized)) throw new Error('REQUEST_SIZE_INVALID')
+    assertRequestSize(Number(normalized), kind)
+  }
+
+  if (!request.body) return new Uint8Array()
+  const reader = request.body.getReader()
+  const chunks: Uint8Array[] = []
+  let total = 0
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      total += value.byteLength
+      assertRequestSize(total, kind)
+      chunks.push(value)
+    }
+  } catch (error) {
+    try { await reader.cancel() } catch { /* ignore cancellation failure */ }
+    throw error
+  }
+
+  const body = new Uint8Array(total)
+  let offset = 0
+  for (const chunk of chunks) {
+    body.set(chunk, offset)
+    offset += chunk.byteLength
+  }
+  return body
+}
+
+export async function cloneRequestWithBoundedBody(request: Request, kind: RequestKind): Promise<Request> {
+  const body = await readBoundedRequestBody(request, kind)
+  const hasBody = request.method !== 'GET' && request.method !== 'HEAD'
+  const bodyBuffer = hasBody ? Uint8Array.from(body).buffer : undefined
+  return new Request(request.url, {
+    method: request.method,
+    headers: request.headers,
+    body: bodyBuffer,
+  })
+}
+
+export async function parseBoundedFormData(request: Request, kind: Extract<RequestKind, 'form' | 'signature'> = 'form'): Promise<FormData> {
+  const bounded = await cloneRequestWithBoundedBody(request, kind)
+  return bounded.formData()
 }
 
 function hasMagicBytes(mediaType: string, bytes: Uint8Array): boolean {

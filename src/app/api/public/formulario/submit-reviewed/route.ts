@@ -4,13 +4,14 @@ import { serverEnv } from '@/platform/env/server'
 import { getCapabilityPageSession } from '@/app/(capability)/session'
 import { createPublicIntakeRuntime } from '@/app/(capability)/intake-runtime'
 import { submitReviewedPublicIntake } from '@/modules/forms/public'
+import { parseBoundedFormData } from '@/platform/security/request-limits'
 
 export async function POST(request: Request) {
   const appUrl = serverEnv().APP_URL
   const session = await getCapabilityPageSession({ purpose: 'form_fill', subjectType: 'form_submission' })
   if (!session) return NextResponse.redirect(canonicalCapabilityDestination('/link-expirado', appUrl), 303)
   try {
-    const formData = await request.formData()
+    const formData = await parseBoundedFormData(request, 'form')
     const runtime = createPublicIntakeRuntime(session)
     await submitReviewedPublicIntake({
       session,

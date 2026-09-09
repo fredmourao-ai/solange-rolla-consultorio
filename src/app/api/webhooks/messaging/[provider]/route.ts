@@ -1,4 +1,5 @@
 import { ingestProviderEvent, type ProviderEventRepository } from '../../../../../modules/messaging/public'
+import { cloneRequestWithBoundedBody } from '../../../../../platform/security/request-limits'
 
 export type WebhookEvent = {
   providerEventId: string
@@ -52,7 +53,8 @@ export function createMessagingWebhookHandler(
   return async function handleMessagingWebhook(request: Request): Promise<Response> {
     let event: WebhookEvent | null
     try {
-      event = await argumentsForHandler.provider.verifyWebhook(request)
+      const boundedRequest = await cloneRequestWithBoundedBody(request, 'json')
+      event = await argumentsForHandler.provider.verifyWebhook(boundedRequest)
     } catch {
       return Response.json({ error: 'invalid webhook payload' }, { status: 400 })
     }
