@@ -330,6 +330,11 @@ jobs:
           test "$(docker inspect -f '{{.State.Status}}' "$MSG")" = running
           test -s "$CANDIDATE_STATE/document/document-worker.heartbeat"
           test -s "$CANDIDATE_STATE/messaging/messaging-worker.heartbeat"
+          if [ -f "$ROOT/state/deployed-sha.txt" ]; then
+            cp "$ROOT/state/deployed-sha.txt" "$ROOT/state/previous-deployed-sha.txt"
+          else
+            rm -f "$ROOT/state/previous-deployed-sha.txt"
+          fi
           printf '%s\n' "$PROMOTE_SHA" > "$ROOT/state/deployed-sha.txt"
 
       - name: Verify deployed SHA
@@ -361,6 +366,9 @@ jobs:
               docker rename "${MSG}-previous" "$MSG" || true
               docker start "$MSG" >/dev/null 2>&1 || true
             fi
+            if [ -f "$ROOT/state/previous-deployed-sha.txt" ]; then
+              mv "$ROOT/state/previous-deployed-sha.txt" "$ROOT/state/deployed-sha.txt"
+            fi
             exit "$rc"
           }
           trap rollback_verified_release ERR
@@ -376,10 +384,8 @@ jobs:
           done
           test "$actual" = "$PROMOTE_SHA"
           "$ROOT/preflight.sh"
-          docker rm -f "${DOC}-previous" "${MSG}-previous" >/dev/null 2>&1 || true
-          rm -rf "$PREVIOUS"
-          # Keep the promoted release state directory: the canonical workers bind-mount it
-          # and need the same host path to exist after container restarts.
+          # Previous release resources remain available until browser-driven
+          # staging homologation succeeds, so a failed acceptance run can roll back.
 
       - name: Staging app smoke contract
         if: vars.STAGING_APP_URL != ''
@@ -388,3 +394,86 @@ jobs:
         run: |
           payload=$(curl --fail --silent --show-error --retry 3 "$STAGING_APP_URL/api/health")
           test "$(printf '%s' "$payload" | jq -r '.buildSha')" = "$PROMOTE_SHA"
+
+      - name: Install Playwright browser for staging acceptance
+        run: npx playwright install chromium
+
+      - name: Real UI staging homologation
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python3 - "$STAGING_DEPLOY_ROOT/staging.env" "$STAGING_DEPLOY_ROOT/state/current-url.txt" "$PROMOTE_SHA" <<'PY'
+          import os, pathlib, subprocess, sys
+          env_file = pathlib.Path(sys.argv[1])
+          app_url = pathlib.Path(sys.argv[2]).read_text().strip().rstrip('/')
+          sha = sys.argv[3]
+          values = {}
+          for raw in env_file.read_text().splitlines():
+              if raw and not raw.startswith('#') and '=' in raw:
+                  key, value = raw.split('=', 1)
+                  values[key] = value
+          required = ['DB_URL', 'DEMO_LOCAL_EMAIL', 'DEMO_LOCAL_PASSWORD', 'NEXT_PUBLIC_SUPABASE_URL', 'SUPABASE_SECRET_KEY']
+          missing = [key for key in required if not values.get(key)]
+          if missing:
+              raise SystemExit(f'missing staging E2E values: {", ".join(missing)}')
+          if not app_url:
+              raise SystemExit('staging current URL is empty')
+          child = os.environ.copy()
+          child.update(values)
+          child.update({
+              'APP_ENV': 'staging',
+              'E2E_TARGET_ENV': 'staging',
+              'E2E_BASE_URL': app_url,
+              'E2E_ALLOWED_BASE_URL': app_url,
+              'E2E_ALLOWED_DB_URL': values['DB_URL'],
+              'E2E_EXPECTED_BUILD_SHA': sha,
+          })
+          subprocess.run(
+              ['npx', 'playwright', 'test', 'tests/e2e/real-ui-homologation.spec.ts', '--project=chromium'],
+              env=child,
+              check=True,
+          )
+          PY
+
+      - name: Rollback staging release after failed validation
+        if: failure()
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          ROOT="$STAGING_DEPLOY_ROOT"
+          APP="$ROOT/app"
+          PREVIOUS="$ROOT/app-previous"
+          WEB=solange-client-demo-web
+          DOC=solange-document-worker
+          MSG=solange-messaging-worker
+          if [ -d "$PREVIOUS" ]; then
+            docker stop "$WEB" >/dev/null 2>&1 || true
+            rm -rf "$APP"
+            mv "$PREVIOUS" "$APP"
+            docker start "$WEB" >/dev/null 2>&1 || true
+          fi
+          if docker inspect "${DOC}-previous" >/dev/null 2>&1; then
+            docker rm -f "$DOC" >/dev/null 2>&1 || true
+            docker rename "${DOC}-previous" "$DOC"
+            docker start "$DOC" >/dev/null 2>&1 || true
+          fi
+          if docker inspect "${MSG}-previous" >/dev/null 2>&1; then
+            docker rm -f "$MSG" >/dev/null 2>&1 || true
+            docker rename "${MSG}-previous" "$MSG"
+            docker start "$MSG" >/dev/null 2>&1 || true
+          fi
+          if [ -f "$ROOT/state/previous-deployed-sha.txt" ]; then
+            mv "$ROOT/state/previous-deployed-sha.txt" "$ROOT/state/deployed-sha.txt"
+          fi
+          rm -rf "$ROOT/state/candidate-$PROMOTE_SHA"
+
+      - name: Finalize promoted release
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          ROOT="$STAGING_DEPLOY_ROOT"
+          docker rm -f solange-document-worker-previous solange-messaging-worker-previous >/dev/null 2>&1 || true
+          rm -rf "$ROOT/app-previous"
+          rm -f "$ROOT/state/previous-deployed-sha.txt"
+          # Keep the promoted release state directory: the canonical workers bind-mount it
+          # and need the same host path to exist after container restarts.
