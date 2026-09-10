@@ -1,12 +1,19 @@
 import { describe, expect, it } from 'vitest'
-import { normalizeLoginIdentifier } from './login-identifier'
+import { normalizeLoginCredentials } from './login-identifier'
 
-describe('normalizeLoginIdentifier', () => {
-  it('maps the temporary admin username to the synthetic admin email', () => {
-    expect(normalizeLoginIdentifier('admin')).toBe('admin@solange.invalid')
+describe('normalizeLoginCredentials', () => {
+  it('maps admin/admin only when the temporary demo login is enabled', () => {
+    expect(normalizeLoginCredentials('admin', 'admin', true)).toEqual({
+      email: 'demo.owner@solange.invalid',
+      password: 'DemoLocalOnly!2026',
+    })
   })
 
-  it('keeps regular email addresses unchanged', () => {
-    expect(normalizeLoginIdentifier('owner@example.com')).toBe('owner@example.com')
+  it('does not map the temporary login when disabled', () => {
+    expect(normalizeLoginCredentials('admin', 'admin', false)).toEqual({ email: 'admin', password: 'admin' })
+  })
+
+  it('keeps regular email credentials unchanged', () => {
+    expect(normalizeLoginCredentials('owner@example.com', 'secret', true)).toEqual({ email: 'owner@example.com', password: 'secret' })
   })
 })
