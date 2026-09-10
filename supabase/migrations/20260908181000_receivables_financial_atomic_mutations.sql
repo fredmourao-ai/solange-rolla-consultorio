@@ -26,7 +26,7 @@ begin
   if not found then
     raise exception 'FINANCE_RECEIVABLE_NOT_FOUND';
   end if;
-  select coalesce(sum(adjustment_cents), 0)
+  select coalesce(sum(receivable_adjustments.adjustment_cents), 0)
   into adjustment_cents
   from public.receivable_adjustments
   where receivable_id = p_receivable_id;
@@ -132,7 +132,7 @@ begin  if actor is null or role_name <> 'psychologist_owner' then
     return existing.id;
   end if;
 
-  select coalesce(sum(adjustment_cents), 0)
+  select coalesce(sum(receivable_adjustments.adjustment_cents), 0)
   into adjustment_cents
   from public.receivable_adjustments
   where receivable_id = p_receivable_id;
