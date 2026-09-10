@@ -1967,6 +1967,38 @@ export type Database = {
         }
         Returns: string
       }
+      record_payable_payment_atomic: {
+        Args: {
+          p_amount_cents: number
+          p_idempotency_key: string
+          p_method: string
+          p_payable_id: string
+        }
+        Returns: string
+      }
+      record_receivable_payment_atomic: {
+        Args: {
+          p_amount_cents: number
+          p_idempotency_key: string
+          p_method: string
+          p_receivable_id: string
+        }
+        Returns: string
+      }
+      refresh_receivable_status_atomic: {
+        Args: { p_receivable_id: string }
+        Returns: string
+      }
+      refund_receivable_payment_atomic: {
+        Args: {
+          p_amount_cents: number
+          p_idempotency_key: string
+          p_method: string
+          p_payment_id: string
+          p_reason: string
+        }
+        Returns: string
+      }
       register_event_participant_atomic: {
         Args: {
           p_event_id: string
