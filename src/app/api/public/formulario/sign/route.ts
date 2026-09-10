@@ -10,6 +10,7 @@ import { signPublicSubmission } from '@/modules/signatures/public'
 import { revokeCapabilitySession } from '@/platform/capabilities/revoke-session'
 import { createCapabilityRevocationRepository } from '@/platform/capabilities/revocation-repository'
 import { CAPABILITY_COOKIE_NAME } from '@/platform/capabilities/cookie'
+import { parseBoundedFormData } from '@/platform/security/request-limits'
 
 const REQUIRED_LEGAL_KEYS = [
   'service_terms',
@@ -24,7 +25,7 @@ export async function POST(request: Request) {
   if (!session) return NextResponse.redirect(canonicalCapabilityDestination('/link-expirado', appUrl), 303)
 
   try {
-    const formData = await request.formData()
+    const formData = await parseBoundedFormData(request, 'signature')
     const runtime = createPublicIntakeRuntime(session)
     const intake = await loadPublicIntake(session, {
       repository: runtime.formRepository,

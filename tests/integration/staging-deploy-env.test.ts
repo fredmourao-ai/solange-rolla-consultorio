@@ -1,0 +1,24 @@
+import { readFileSync } from 'node:fs'
+import { describe, expect, it } from 'vitest'
+
+const workflow = readFileSync('.github/workflows/staging-promote.yml', 'utf8')
+
+describe('staging deploy environment', () => {
+  it('propagates every Supabase project identity into the runtime environment', () => {
+    const deploy = workflow.slice(workflow.indexOf('- name: Deploy exact SHA to homologation'))
+    expect(deploy).toContain('SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_STAGING_PROJECT_REF }}')
+    expect(deploy).toContain('SUPABASE_STAGING_PROJECT_REF: ${{ secrets.SUPABASE_STAGING_PROJECT_REF }}')
+    expect(deploy).toContain('SUPABASE_PRODUCTION_PROJECT_REF: ${{ secrets.SUPABASE_PRODUCTION_PROJECT_REF }}')
+    expect(deploy).toContain("'SUPABASE_PROJECT_REF': os.environ['SUPABASE_PROJECT_REF']")
+    expect(deploy).toContain("'SUPABASE_STAGING_PROJECT_REF': os.environ['SUPABASE_STAGING_PROJECT_REF']")
+    expect(deploy).toContain("'SUPABASE_PRODUCTION_PROJECT_REF': os.environ['SUPABASE_PRODUCTION_PROJECT_REF']")
+  })
+})
+
+describe('staging deploy live-channel flags', () => {
+  it('uses the canonical WhatsApp environment variable name', () => {
+    const deploy = workflow.slice(workflow.indexOf('- name: Deploy exact SHA to homologation'))
+    expect(deploy).toContain('WHATSAPP_LIVE_ENABLED: ${{ vars.WHATSAPP_LIVE_ENABLED }}')
+    expect(deploy).not.toContain('WHATSApP_LIVE_ENABLED')
+  })
+})

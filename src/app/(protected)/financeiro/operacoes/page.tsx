@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { authorizeStaffSession, getStaffSession } from '@/modules/identity/public'
 import { createServerSupabaseClient } from '@/platform/supabase/server'
 import { PageHeader } from '@/shared/ui/page-header'
 import { applyAdjustmentAction, createExpenseCategoryAction, createPayableAction, createRecurrenceAction, createVendorAction, payPayableAction, recordPaymentAction, refundPaymentAction } from './actions'
@@ -8,8 +9,10 @@ export const revalidate = 0
 const methods = ['pix', 'cash', 'debit_card', 'credit_card', 'bank_transfer', 'other'] as const
 
 export default async function FinanceOperationsPage() {
+  const session = await getStaffSession()
+  authorizeStaffSession(session, ['psychologist_owner', 'accounting'])
   const client = await createServerSupabaseClient()
-  const [{ data: receivables }, { data: payments }, { data: vendors }, { data: categories }, { data: payables }, { data: rules }] = await Promise.all([
+  const [receivablesResult, paymentsResult, vendorsResult, categoriesResult, payablesResult, rulesResult] = await Promise.all([
     client.from('receivables').select('id,original_amount_cents,status,person:people!receivables_person_id_fkey(civil_name,preferred_name)').order('created_at', { ascending: false }).limit(100),
     client.from('payments').select('id,receivable_id,amount_cents,method,paid_at').order('paid_at', { ascending: false }).limit(100),
     client.from('vendors').select('id,legal_name').order('legal_name'),
@@ -17,6 +20,15 @@ export default async function FinanceOperationsPage() {
     client.from('payables').select('id,description,amount_cents,paid_cents,status,due_date,vendor:vendors!payables_vendor_id_fkey(legal_name)').order('due_date').limit(100),
     client.from('recurrence_rules').select('id,description,amount_cents,day_of_month,month_end_fallback,active').eq('active', true).order('created_at', { ascending: false }),
   ])
+  const results = [receivablesResult, paymentsResult, vendorsResult, categoriesResult, payablesResult, rulesResult]
+  const firstError = results.find((result) => result.error)?.error
+  if (firstError) throw new Error(`FINANCE_OPERATIONS_READ_FAILED:${firstError.code}`)
+  const receivables = receivablesResult.data
+  const payments = paymentsResult.data
+  const vendors = vendorsResult.data
+  const categories = categoriesResult.data
+  const payables = payablesResult.data
+  const rules = rulesResult.data
   return <>
     <PageHeader title="Operações financeiras" description="Pagamentos, ajustes, estornos, contas a pagar e recorrências com histórico auditável." />
     <p><Link href="/financeiro">← Voltar ao financeiro</Link></p>

@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { authorizeStaffSession, getStaffSession } from '@/modules/identity/public'
 import { createServerSupabaseClient } from '@/platform/supabase/server'
 import { PageHeader } from '@/shared/ui/page-header'
 import { addExpenseAction, createEventAction, registerParticipantAction, updateEventAction, updateRegistrationAction } from './actions'
@@ -18,6 +19,8 @@ function local(value: string) {
 export default async function EventOperationsPage({ searchParams }: {
   searchParams: Promise<{ person_q?: string; error?: string }>
 }) {
+  const session = await getStaffSession()
+  authorizeStaffSession(session, ['psychologist_owner', 'secretary', 'accounting'])
   const params = await searchParams
   const personQuery = (params.person_q ?? '').trim().slice(0, 80)
   const client = await createServerSupabaseClient()

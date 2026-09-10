@@ -487,6 +487,9 @@ function sqlObjects(migration) {
     if (token === 'update' && tokens[index - 1] === 'do' && tokens[index + 1] === 'set') {
       continue
     }
+    if (token === 'into' && allowStaticRoutines && tokens[index - 1] !== 'insert') {
+      continue
+    }
     if (
       [
         'table',

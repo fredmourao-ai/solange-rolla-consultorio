@@ -4,6 +4,7 @@ import { serverEnv } from '@/platform/env/server'
 import { getCapabilityPageSession } from '@/app/(capability)/session'
 import { createPublicAppointmentRuntime } from '@/app/(capability)/appointment-runtime'
 import { respondToPublicConfirmation } from '@/modules/appointments/public'
+import { parseBoundedFormData } from '@/platform/security/request-limits'
 
 const validActions = ['confirm', 'request_reschedule', 'cancel'] as const
 
@@ -19,7 +20,7 @@ export async function POST(request: Request) {
   if (!session) return NextResponse.redirect(canonicalCapabilityDestination('/link-expirado', appUrl), 303)
 
   try {
-    const formData = await request.formData()
+    const formData = await parseBoundedFormData(request, 'form')
     const action = String(formData.get('action') ?? '')
     if (!isAction(action)) throw new Error('INVALID_CONFIRMATION_ACTION')
     const runtime = createPublicAppointmentRuntime(session)
