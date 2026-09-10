@@ -142,11 +142,11 @@ begin  if actor is null or role_name <> 'psychologist_owner' then
   from public.payments
   where receivable_id = p_receivable_id;
 
-  select coalesce(sum(amount_cents), 0)
+  select coalesce(sum(payment_refunds.amount_cents), 0)
   into refunded_cents
   from public.payment_refunds
-  where payment_id in (
-    select id from public.payments where receivable_id = p_receivable_id
+  where payment_refunds.payment_id in (
+    select payments.id from public.payments where payments.receivable_id = p_receivable_id
   );
 
   charge_cents := greatest(0, locked_receivable.original_amount_cents + adjustment_cents);
