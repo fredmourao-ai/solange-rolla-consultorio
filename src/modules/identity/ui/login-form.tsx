@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from 'react'
 import { createBrowserSupabaseClient } from '@/platform/supabase/browser'
+import { normalizeLoginIdentifier } from './login-identifier'
 
 export function LoginForm() {
   const [error, setError] = useState<string | null>(null)
@@ -12,7 +13,7 @@ export function LoginForm() {
     setError(null)
     setPending(true)
     const form = new FormData(event.currentTarget)
-    const email = String(form.get('email') ?? '')
+    const email = normalizeLoginIdentifier(String(form.get('email') ?? ''))
     const password = String(form.get('password') ?? '')
     const { error: signInError } = await createBrowserSupabaseClient().auth.signInWithPassword({ email, password })
     if (signInError) setError('Não foi possível entrar com essas credenciais.')
@@ -21,8 +22,8 @@ export function LoginForm() {
   }
 
   return <form className="auth-form" onSubmit={submit}>
-    <label htmlFor="email">E-mail</label>
-    <input id="email" name="email" type="email" autoComplete="username" required />
+    <label htmlFor="email">Usuário ou e-mail</label>
+    <input id="email" name="email" type="text" autoComplete="username" required />
     <label htmlFor="password">Senha</label>
     <input id="password" name="password" type="password" autoComplete="current-password" required />
     {error ? <p role="alert">{error}</p> : null}
