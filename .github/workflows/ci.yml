@@ -178,6 +178,7 @@ jobs:
             echo "SUPABASE_SECRET_KEY=$SECRET_KEY"
             echo "APP_URL=http://127.0.0.1:3000"
             echo "APP_ENV=local"
+            echo "NEXT_PUBLIC_TEMP_ADMIN_LOGIN_ENABLED=true"
             echo "WHATSAPP_LIVE_ENABLED=false"
             echo "EMAIL_LIVE_ENABLED=false"
             echo "NFSE_LIVE_ENABLED=false"
