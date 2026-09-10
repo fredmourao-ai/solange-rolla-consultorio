@@ -262,3 +262,7 @@ Nenhum agente pode declarar tarefa concluída antes de cumprir `docs/DEFINITION_
 - Bloqueio aparentemente externo não encerra a tarefa. Investigar solução segura em configuração, credencial, permissão, serviço, ambiente, provider ou infraestrutura antes de classificar como inconclusivo.
 - Depois do merge, verificar os Actions do SHA resultante. CI verde em `main` deve acionar automaticamente a promoção canônica de staging; produção continua sujeita aos gates de ambiente e às proteções clínicas/fiscais vigentes.
 - Nunca automatizar aprovação que reduza RLS, MFA/AAL2, isolamento de ambiente, proteção de dados clínicos, idempotência financeira/fiscal ou feature flags live.
+
+## Isolamento obrigatorio de sessao CLI por chat
+
+Antes de qualquer operacao em terminal/CLI, leia e cumpra a secao `Isolamento obrigatorio de sessao CLI por chat` de `AI-TO-CLI-PROTOCOL.md`. Cada chat deve usar sessao/namespace CLI exclusivo; reutilizacao de sessao entre chats e proibida. Estado necessario para retomada deve ser persistido fora da memoria do shell.
