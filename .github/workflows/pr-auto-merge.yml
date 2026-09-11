@@ -19,7 +19,7 @@ permissions:
 
 concurrency:
   group: pr-auto-merge-${{ github.event.workflow_run.head_sha }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   merge-if-green:
