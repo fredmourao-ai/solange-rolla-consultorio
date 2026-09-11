@@ -17,6 +17,13 @@ describe('workflow continuity under rapid PR updates', () => {
     expect(autoMerge).toContain('cancel-in-progress: true')
   })
 
+  it('keeps merge control-plane work off the scarce self-hosted application runner', () => {
+    expect(autoMerge).toContain('runs-on: ubuntu-latest')
+    expect(autoMerge).toContain('linux_amd64.tar.gz')
+    expect(autoMerge).toContain('3b8ac6b30336802fc1a858d7c084e11cdf24ac1a761ca90b68022d7d729208de')
+    expect(autoMerge).not.toContain('runs-on: [self-hosted, Linux, ARM64, solange-ci]')
+  })
+
   it('filters canonical staging checks by event before applying the 100-run API limit', () => {
     expect(staging).toContain("new URLSearchParams({ head_sha: sha, event, per_page: '100' })")
     expect(staging).not.toContain("new URLSearchParams({ head_sha: sha, per_page: '100' })")
