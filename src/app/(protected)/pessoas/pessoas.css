@@ -9,9 +9,9 @@
   gap: var(--space-3) var(--space-4);
   margin: 0;
   border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   background: var(--surface);
-  padding: var(--space-5);
+  padding: var(--space-6);
 }
 
 .person-form legend {
@@ -46,7 +46,7 @@
   grid-template-columns: auto minmax(16rem, 1fr) auto;
   gap: var(--space-3);
   align-items: center;
-  margin-bottom: var(--space-5);
+  margin-bottom: var(--space-6);
 }
 
 .person-search input {
@@ -67,20 +67,20 @@
 
 .pagination {
   justify-content: space-between;
-  margin-top: var(--space-5);
+  margin-top: var(--space-6);
 }
 
 .patient-hub__summary {
-  margin-bottom: var(--space-5);
+  margin-bottom: var(--space-6);
 }
 
 .patient-hub__tabs {
   position: sticky;
   top: 0;
   z-index: 2;
-  margin-bottom: var(--space-5);
+  margin-bottom: var(--space-6);
   border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--surface) 94%, transparent);
   padding: var(--space-3);
   backdrop-filter: blur(8px);
