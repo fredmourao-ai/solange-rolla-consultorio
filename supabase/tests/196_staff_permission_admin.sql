@@ -10,8 +10,8 @@ select has_function('public', 'upsert_staff_profile', array['uuid','text','app_r
 select ok((select prosecdef from pg_proc where oid='public.list_staff_users()'::regprocedure), 'staff list RPC is security definer');
 select ok((select prosecdef from pg_proc where oid='public.list_user_access(uuid)'::regprocedure), 'access list RPC is security definer');
 select ok((select prosecdef from pg_proc where oid='public.set_user_permission_override(uuid,text,boolean)'::regprocedure), 'permission set RPC is security definer');
-select like((select prosrc from pg_proc where oid='public.set_user_permission_override(uuid,text,boolean)'::regprocedure), '%pg_advisory_xact_lock%', 'permission mutation serializes administrative invariant changes');
-select like((select prosrc from pg_proc where oid='public.upsert_staff_profile(uuid,text,app_role,boolean)'::regprocedure), '%pg_advisory_xact_lock%', 'profile mutation serializes administrative invariant changes');
+select ok((select prosrc like '%pg_advisory_xact_lock%' from pg_proc where oid='public.set_user_permission_override(uuid,text,boolean)'::regprocedure), 'permission mutation serializes administrative invariant changes');
+select ok((select prosrc like '%pg_advisory_xact_lock%' from pg_proc where oid='public.upsert_staff_profile(uuid,text,app_role,boolean)'::regprocedure), 'profile mutation serializes administrative invariant changes');
 select ok(not has_function_privilege('public','public.set_user_permission_override(uuid,text,boolean)','execute'), 'PUBLIC cannot mutate permissions');
 select ok(not has_function_privilege('anon','public.set_user_permission_override(uuid,text,boolean)','execute'), 'anon cannot mutate permissions');
 select ok(has_function_privilege('authenticated','public.set_user_permission_override(uuid,text,boolean)','execute'), 'authenticated may call guarded permission RPC');
