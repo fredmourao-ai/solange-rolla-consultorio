@@ -1,6 +1,6 @@
 begin;
 
-select plan(12);
+select plan(13);
 
 select policies_are('clinical', 'records', array['clinical_records_select_authorized','clinical_records_insert_authorized'], 'clinical records expose only separated read/create policies');
 select ok((select relforcerowsecurity from pg_class where oid='clinical.records'::regclass), 'clinical records continue forcing RLS');
