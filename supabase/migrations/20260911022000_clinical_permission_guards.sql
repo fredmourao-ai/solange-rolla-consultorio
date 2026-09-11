@@ -25,6 +25,10 @@ with check (
   and author_user_id = auth.uid()
 );
 
+create unique index clinical_records_one_root_per_appointment_idx
+on clinical.records (appointment_id)
+where supersedes_id is null;
+
 create or replace function public.create_clinical_record(
   p_record_id uuid,
   p_appointment_id uuid,
@@ -58,6 +62,30 @@ begin
     or public.current_aal() <> 'aal2'
     or p_author_user_id <> auth.uid() then
     raise exception 'CLINICAL_PERMISSION_FORBIDDEN' using errcode = '42501';
+  end if;
+
+  if not exists (
+    select 1
+    from public.appointments as appointment
+    where appointment.id = p_appointment_id
+      and appointment.person_id = p_person_id
+  ) then
+    raise exception 'CLINICAL_APPOINTMENT_MISMATCH' using errcode = '23514';
+  end if;
+
+  if p_supersedes_id is not null then
+    if not public.has_permission('clinical.supersede') then
+      raise exception 'CLINICAL_SUPERSEDE_FORBIDDEN' using errcode = '42501';
+    end if;
+    if not exists (
+      select 1
+      from clinical.records as previous
+      where previous.id = p_supersedes_id
+        and previous.appointment_id = p_appointment_id
+        and previous.person_id = p_person_id
+    ) then
+      raise exception 'CLINICAL_SUPERSEDE_MISMATCH' using errcode = '23514';
+    end if;
   end if;
 
   return query
