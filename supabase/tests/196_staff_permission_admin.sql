@@ -1,6 +1,6 @@
 begin;
 
-select plan(34);
+select plan(39);
 
 select has_function('public', 'list_staff_users', 'staff list RPC exists');
 select has_function('public', 'list_user_access', array['uuid'], 'user access RPC exists');
@@ -62,8 +62,15 @@ select is((select role::text from public.profiles where user_id='f3000000-0000-4
 select is((select count(*)::integer from public.audit_events where action='staff_profile.created' and entity_id='f3000000-0000-4000-8000-000000000005'),1,'staff creation is audited');
 
 select lives_ok($$ select public.set_user_permission_override('f3000000-0000-4000-8000-000000000003','users.manage',true) $$,'owner may explicitly grant non-clinical user management');
+select lives_ok($$ select public.set_user_permission_override('f3000000-0000-4000-8000-000000000003','permissions.manage',true) $$,'owner may delegate permission administration');
+select lives_ok($$ select public.set_user_permission_override('f3000000-0000-4000-8000-000000000004','reports.financial.read',false) $$,'owner may deny an accounting default before delegated admin test');
+
 select set_config('request.jwt.claims','{"sub":"f3000000-0000-4000-8000-000000000003","aal":"aal2","role":"authenticated"}',true);
-select throws_ok($$ select public.upsert_staff_profile('f3000000-0000-4000-8000-000000000004','Contabilidade','psychologist_owner',true) $$,'42501','OWNER_ROLE_ASSIGNMENT_FORBIDDEN','non-owner administrator cannot promote clinical owner');
+select throws_ok($$ select public.set_user_permission_override('f3000000-0000-4000-8000-000000000003','reports.financial.read',true) $$,'42501','CANNOT_GRANT_UNHELD_PERMISSION','delegated admin cannot grant a permission she does not hold');
+select throws_ok($$ select public.clear_user_permission_override('f3000000-0000-4000-8000-000000000004','reports.financial.read') $$,'42501','CANNOT_GRANT_UNHELD_PERMISSION','delegated admin cannot clear a deny when it would grant an unheld default');
+select throws_ok($$ select public.upsert_staff_profile('f3000000-0000-4000-8000-000000000004','Contabilidade','psychologist_owner',true) $$,'42501','OWNER_ROLE_MANAGEMENT_FORBIDDEN','non-owner administrator cannot promote clinical owner');
+select throws_ok($$ select public.upsert_staff_profile('f3000000-0000-4000-8000-000000000001','Owner Principal','secretary',true) $$,'42501','OWNER_ROLE_MANAGEMENT_FORBIDDEN','non-owner administrator cannot demote an owner');
+select throws_ok($$ select public.upsert_staff_profile('f3000000-0000-4000-8000-000000000005','Nova Contabilidade','accounting',true) $$,'42501','CANNOT_ASSIGN_ROLE_WITH_UNHELD_PERMISSION','delegated admin cannot assign a role whose defaults exceed her own access');
 
 select set_config('request.jwt.claims','{"sub":"f3000000-0000-4000-8000-000000000001","aal":"aal2","role":"authenticated"}',true);
 select lives_ok($$ select public.upsert_staff_profile('f3000000-0000-4000-8000-000000000002','Owner Reserva','psychologist_owner',false) $$,'owner may deactivate another owner while one owner remains');
