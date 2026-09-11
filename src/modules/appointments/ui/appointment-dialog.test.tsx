@@ -44,7 +44,8 @@ describe('AppointmentDialog', () => {
     expect(html).toContain('name="appointment_id" value="apt-1"')
     expect(html).toContain('Paciente chegou')
     expect(html).toContain('Registrar falta')
-    expect(html).not.toContain('mark_no_show')
+    expect(html).toContain('value="mark_no_show">Registrar falta</option>')
+    expect(html).not.toContain('>mark_no_show<')
   })
 
   it('routes a checked-in patient into care instead of exposing a technical start command', () => {
