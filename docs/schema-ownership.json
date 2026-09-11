@@ -17,119 +17,39 @@
     "signatures"
   ],
   "descriptionAliases": {
-    "appointments": [
-      "appointments",
-      "people"
-    ],
-    "appointments_confirmation": [
-      "appointments",
-      "forms"
-    ],
-    "capability_exchange": [
-      "forms"
-    ],
-    "signatures": [
-      "forms",
-      "signatures"
-    ],
-    "signatures_atomic_submission": [
-      "forms",
-      "signatures"
-    ],
-    "appointment_confirmation": [
-      "appointments"
-    ],
-    "bind_cancellation_legal_version": [
-      "appointments",
-      "forms"
-    ],
-    "capabilities": [
-      "forms"
-    ],
-    "clinical_read_rpc": [
-      "audit",
-      "clinical"
-    ],
-    "document_jobs": [
-      "signatures"
-    ],
-    "extensions": [
-      "platform"
-    ],
-    "events": [
-      "events",
-      "people"
-    ],
-    "fiscal": [
-      "fiscal",
-      "people"
-    ],
-    "legal_terms": [
-      "forms"
-    ],
-    "forms_legal_terms": [
-      "forms",
-      "people"
-    ],
-    "payments": [
-      "receivables"
-    ],
-    "people_receivables": [
-      "people",
-      "receivables"
-    ],
-    "private_storage": [
-      "platform"
-    ],
-    "public_rate_limits": [
-      "platform"
-    ],
-    "queues": [
-      "platform"
-    ],
-    "public_intake_service_role_privileges": [
-      "forms",
-      "signatures"
-    ],
-    "appointments_response_capability": [
-      "forms"
-    ],
-    "appointments_response_service_role_privileges": [
-      "appointments",
-      "people"
-    ],
-    "appointments_atomic_response": [
-      "appointments"
-    ],
-    "signatures_document_delivery": [
-      "signatures"
-    ],
-    "signatures_document_dispatch_runtime": [
-      "signatures"
-    ],
-    "signatures_document_result_atomic": [
-      "signatures"
-    ],
-    "staff_permissions": [
-      "identity"
-    ],
-    "appointments_default_cancellation_policy": [
-      "appointments",
-      "forms"
-    ],
-    "people_audited_creation": [
-      "audit",
-      "people"
-    ],
-    "appointments_audited_service_creation": [
-      "appointments",
-      "audit"
-    ],
-    "receivables_financial_atomic_mutations": [
-      "audit",
-      "payables",
-      "receivables"
-    ]
+    "appointments": ["appointments", "people"],
+    "appointments_confirmation": ["appointments", "forms"],
+    "capability_exchange": ["forms"],
+    "signatures": ["forms", "signatures"],
+    "signatures_atomic_submission": ["forms", "signatures"],
+    "appointment_confirmation": ["appointments"],
+    "bind_cancellation_legal_version": ["appointments", "forms"],
+    "capabilities": ["forms"],
+    "clinical_read_rpc": ["audit", "clinical"],
+    "document_jobs": ["signatures"],
+    "extensions": ["platform"],
+    "events": ["events", "people"],
+    "fiscal": ["fiscal", "people"],
+    "legal_terms": ["forms"],
+    "forms_legal_terms": ["forms", "people"],
+    "payments": ["receivables"],
+    "people_receivables": ["people", "receivables"],
+    "private_storage": ["platform"],
+    "public_rate_limits": ["platform"],
+    "queues": ["platform"],
+    "public_intake_service_role_privileges": ["forms", "signatures"],
+    "appointments_response_capability": ["forms"],
+    "appointments_response_service_role_privileges": ["appointments", "people"],
+    "appointments_atomic_response": ["appointments"],
+    "signatures_document_delivery": ["signatures"],
+    "signatures_document_dispatch_runtime": ["signatures"],
+    "signatures_document_result_atomic": ["signatures"],
+    "staff_permissions": ["identity"],
+    "staff_permission_admin_rpcs": ["audit", "identity"],
+    "appointments_default_cancellation_policy": ["appointments", "forms"],
+    "people_audited_creation": ["audit", "people"],
+    "appointments_audited_service_creation": ["appointments", "audit"],
+    "receivables_financial_atomic_mutations": ["audit", "payables", "receivables"]
   },
   "objects": {
     "clinical.attachments": "clinical",
@@ -185,6 +105,11 @@
     "public.user_permission_overrides": "identity",
     "public.has_permission": "identity",
     "public.list_current_permissions": "identity",
+    "public.list_staff_users": "identity",
+    "public.list_user_access": "identity",
+    "public.set_user_permission_override": "identity",
+    "public.clear_user_permission_override": "identity",
+    "public.upsert_staff_profile": "identity",
     "public.signature_evidence": "signatures",
     "public.sign_form_submission": "signatures",
     "public.services": "appointments",
