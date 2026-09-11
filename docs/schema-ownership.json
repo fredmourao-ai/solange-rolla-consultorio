@@ -110,6 +110,9 @@
     "signatures_document_result_atomic": [
       "signatures"
     ],
+    "staff_permissions": [
+      "identity"
+    ],
     "appointments_default_cancellation_policy": [
       "appointments",
       "forms"
@@ -176,7 +179,12 @@
     "public.payments": "receivables",
     "public.people": "people",
     "public.person_relationships": "people",
+    "public.permission_definitions": "identity",
     "public.profiles": "identity",
+    "public.role_permission_defaults": "identity",
+    "public.user_permission_overrides": "identity",
+    "public.has_permission": "identity",
+    "public.list_current_permissions": "identity",
     "public.signature_evidence": "signatures",
     "public.sign_form_submission": "signatures",
     "public.services": "appointments",

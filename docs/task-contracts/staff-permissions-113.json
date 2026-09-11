@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "status": "approved",
+  "issue": 113,
+  "migration": "20260911010000_staff_permissions.sql",
+  "owners": ["identity"],
+  "objects": [
+    {"name": "public.permission_definitions", "owner": "identity"},
+    {"name": "public.role_permission_defaults", "owner": "identity"},
+    {"name": "public.user_permission_overrides", "owner": "identity"},
+    {"name": "public.profiles", "owner": "identity"},
+    {"name": "public.has_permission", "owner": "identity"},
+    {"name": "public.list_current_permissions", "owner": "identity"}
+  ]
+}
