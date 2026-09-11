@@ -12,7 +12,7 @@ export function MobileNav({
   pathname,
   permissions = [],
 }: {
-  pathname?: string
+  pathname?: string | null
   permissions?: readonly AppPermission[]
 }) {
   const [open, setOpen] = useState(false)
