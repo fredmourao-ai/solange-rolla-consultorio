@@ -1,5 +1,5 @@
 -- owners: identity, audit
--- task-contract: docs/task-contracts/staff-permission-admin-113.json
+-- cross-module-task: docs/task-contracts/staff-permission-admin-113.json
 -- allow-static-routines: true
 
 create or replace function public.list_staff_users()
@@ -32,12 +32,11 @@ begin
     profile.display_name,
     profile.role,
     profile.active,
-    account.email::text,
-    account.last_sign_in_at,
+    (select account.email::text from auth.users as account where account.id = profile.user_id),
+    (select account.last_sign_in_at from auth.users as account where account.id = profile.user_id),
     profile.created_at,
     profile.updated_at
   from public.profiles as profile
-  join auth.users as account on account.id = profile.user_id
   order by profile.active desc, lower(profile.display_name), profile.user_id;
 end;
 $$;
@@ -83,20 +82,38 @@ begin
     definition.clinical,
     definition.requires_aal2,
     definition.sort_order,
-    coalesce(role_default.allowed, false) as role_default,
-    permission_override.allowed as override_allowed,
+    coalesce((
+      select role_default.allowed
+      from public.role_permission_defaults as role_default
+      where role_default.role = target_role
+        and role_default.permission_key = definition.permission_key
+    ), false) as role_default,
+    (
+      select permission_override.allowed
+      from public.user_permission_overrides as permission_override
+      where permission_override.user_id = p_user_id
+        and permission_override.permission_key = definition.permission_key
+    ) as override_allowed,
     case
       when (definition.clinical or definition.permission_key like 'clinical.%')
         and target_role <> 'psychologist_owner'::public.app_role then false
-      else coalesce(permission_override.allowed, role_default.allowed, false)
+      else coalesce(
+        (
+          select permission_override.allowed
+          from public.user_permission_overrides as permission_override
+          where permission_override.user_id = p_user_id
+            and permission_override.permission_key = definition.permission_key
+        ),
+        (
+          select role_default.allowed
+          from public.role_permission_defaults as role_default
+          where role_default.role = target_role
+            and role_default.permission_key = definition.permission_key
+        ),
+        false
+      )
     end as effective_allowed
   from public.permission_definitions as definition
-  left join public.role_permission_defaults as role_default
-    on role_default.role = target_role
-   and role_default.permission_key = definition.permission_key
-  left join public.user_permission_overrides as permission_override
-    on permission_override.user_id = p_user_id
-   and permission_override.permission_key = definition.permission_key
   order by definition.sort_order, definition.permission_key;
 end;
 $$;
@@ -139,6 +156,10 @@ begin
     raise exception 'UNKNOWN_PERMISSION' using errcode = '22023';
   end if;
 
+  if p_allowed and not public.has_permission(p_permission_key) then
+    raise exception 'CANNOT_GRANT_UNHELD_PERMISSION' using errcode = '42501';
+  end if;
+
   if p_allowed and definition_clinical and target_role <> 'psychologist_owner'::public.app_role then
     raise exception 'CLINICAL_ROLE_REQUIRED' using errcode = '42501';
   end if;
@@ -149,16 +170,24 @@ begin
     select exists (
       select 1
       from public.profiles as profile
-      join public.role_permission_defaults as role_default
-        on role_default.role = profile.role
-       and role_default.permission_key = 'permissions.manage'
-      left join public.user_permission_overrides as permission_override
-        on permission_override.user_id = profile.user_id
-       and permission_override.permission_key = 'permissions.manage'
       where profile.user_id <> auth.uid()
         and profile.role = 'psychologist_owner'::public.app_role
         and profile.active
-        and coalesce(permission_override.allowed, role_default.allowed, false)
+        and coalesce(
+          (
+            select permission_override.allowed
+            from public.user_permission_overrides as permission_override
+            where permission_override.user_id = profile.user_id
+              and permission_override.permission_key = 'permissions.manage'
+          ),
+          (
+            select role_default.allowed
+            from public.role_permission_defaults as role_default
+            where role_default.role = profile.role
+              and role_default.permission_key = 'permissions.manage'
+          ),
+          false
+        )
     ) into another_owner_available;
 
     if not another_owner_available then
@@ -221,6 +250,8 @@ as $$
 declare
   target_role public.app_role;
   previous_override boolean;
+  default_allowed boolean;
+  definition_clinical boolean;
 begin
   if not public.has_permission('permissions.manage') then
     raise exception 'PERMISSION_FORBIDDEN' using errcode = '42501';
@@ -235,11 +266,12 @@ begin
     raise exception 'STAFF_USER_NOT_FOUND' using errcode = 'P0002';
   end if;
 
-  if not exists (
-    select 1
-    from public.permission_definitions as definition
-    where definition.permission_key = p_permission_key
-  ) then
+  select (definition.clinical or definition.permission_key like 'clinical.%')
+  into definition_clinical
+  from public.permission_definitions as definition
+  where definition.permission_key = p_permission_key;
+
+  if definition_clinical is null then
     raise exception 'UNKNOWN_PERMISSION' using errcode = '22023';
   end if;
 
@@ -248,6 +280,19 @@ begin
   from public.user_permission_overrides as permission_override
   where permission_override.user_id = p_user_id
     and permission_override.permission_key = p_permission_key;
+
+  select coalesce(role_default.allowed, false)
+  into default_allowed
+  from public.role_permission_defaults as role_default
+  where role_default.role = target_role
+    and role_default.permission_key = p_permission_key;
+
+  if previous_override is false
+    and default_allowed
+    and not (definition_clinical and target_role <> 'psychologist_owner'::public.app_role)
+    and not public.has_permission(p_permission_key) then
+    raise exception 'CANNOT_GRANT_UNHELD_PERMISSION' using errcode = '42501';
+  end if;
 
   delete from public.user_permission_overrides as permission_override
   where permission_override.user_id = p_user_id
@@ -314,9 +359,19 @@ begin
 
   profile_exists := coalesce(profile_exists, false);
 
-  if p_role = 'psychologist_owner'::public.app_role
+  if (p_role = 'psychologist_owner'::public.app_role or previous_role = 'psychologist_owner'::public.app_role)
     and public.current_app_role() <> 'psychologist_owner'::public.app_role then
-    raise exception 'OWNER_ROLE_ASSIGNMENT_FORBIDDEN' using errcode = '42501';
+    raise exception 'OWNER_ROLE_MANAGEMENT_FORBIDDEN' using errcode = '42501';
+  end if;
+
+  if exists (
+    select 1
+    from public.role_permission_defaults as role_default
+    where role_default.role = p_role
+      and role_default.allowed
+      and not public.has_permission(role_default.permission_key)
+  ) then
+    raise exception 'CANNOT_ASSIGN_ROLE_WITH_UNHELD_PERMISSION' using errcode = '42501';
   end if;
 
   if profile_exists
@@ -326,16 +381,24 @@ begin
     select exists (
       select 1
       from public.profiles as profile
-      join public.role_permission_defaults as role_default
-        on role_default.role = profile.role
-       and role_default.permission_key = 'permissions.manage'
-      left join public.user_permission_overrides as permission_override
-        on permission_override.user_id = profile.user_id
-       and permission_override.permission_key = 'permissions.manage'
       where profile.user_id <> p_user_id
         and profile.role = 'psychologist_owner'::public.app_role
         and profile.active
-        and coalesce(permission_override.allowed, role_default.allowed, false)
+        and coalesce(
+          (
+            select permission_override.allowed
+            from public.user_permission_overrides as permission_override
+            where permission_override.user_id = profile.user_id
+              and permission_override.permission_key = 'permissions.manage'
+          ),
+          (
+            select role_default.allowed
+            from public.role_permission_defaults as role_default
+            where role_default.role = profile.role
+              and role_default.permission_key = 'permissions.manage'
+          ),
+          false
+        )
     ) into another_owner_available;
 
     if not another_owner_available then
