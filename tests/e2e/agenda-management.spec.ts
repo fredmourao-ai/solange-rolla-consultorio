@@ -51,7 +51,7 @@ test('staff requests and completes a reschedule entirely through the UI while pr
 
   await page.goto('/agenda?view=month&date=2035-01-16', { waitUntil: 'domcontentloaded' })
   const item = page.locator('li.appointment-calendar__item').filter({ hasText: name })
-  await item.getByText('Ver detalhes').click()
+  await item.getByText('Abrir consulta').click()
   let statusForm = item.getByRole('form', { name: 'Alterar status da consulta' })
   await statusForm.locator('select[name="command"]').selectOption('send_confirmation')
   await statusForm.getByRole('button', { name: 'Aplicar' }).click()
@@ -59,7 +59,7 @@ test('staff requests and completes a reschedule entirely through the UI while pr
 
   await page.goto('/agenda?view=month&date=2035-01-16', { waitUntil: 'domcontentloaded' })
   const pendingItem = page.locator('li.appointment-calendar__item').filter({ hasText: name })
-  await pendingItem.getByText('Ver detalhes').click()
+  await pendingItem.getByText('Abrir consulta').click()
   statusForm = pendingItem.getByRole('form', { name: 'Alterar status da consulta' })
   await statusForm.locator('select[name="command"]').selectOption('request_reschedule')
   await statusForm.getByRole('button', { name: 'Aplicar' }).click()
