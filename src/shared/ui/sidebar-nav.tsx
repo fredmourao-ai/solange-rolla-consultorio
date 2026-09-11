@@ -36,16 +36,18 @@ export function SidebarNav({
   pathname = '/dashboard',
   permissions = [],
 }: {
-  pathname?: string
+  pathname?: string | null
   permissions?: readonly AppPermission[]
 }) {
   const effective = new Set(permissions)
+  const currentPath = pathname ?? '/dashboard'
+
   return <nav className="sidebar-nav" aria-label="Navegação principal">
     {items.filter((item) => canSee(item, effective)).map((item) => (
       <Link
         key={item.href}
         href={item.href}
-        aria-current={pathname === item.href || pathname.startsWith(`${item.href}/`) ? 'page' : undefined}
+        aria-current={currentPath === item.href || currentPath.startsWith(`${item.href}/`) ? 'page' : undefined}
       >
         {item.label}
       </Link>
