@@ -32,7 +32,10 @@ function formatDate(value: string | null) {
 export default async function UsersPage({ searchParams }: { searchParams: Promise<{ status?: string; error?: string }> }) {
   const session = await getStaffSession()
   if (!session) redirect('/login')
-  if (!hasSessionPermission(session, 'users.read') && !hasSessionPermission(session, 'permissions.manage')) redirect('/dashboard')
+  const canOpenUsers = hasSessionPermission(session, 'users.read')
+    || hasSessionPermission(session, 'users.manage')
+    || hasSessionPermission(session, 'permissions.manage')
+  if (!canOpenUsers) redirect('/dashboard')
 
   const client = await createServerSupabaseClient()
   const { data, error } = await client.rpc('list_staff_users' as never)
@@ -100,7 +103,7 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
             <span className={`status-badge ${user.active ? 'status-badge--success' : 'status-badge--neutral'}`}>{user.active ? 'Ativo' : 'Inativo'}</span>
           </div>
           <small>Último acesso: {formatDate(user.lastSignInAt)}</small>
-          <Link className="ui-button ui-button--outline" href={`/usuarios/${user.userId}`}>Gerenciar acessos</Link>
+          <Link className="ui-button ui-button--outline" href={`/usuarios/${user.userId}`}>Gerenciar</Link>
         </li>)}
       </ul>}
     </section>
