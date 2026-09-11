@@ -61,7 +61,7 @@ export function AppointmentCalendar({ items, redirectTo, changeStatusAction, cha
           <small>Cancelamento sem cobrança até {dateTime.format(new Date(item.cancellationDeadlineAt))}</small>
         </div>
         <details>
-          <summary>Abrir consulta</summary>
+          <summary>Ver detalhes</summary>
           <AppointmentDialog
             appointment={{
               id: item.id,
