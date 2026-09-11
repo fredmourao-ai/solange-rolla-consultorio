@@ -42,6 +42,7 @@ export function AppointmentDialog({ appointment, redirectTo, changeStatusAction,
   changeStatusAction: (formData: FormData) => Promise<void>
   chargeAction: (formData: FormData) => Promise<void>
 }) {
+  const canStartHere = appointment.canStartCare && appointment.availableCommands.includes('start')
   const statusCommands = appointment.availableCommands.filter((command) => command !== 'start')
 
   return <section className="appointment-dialog" aria-label="Detalhes da consulta">
@@ -60,9 +61,12 @@ export function AppointmentDialog({ appointment, redirectTo, changeStatusAction,
 
     <div className="appointment-dialog__quick-actions">
       {appointment.canOpenPatient ? <Link className="ui-button ui-button--outline" href={`/pessoas/${appointment.personId}`}>Abrir paciente</Link> : null}
-      {appointment.canStartCare && appointment.availableCommands.includes('start')
-        ? <Link className="ui-button ui-button--primary" href={`/clinico/${appointment.personId}?appointmentId=${appointment.id}`}>Iniciar atendimento</Link>
-        : null}
+      {canStartHere ? <form action={changeStatusAction}>
+        <input type="hidden" name="appointment_id" value={appointment.id} />
+        <input type="hidden" name="redirect_to" value={redirectTo} />
+        <input type="hidden" name="command" value="start" />
+        <button className="ui-button ui-button--primary" type="submit">Iniciar atendimento</button>
+      </form> : null}
     </div>
 
     {statusCommands.length > 0 && (
