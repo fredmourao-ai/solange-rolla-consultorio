@@ -1,5 +1,7 @@
 export { APP_ROLES, isAppRole } from './domain/role'
 export type { AppRole } from './domain/role'
+export { APP_PERMISSIONS, isAppPermission } from './domain/permission'
+export type { AppPermission, PermissionArea } from './domain/permission'
 export { authorizeStaffSession, AuthorizationError, requireRole } from './application/require-role'
 export type { StaffSession } from './application/require-role'
 export { getStaffSession } from './application/get-session'
