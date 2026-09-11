@@ -8,6 +8,15 @@ export type {
   ClinicalRecord,
   ClinicalRecordInsert,
 } from './domain/clinical-record'
+export {
+  CLINICAL_KIND_LABELS,
+  parseClinicalPayload,
+  serializeSessionEvolution,
+} from './domain/clinical-content'
+export type {
+  ClinicalRecordKind,
+  SessionEvolutionPayload,
+} from './domain/clinical-content'
 export { listClinicalRecords } from './application/list-clinical-records'
 export type {
   ClinicalRecordMetadata,
