@@ -76,13 +76,16 @@ jobs:
             // re-validation: GITHUB_TOKEN pushes never fire a `push` event,
             // see pr-auto-merge.yml). Either proves this exact SHA was
             // validated on main, which is what actually matters here.
-            const query = new URLSearchParams({ head_sha: sha, per_page: '100' })
-            const payload = await get(`/actions/runs?${query}`)
-            const acceptedEvents = new Set(['push', 'workflow_dispatch'])
+            const acceptedEvents = ['push', 'workflow_dispatch']
+            const payloads = await Promise.all(acceptedEvents.map(async (event) => {
+              const query = new URLSearchParams({ head_sha: sha, event, per_page: '100' })
+              return get(`/actions/runs?${query}`)
+            }))
+            const workflowRuns = payloads.flatMap((payload) => payload.workflow_runs)
             const notReady = []
             for (const name of required) {
-              const runs = payload.workflow_runs
-                .filter((run) => run.name === name && run.head_branch === 'main' && acceptedEvents.has(run.event))
+              const runs = workflowRuns
+                .filter((run) => run.name === name && run.head_branch === 'main')
                 .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
               const latest = runs[0]
               if (!latest || latest.status !== 'completed' || latest.conclusion !== 'success') {
