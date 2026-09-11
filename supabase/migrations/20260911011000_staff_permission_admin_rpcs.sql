@@ -139,6 +139,8 @@ begin
     raise exception 'PERMISSION_FORBIDDEN' using errcode = '42501';
   end if;
 
+  perform pg_advisory_xact_lock(hashtextextended('solange:staff-access-admin', 0));
+
   select profile.role
   into target_role
   from public.profiles as profile
@@ -165,13 +167,13 @@ begin
     raise exception 'CLINICAL_ROLE_REQUIRED' using errcode = '42501';
   end if;
 
-  if p_user_id = auth.uid()
-    and p_permission_key = 'permissions.manage'
-    and not p_allowed then
+  if p_permission_key = 'permissions.manage'
+    and not p_allowed
+    and target_role = 'psychologist_owner'::public.app_role then
     select exists (
       select 1
       from public.profiles as profile
-      where profile.user_id <> auth.uid()
+      where profile.user_id <> p_user_id
         and profile.role = 'psychologist_owner'::public.app_role
         and profile.active
         and coalesce(
@@ -257,6 +259,8 @@ begin
   if not public.has_permission('permissions.manage') then
     raise exception 'PERMISSION_FORBIDDEN' using errcode = '42501';
   end if;
+
+  perform pg_advisory_xact_lock(hashtextextended('solange:staff-access-admin', 0));
 
   select profile.role
   into target_role
@@ -344,6 +348,8 @@ begin
   if not public.has_permission('users.manage') then
     raise exception 'PERMISSION_FORBIDDEN' using errcode = '42501';
   end if;
+
+  perform pg_advisory_xact_lock(hashtextextended('solange:staff-access-admin', 0));
 
   if p_display_name is null or length(btrim(p_display_name)) not between 1 and 160 then
     raise exception 'INVALID_DISPLAY_NAME' using errcode = '22023';
