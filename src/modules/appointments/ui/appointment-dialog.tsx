@@ -61,12 +61,7 @@ export function AppointmentDialog({ appointment, redirectTo, changeStatusAction,
 
     <div className="appointment-dialog__quick-actions">
       {appointment.canOpenPatient ? <Link className="ui-button ui-button--outline" href={`/pessoas/${appointment.personId}`}>Abrir paciente</Link> : null}
-      {canStartHere ? <form action={changeStatusAction}>
-        <input type="hidden" name="appointment_id" value={appointment.id} />
-        <input type="hidden" name="redirect_to" value={redirectTo} />
-        <input type="hidden" name="command" value="start" />
-        <button className="ui-button ui-button--primary" type="submit">Iniciar atendimento</button>
-      </form> : null}
+      {canStartHere ? <Link className="ui-button ui-button--primary" href={`/atendimentos/${appointment.id}`}>Iniciar atendimento</Link> : null}
     </div>
 
     {statusCommands.length > 0 && (
