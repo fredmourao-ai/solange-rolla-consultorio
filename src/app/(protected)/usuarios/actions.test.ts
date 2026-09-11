@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isAppPermission, isAppRole } from '@/modules/identity/public'
+import { isAppPermission, isAppRole } from '../../../modules/identity/public'
 
 describe('users and access action inputs', () => {
   it('accepts only known staff roles', () => {
