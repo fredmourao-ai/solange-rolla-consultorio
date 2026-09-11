@@ -1,6 +1,6 @@
 begin;
 
-select plan(42);
+select plan(48);
 
 select has_function('public', 'list_staff_users', 'staff list RPC exists');
 select has_function('public', 'list_user_access', array['uuid'], 'user access RPC exists');
@@ -41,7 +41,7 @@ select throws_ok($$ select * from public.list_user_access('f3000000-0000-4000-80
 select throws_ok($$ select public.set_user_permission_override('f3000000-0000-4000-8000-000000000003','patients.read',false) $$,'42501','PERMISSION_FORBIDDEN','secretary cannot change permissions by default');
 
 select set_config('request.jwt.claims','{"sub":"f3000000-0000-4000-8000-000000000001","aal":"aal1","role":"authenticated"}',true);
-select is((select count(*)::integer from public.list_staff_users()),4,'owner may list staff at AAL1 via users.read');
+select is((select count(*)::integer from public.list_staff_users() where user_id in ('f3000000-0000-4000-8000-000000000001','f3000000-0000-4000-8000-000000000002','f3000000-0000-4000-8000-000000000003','f3000000-0000-4000-8000-000000000004')),4,'owner may list the scenario staff at AAL1 via users.read');
 select throws_ok($$ select * from public.list_user_access('f3000000-0000-4000-8000-000000000003') $$,'42501','PERMISSION_FORBIDDEN','permission matrix requires AAL2');
 
 select set_config('request.jwt.claims','{"sub":"f3000000-0000-4000-8000-000000000001","aal":"aal2","role":"authenticated"}',true);
@@ -74,6 +74,12 @@ select throws_ok($$ select public.upsert_staff_profile('f3000000-0000-4000-8000-
 select throws_ok($$ select public.upsert_staff_profile('f3000000-0000-4000-8000-000000000001','Owner Principal','secretary',true) $$,'42501','OWNER_ROLE_MANAGEMENT_FORBIDDEN','non-owner administrator cannot demote an owner');
 select throws_ok($$ select public.upsert_staff_profile('f3000000-0000-4000-8000-000000000005','Nova Contabilidade','accounting',true) $$,'42501','CANNOT_ASSIGN_ROLE_WITH_UNHELD_PERMISSION','delegated admin cannot assign a role whose defaults exceed her own access');
 
+reset role;
+update public.profiles
+set active = false
+where role = 'psychologist_owner'
+  and user_id not in ('f3000000-0000-4000-8000-000000000001','f3000000-0000-4000-8000-000000000002');
+set local role authenticated;
 select set_config('request.jwt.claims','{"sub":"f3000000-0000-4000-8000-000000000001","aal":"aal2","role":"authenticated"}',true);
 select lives_ok($$ select public.upsert_staff_profile('f3000000-0000-4000-8000-000000000002','Owner Reserva','psychologist_owner',false) $$,'owner may deactivate another owner while one owner remains');
 
