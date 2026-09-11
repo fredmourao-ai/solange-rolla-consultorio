@@ -2,25 +2,38 @@ begin;
 
 select plan(3);
 
-select col_is_check('public', 'appointments', 'status', 'appointment status remains check constrained');
+select ok(
+  exists(
+    select 1
+    from pg_constraint
+    where conname = 'appointments_status_check'
+      and conrelid = 'public.appointments'::regclass
+      and contype = 'c'
+  ),
+  'appointment status remains check constrained'
+);
 
-select like(
-  pg_get_constraintdef(oid),
-  '%checked_in%',
+select ok(
+  exists(
+    select 1
+    from pg_constraint
+    where conname = 'appointments_status_check'
+      and conrelid = 'public.appointments'::regclass
+      and pg_get_constraintdef(oid) like '%checked_in%'
+  ),
   'appointment status constraint accepts patient arrival state'
-)
-from pg_constraint
-where conname = 'appointments_status_check'
-  and conrelid = 'public.appointments'::regclass;
+);
 
-select like(
-  pg_get_constraintdef(oid),
-  '%in_progress%',
+select ok(
+  exists(
+    select 1
+    from pg_constraint
+    where conname = 'appointments_status_check'
+      and conrelid = 'public.appointments'::regclass
+      and pg_get_constraintdef(oid) like '%in_progress%'
+  ),
   'appointment status constraint accepts in-progress care state'
-)
-from pg_constraint
-where conname = 'appointments_status_check'
-  and conrelid = 'public.appointments'::regclass;
+);
 
 select * from finish();
 rollback;
