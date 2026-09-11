@@ -47,7 +47,7 @@ describe('AppointmentDialog', () => {
     expect(html).not.toContain('mark_no_show')
   })
 
-  it('routes a checked-in patient into care instead of exposing a technical start command', () => {
+  it('routes a checked-in patient into the contextual care workspace', () => {
     const html = renderToStaticMarkup(<AppointmentDialog
       appointment={{ ...base, availableCommands: ['start'], chargeable: false, canStartCare: true }}
       redirectTo="/agenda?view=week&date=2026-08-31"
@@ -55,8 +55,8 @@ describe('AppointmentDialog', () => {
       chargeAction={noop}
     />)
     expect(html).toContain('Iniciar atendimento')
-    expect(html).toContain('href="/clinico/person-1?appointmentId=apt-1"')
-    expect(html).not.toContain('name="command"')
+    expect(html).toContain('href="/atendimentos/apt-1"')
+    expect(html).not.toContain('ID do atendimento')
   })
 
   it('offers the charge action only when authorized and chargeable', () => {
