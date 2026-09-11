@@ -292,6 +292,7 @@ jobs:
 
           python3 - "$RUNTIME_ENV" <<'PY'
           import pathlib, subprocess, sys
+          from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
           values = {}
           for raw in pathlib.Path(sys.argv[1]).read_text().splitlines():
               if raw and not raw.startswith('#') and '=' in raw:
@@ -300,6 +301,11 @@ jobs:
           db_url = values.get('DB_URL')
           if not db_url:
               raise SystemExit('DB_URL missing from staging runtime env')
+          parsed = urlsplit(db_url)
+          if parsed.hostname in {'127.0.0.1', 'localhost'}:
+              query = dict(parse_qsl(parsed.query, keep_blank_values=True))
+              query['sslmode'] = 'disable'
+              db_url = urlunsplit((parsed.scheme, parsed.netloc, parsed.path, urlencode(query), parsed.fragment))
           result = subprocess.run(['npx', 'supabase@2.115.0', 'db', 'push', '--db-url', db_url, '--include-all', '--yes'])
           if result.returncode:
               print('staging migration push failed', file=sys.stderr)

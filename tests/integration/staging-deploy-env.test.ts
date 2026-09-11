@@ -13,6 +13,12 @@ describe('staging deploy environment', () => {
     expect(deploy).toContain("'SUPABASE_STAGING_PROJECT_REF': os.environ['SUPABASE_STAGING_PROJECT_REF']")
     expect(deploy).toContain("'SUPABASE_PRODUCTION_PROJECT_REF': os.environ['SUPABASE_PRODUCTION_PROJECT_REF']")
   })
+
+  it('disables TLS only for the loopback homologation database push', () => {
+    const deploy = workflow.slice(workflow.indexOf('- name: Deploy exact SHA to homologation'))
+    expect(deploy).toContain("hostname in {'127.0.0.1', 'localhost'}")
+    expect(deploy).toContain("query['sslmode'] = 'disable'")
+  })
 })
 
 describe('staging deploy live-channel flags', () => {
