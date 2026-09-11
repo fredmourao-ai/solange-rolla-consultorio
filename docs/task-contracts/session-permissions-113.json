@@ -1,0 +1,14 @@
+{
+  "issue": 113,
+  "task": "Onda 0 / Task 3",
+  "scope": "load effective permissions into StaffSession and authorize by capability",
+  "owners": ["identity"],
+  "files": [
+    "src/modules/identity/application/get-session.ts",
+    "src/modules/identity/application/require-role.ts",
+    "src/modules/identity/public.ts",
+    "src/modules/identity/application/get-session.test.ts",
+    "src/modules/identity/application/require-permission.test.ts"
+  ],
+  "security": "fail closed on permission load errors or malformed permission rows"
+}
