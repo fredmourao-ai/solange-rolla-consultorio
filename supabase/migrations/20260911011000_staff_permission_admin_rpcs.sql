@@ -21,6 +21,7 @@ as $$
 begin
   if not (
     public.has_permission('users.read')
+    or public.has_permission('users.manage')
     or public.has_permission('permissions.manage')
   ) then
     raise exception 'PERMISSION_FORBIDDEN' using errcode = '42501';
