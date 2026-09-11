@@ -50,6 +50,10 @@ function fiscalReady(cpf: string | null, fiscalAddress: unknown) {
   return ['street', 'number', 'district', 'city', 'state', 'postalCode'].every((key) => Boolean(String(address[key] ?? '').trim()))
 }
 
+async function getRequestTimestamp() {
+  return Date.now()
+}
+
 export default async function PatientHubPage({
   params,
   searchParams,
@@ -118,7 +122,7 @@ export default async function PatientHubPage({
     receivables = data ?? []
   }
 
-  const now = Date.now()
+  const now = await getRequestTimestamp()
   const ascending = [...appointments].sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at))
   const nextAppointment = ascending.find((appointment) => Date.parse(appointment.starts_at) >= now && !appointment.status.startsWith('cancelled'))
   const previousAppointment = [...ascending].reverse().find((appointment) => Date.parse(appointment.starts_at) < now)
