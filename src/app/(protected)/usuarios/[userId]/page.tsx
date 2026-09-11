@@ -49,14 +49,14 @@ export default async function UserAccessPage({
   const session = await getStaffSession()
   if (!session) redirect('/login')
   if (session.aal !== 'aal2') redirect(`/seguranca?reason=mfa_required&returnTo=${encodeURIComponent(`/usuarios/${userId}`)}`)
-  if (!hasSessionPermission(session, 'permissions.manage')) redirect('/usuarios')
+
+  const canManageProfile = hasSessionPermission(session, 'users.manage')
+  const canManagePermissions = hasSessionPermission(session, 'permissions.manage')
+  if (!canManageProfile && !canManagePermissions) redirect('/usuarios')
 
   const client = await createServerSupabaseClient()
-  const [{ data: usersData, error: usersError }, { data: accessData, error: accessError }] = await Promise.all([
-    client.rpc('list_staff_users' as never),
-    client.rpc('list_user_access' as never, { p_user_id: userId } as never),
-  ])
-  if (usersError || accessError) throw new Error('STAFF_ACCESS_LOAD_FAILED')
+  const { data: usersData, error: usersError } = await client.rpc('list_staff_users' as never)
+  if (usersError) throw new Error('STAFF_LIST_FAILED')
 
   const rawUser = ((usersData ?? []) as unknown as RawStaffUser[]).find((row) => row.user_id === userId)
   if (!rawUser || !isAppRole(rawUser.role)) notFound()
@@ -69,22 +69,28 @@ export default async function UserAccessPage({
     email: rawUser.email,
     lastSignInAt: rawUser.last_sign_in_at,
   }
-  const permissions: UserAccessRow[] = ((accessData ?? []) as unknown as RawAccessRow[])
-    .filter((row) => isAppPermission(row.permission_key))
-    .map((row) => ({
-      permissionKey: row.permission_key as UserAccessRow['permissionKey'],
-      area: row.area,
-      label: row.label,
-      clinical: row.clinical,
-      requiresAal2: row.requires_aal2,
-      sortOrder: row.sort_order,
-      roleDefault: row.role_default,
-      overrideAllowed: row.override_allowed,
-      effectiveAllowed: row.effective_allowed,
-    }))
+
+  let permissions: UserAccessRow[] = []
+  if (canManagePermissions) {
+    const { data: accessData, error: accessError } = await client.rpc('list_user_access' as never, { p_user_id: userId } as never)
+    if (accessError) throw new Error('STAFF_ACCESS_LOAD_FAILED')
+    permissions = ((accessData ?? []) as unknown as RawAccessRow[])
+      .filter((row) => isAppPermission(row.permission_key))
+      .map((row) => ({
+        permissionKey: row.permission_key as UserAccessRow['permissionKey'],
+        area: row.area,
+        label: row.label,
+        clinical: row.clinical,
+        requiresAal2: row.requires_aal2,
+        sortOrder: row.sort_order,
+        roleDefault: row.role_default,
+        overrideAllowed: row.override_allowed,
+        effectiveAllowed: row.effective_allowed,
+      }))
+  }
+
   const search = await searchParams
   const message = feedback(search)
-  const canManageProfile = hasSessionPermission(session, 'users.manage')
 
   return <>
     <PageHeader
@@ -97,7 +103,7 @@ export default async function UserAccessPage({
 
     {canManageProfile ? <Card>
       <CardTitle>Perfil do usuário</CardTitle>
-      <CardDescription>O perfil-base define os acessos iniciais; exceções individuais são configuradas abaixo.</CardDescription>
+      <CardDescription>O perfil-base define os acessos iniciais; exceções individuais são configuradas separadamente.</CardDescription>
       <form action={updateStaffProfileAction} className="settings-form">
         <input type="hidden" name="user_id" value={user.userId} />
         <div className="form-field">
@@ -120,6 +126,8 @@ export default async function UserAccessPage({
       </form>
     </Card> : null}
 
-    <UserAccessEditor user={user} permissions={permissions} saveAction={saveUserPermissionAction} />
+    {canManagePermissions
+      ? <UserAccessEditor user={user} permissions={permissions} saveAction={saveUserPermissionAction} />
+      : <Card><CardTitle>Acessos individuais</CardTitle><CardDescription>Seu usuário não tem autorização para alterar permissões por rotina.</CardDescription></Card>}
   </>
 }
