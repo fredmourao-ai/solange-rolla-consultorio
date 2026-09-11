@@ -1,6 +1,6 @@
 begin;
 
-select plan(73);
+select plan(133);
 
 select has_table('public', 'permission_definitions', 'permission definitions table exists');
 select has_table('public', 'role_permission_defaults', 'role permission defaults table exists');
@@ -72,7 +72,7 @@ select results_eq(
     ('appointments.blocks.manage'), ('appointments.cancel'), ('appointments.checkin'),
     ('appointments.confirm'), ('appointments.create'), ('appointments.no_show'),
     ('appointments.read'), ('appointments.reschedule'), ('appointments.update'),
-    ('documents.read'), ('documents.send'), ('events.manage'), ('events.read'),
+    ('documents.create'), ('documents.read'), ('documents.send'), ('events.manage'), ('events.read'),
     ('finance.read'), ('finance.receive'), ('fiscal.issue'), ('fiscal.read'),
     ('forms.read'), ('forms.send'), ('messaging.read'), ('messaging.send'),
     ('patients.create'), ('patients.read'), ('patients.relationships.manage'),
@@ -188,10 +188,12 @@ select is(public.has_permission('users.manage'), true, 'owner at AAL2 receives c
 select is((select count(*)::integer from public.list_current_permissions() where permission_key = 'clinical.read'), 1, 'owner permission listing includes clinical access at AAL2');
 select is((select count(*)::integer from public.role_permission_defaults), 138, 'owner at AAL2 can read role defaults');
 select is((select count(*)::integer from public.user_permission_overrides), 3, 'owner at AAL2 can read overrides');
-select lives_ok(
+select throws_ok(
   $$ insert into public.user_permission_overrides (user_id, permission_key, allowed, changed_by_user_id)
      values ('f2000000-0000-4000-8000-000000000003', 'finance.read', false, 'f2000000-0000-4000-8000-000000000001') $$,
-  'active owner at AAL2 can write an attributed override'
+  '42501',
+  null,
+  'active owner at AAL2 cannot write an attributed override directly'
 );
 select throws_ok(
   $$ insert into public.user_permission_overrides (user_id, permission_key, allowed, changed_by_user_id)
@@ -201,5 +203,99 @@ select throws_ok(
   'owner cannot spoof override attribution'
 );
 
+
+-- Task 2 exposes no interactive mutation path, including to an AAL2 owner.
+select ok(not has_table_privilege('authenticated', 'public.' || table_name, privilege),
+  'authenticated has no ' || privilege || ' grant on ' || table_name)
+from (values ('permission_definitions'), ('role_permission_defaults'), ('user_permission_overrides')) as tables(table_name)
+cross join (values ('INSERT'), ('UPDATE'), ('DELETE')) as privileges(privilege);
+select is((select count(*)::integer from pg_policies
+  where schemaname = 'public'
+    and tablename in ('permission_definitions', 'role_permission_defaults', 'user_permission_overrides')
+    and cmd <> 'SELECT'), 0, 'permission tables have only read policies');
+select throws_ok($$ insert into public.permission_definitions (permission_key, area, label, sort_order) values ('test.owner', 'test', 'Synthetic', 9003) $$, '42501', null, 'owner AAL2 cannot insert permission_definitions');
+select throws_ok($$ update public.permission_definitions set clinical = false, requires_aal2 = false where permission_key = 'clinical.read' $$, '42501', null, 'owner AAL2 cannot update permission_definitions');
+select throws_ok($$ delete from public.permission_definitions where permission_key = 'clinical.read' $$, '42501', null, 'owner AAL2 cannot delete permission_definitions');
+select throws_ok($$ insert into public.role_permission_defaults (role, permission_key, allowed) values ('secretary', 'clinical.read', true) $$, '42501', null, 'owner AAL2 cannot insert role_permission_defaults');
+select throws_ok($$ update public.role_permission_defaults set allowed = true where role = 'secretary' and permission_key = 'clinical.read' $$, '42501', null, 'owner AAL2 cannot update role_permission_defaults');
+select throws_ok($$ delete from public.role_permission_defaults where role = 'secretary' and permission_key = 'clinical.read' $$, '42501', null, 'owner AAL2 cannot delete role_permission_defaults');
+select throws_ok($$ insert into public.user_permission_overrides (user_id, permission_key, allowed, changed_by_user_id) values ('f2000000-0000-4000-8000-000000000001', 'patients.read', true, 'f2000000-0000-4000-8000-000000000001') $$, '42501', null, 'owner AAL2 cannot insert user_permission_overrides');
+select throws_ok($$ update public.user_permission_overrides set allowed = true where user_id = 'f2000000-0000-4000-8000-000000000001' and permission_key = 'permissions.manage' $$, '42501', null, 'owner AAL2 cannot update user_permission_overrides');
+select throws_ok($$ delete from public.user_permission_overrides where user_id = 'f2000000-0000-4000-8000-000000000001' and permission_key = 'permissions.manage' $$, '42501', null, 'owner AAL2 cannot delete user_permission_overrides');
+
+reset role;
+insert into public.user_permission_overrides (user_id, permission_key, allowed, changed_by_user_id)
+values ('f2000000-0000-4000-8000-000000000001', 'permissions.manage', false, 'f2000000-0000-4000-8000-000000000001');
+set local role authenticated;
+select is(public.has_permission('permissions.manage'), false, 'owner management deny is effective');
+select throws_ok($$ insert into public.permission_definitions (permission_key, area, label, sort_order) values ('test.owner', 'test', 'Synthetic', 9003) $$, '42501', null, 'owner AAL2 with management denied cannot insert permission_definitions');
+select throws_ok($$ update public.permission_definitions set clinical = false, requires_aal2 = false where permission_key = 'clinical.read' $$, '42501', null, 'owner AAL2 with management denied cannot update permission_definitions');
+select throws_ok($$ delete from public.permission_definitions where permission_key = 'clinical.read' $$, '42501', null, 'owner AAL2 with management denied cannot delete permission_definitions');
+select throws_ok($$ insert into public.role_permission_defaults (role, permission_key, allowed) values ('secretary', 'clinical.read', true) $$, '42501', null, 'owner AAL2 with management denied cannot insert role_permission_defaults');
+select throws_ok($$ update public.role_permission_defaults set allowed = true where role = 'secretary' and permission_key = 'clinical.read' $$, '42501', null, 'owner AAL2 with management denied cannot update role_permission_defaults');
+select throws_ok($$ delete from public.role_permission_defaults where role = 'secretary' and permission_key = 'clinical.read' $$, '42501', null, 'owner AAL2 with management denied cannot delete role_permission_defaults');
+select throws_ok($$ insert into public.user_permission_overrides (user_id, permission_key, allowed, changed_by_user_id) values ('f2000000-0000-4000-8000-000000000001', 'patients.read', true, 'f2000000-0000-4000-8000-000000000001') $$, '42501', null, 'owner AAL2 with management denied cannot insert user_permission_overrides');
+select throws_ok($$ update public.user_permission_overrides set allowed = true where user_id = 'f2000000-0000-4000-8000-000000000001' and permission_key = 'permissions.manage' $$, '42501', null, 'owner AAL2 with management denied cannot update user_permission_overrides');
+select throws_ok($$ delete from public.user_permission_overrides where user_id = 'f2000000-0000-4000-8000-000000000001' and permission_key = 'permissions.manage' $$, '42501', null, 'owner AAL2 with management denied cannot delete user_permission_overrides');
+
+select is(public.has_permission('permissions.manage'), false, 'direct writes cannot restore owner management');
+reset role;
+-- Privileged synthetic setup: explicit allows for BOTH non-clinical roles.
+insert into public.user_permission_overrides (user_id, permission_key, allowed, changed_by_user_id)
+select profile.user_id, definition.permission_key, true, 'f2000000-0000-4000-8000-000000000001'::uuid
+from public.profiles as profile cross join public.permission_definitions as definition
+where profile.user_id in ('f2000000-0000-4000-8000-000000000002', 'f2000000-0000-4000-8000-000000000003')
+  and definition.permission_key like 'clinical.%'
+on conflict (user_id, permission_key) do update set allowed = true;
+set local role authenticated;
+
+select set_config('request.jwt.claims', '{"sub":"f2000000-0000-4000-8000-000000000002","aal":"aal2","role":"authenticated"}', true);
+select is(public.has_permission(permission_key), false, 'secretary AAL2 explicit allow denied: ' || permission_key)
+from public.permission_definitions where permission_key like 'clinical.%';
+select is((select count(*)::integer from public.list_current_permissions() where permission_key like 'clinical.%'), 0,
+  'secretary AAL2 listing excludes all clinical allows');
+
+select set_config('request.jwt.claims', '{"sub":"f2000000-0000-4000-8000-000000000003","aal":"aal2","role":"authenticated"}', true);
+select is(public.has_permission(permission_key), false, 'accounting AAL2 explicit allow denied: ' || permission_key)
+from public.permission_definitions where permission_key like 'clinical.%';
+select is((select count(*)::integer from public.list_current_permissions() where permission_key like 'clinical.%'), 0,
+  'accounting AAL2 listing excludes all clinical allows');
+
+reset role;
+-- Misconfigured migration-owned metadata must not weaken the clinical prefix barrier.
+update public.permission_definitions set clinical = false, requires_aal2 = false
+where permission_key like 'clinical.%';
+set local role authenticated;
+
+select set_config('request.jwt.claims', '{"sub":"f2000000-0000-4000-8000-000000000002","aal":"aal2","role":"authenticated"}', true);
+select is(public.has_permission(permission_key), false, 'secretary AAL2 explicit allow denied despite false flags: ' || permission_key)
+from public.permission_definitions where permission_key like 'clinical.%';
+select is((select count(*)::integer from public.list_current_permissions() where permission_key like 'clinical.%'), 0,
+  'secretary AAL2 listing excludes all clinical allows despite false flags');
+
+select set_config('request.jwt.claims', '{"sub":"f2000000-0000-4000-8000-000000000003","aal":"aal2","role":"authenticated"}', true);
+select is(public.has_permission(permission_key), false, 'accounting AAL2 explicit allow denied despite false flags: ' || permission_key)
+from public.permission_definitions where permission_key like 'clinical.%';
+select is((select count(*)::integer from public.list_current_permissions() where permission_key like 'clinical.%'), 0,
+  'accounting AAL2 listing excludes all clinical allows despite false flags');
+
+select set_config('request.jwt.claims', '{"sub":"f2000000-0000-4000-8000-000000000002","aal":"aal2","role":"authenticated"}', true);
+select is(public.has_permission('documents.create'), true, 'secretary can create administrative documents by default');
+select set_config('request.jwt.claims', '{"sub":"f2000000-0000-4000-8000-000000000001","aal":"aal1","role":"authenticated"}', true);
+select is(public.has_permission('clinical.read'), false, 'clinical prefix requires AAL2 even with false flags');
+
+-- current_aal currently normalizes missing claims to aal1. Exercise a real NULL
+-- helper result transactionally so this regression remains covered independently.
+reset role;
+create or replace function public.current_aal()
+returns text language sql stable security definer set search_path = public, auth
+as $$ select null::text $$;
+set local role authenticated;
+select is(public.current_aal(), null::text, 'NULL AAL regression setup returns NULL');
+select is(public.has_permission('finance.refund'), false, 'requires_aal2 fails closed for NULL current_aal');
+select is(public.has_permission('clinical.read'), false, 'clinical prefix fails closed for NULL current_aal');
+select is((select count(*)::integer from public.list_current_permissions()
+  where permission_key in ('finance.refund', 'clinical.read')), 0, 'listing excludes permissions requiring AAL2 when AAL is NULL');
+reset role;
 select * from finish();
 rollback;

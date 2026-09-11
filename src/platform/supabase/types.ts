@@ -1435,6 +1435,36 @@ export type Database = {
         }
         Relationships: []
       }
+      permission_definitions: {
+        Row: {
+          area: string
+          clinical: boolean
+          created_at: string
+          label: string
+          permission_key: string
+          requires_aal2: boolean
+          sort_order: number
+        }
+        Insert: {
+          area: string
+          clinical?: boolean
+          created_at?: string
+          label: string
+          permission_key: string
+          requires_aal2?: boolean
+          sort_order: number
+        }
+        Update: {
+          area?: string
+          clinical?: boolean
+          created_at?: string
+          label?: string
+          permission_key?: string
+          requires_aal2?: boolean
+          sort_order?: number
+        }
+        Relationships: []
+      }
       person_relationships: {
         Row: {
           created_at: string
@@ -1683,6 +1713,32 @@ export type Database = {
           },
         ]
       }
+      role_permission_defaults: {
+        Row: {
+          allowed: boolean
+          permission_key: string
+          role: Database["public"]["Enums"]["app_role"]
+        }
+        Insert: {
+          allowed: boolean
+          permission_key: string
+          role: Database["public"]["Enums"]["app_role"]
+        }
+        Update: {
+          allowed?: boolean
+          permission_key?: string
+          role?: Database["public"]["Enums"]["app_role"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "role_permission_defaults_permission_key_fkey"
+            columns: ["permission_key"]
+            isOneToOne: false
+            referencedRelation: "permission_definitions"
+            referencedColumns: ["permission_key"]
+          },
+        ]
+      }
       services: {
         Row: {
           active: boolean
@@ -1763,6 +1819,38 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "form_submission_versions"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_permission_overrides: {
+        Row: {
+          allowed: boolean
+          changed_by_user_id: string
+          permission_key: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          allowed: boolean
+          changed_by_user_id: string
+          permission_key: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          allowed?: boolean
+          changed_by_user_id?: string
+          permission_key?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_permission_overrides_permission_key_fkey"
+            columns: ["permission_key"]
+            isOneToOne: false
+            referencedRelation: "permission_definitions"
+            referencedColumns: ["permission_key"]
           },
         ]
       }
@@ -1883,6 +1971,7 @@ export type Database = {
           supersedes_id: string
         }[]
       }
+      has_permission: { Args: { p_permission_key: string }; Returns: boolean }
       list_clinical_record_metadata: {
         Args: { p_person_id: string }
         Returns: {
@@ -1891,6 +1980,12 @@ export type Database = {
           id: string
           person_id: string
           supersedes_id: string
+        }[]
+      }
+      list_current_permissions: {
+        Args: never
+        Returns: {
+          permission_key: string
         }[]
       }
       persist_appointment_response: {

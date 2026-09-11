@@ -106,6 +106,7 @@ select
       'forms.read',
       'forms.send',
       'documents.read',
+      'documents.create',
       'documents.send',
       'messaging.read',
       'messaging.send',
@@ -142,10 +143,10 @@ as $$
   select coalesce((
     select
       case
-        when definition.clinical
+        when (definition.permission_key like 'clinical.%' or definition.clinical)
           and profile.role <> 'psychologist_owner'::public.app_role then false
-        when definition.requires_aal2
-          and public.current_aal() <> 'aal2' then false
+        when (definition.permission_key like 'clinical.%' or definition.clinical or definition.requires_aal2)
+          and public.current_aal() is distinct from ('aal2') then false
         else coalesce(
           (
             select permission_override.allowed
@@ -197,52 +198,31 @@ for select
 to authenticated
 using (public.current_app_role() is not null);
 
-create policy permission_definitions_owner_aal2_write
-on public.permission_definitions
-for all
-to authenticated
-using (
-  public.current_app_role() = 'psychologist_owner'
-  and public.current_aal() = 'aal2'
-)
-with check (
-  public.current_app_role() = 'psychologist_owner'
-  and public.current_aal() = 'aal2'
-);
-
+-- Runtime mutations remain unavailable until Task 4 audited RPCs.
 create policy role_permission_defaults_owner_aal2
 on public.role_permission_defaults
-for all
+for select
 to authenticated
 using (
-  public.current_app_role() = 'psychologist_owner'
-  and public.current_aal() = 'aal2'
-)
-with check (
   public.current_app_role() = 'psychologist_owner'
   and public.current_aal() = 'aal2'
 );
 
 create policy user_permission_overrides_owner_aal2
 on public.user_permission_overrides
-for all
+for select
 to authenticated
 using (
   public.current_app_role() = 'psychologist_owner'
   and public.current_aal() = 'aal2'
-)
-with check (
-  public.current_app_role() = 'psychologist_owner'
-  and public.current_aal() = 'aal2'
-  and changed_by_user_id = auth.uid()
 );
 
-revoke all on public.permission_definitions from public, anon;
-revoke all on public.role_permission_defaults from public, anon;
-revoke all on public.user_permission_overrides from public, anon;
-grant select, insert, update, delete on public.permission_definitions to authenticated;
-grant select, insert, update, delete on public.role_permission_defaults to authenticated;
-grant select, insert, update, delete on public.user_permission_overrides to authenticated;
+revoke all on public.permission_definitions from public, anon, authenticated;
+revoke all on public.role_permission_defaults from public, anon, authenticated;
+revoke all on public.user_permission_overrides from public, anon, authenticated;
+grant select on public.permission_definitions to authenticated;
+grant select on public.role_permission_defaults to authenticated;
+grant select on public.user_permission_overrides to authenticated;
 
 revoke all on function public.has_permission(text) from public, anon;
 revoke all on function public.list_current_permissions() from public, anon;
