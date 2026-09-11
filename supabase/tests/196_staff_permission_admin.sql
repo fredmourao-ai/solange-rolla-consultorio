@@ -1,6 +1,6 @@
 begin;
 
-select plan(39);
+select plan(42);
 
 select has_function('public', 'list_staff_users', 'staff list RPC exists');
 select has_function('public', 'list_user_access', array['uuid'], 'user access RPC exists');
@@ -10,6 +10,8 @@ select has_function('public', 'upsert_staff_profile', array['uuid','text','app_r
 select ok((select prosecdef from pg_proc where oid='public.list_staff_users()'::regprocedure), 'staff list RPC is security definer');
 select ok((select prosecdef from pg_proc where oid='public.list_user_access(uuid)'::regprocedure), 'access list RPC is security definer');
 select ok((select prosecdef from pg_proc where oid='public.set_user_permission_override(uuid,text,boolean)'::regprocedure), 'permission set RPC is security definer');
+select like((select prosrc from pg_proc where oid='public.set_user_permission_override(uuid,text,boolean)'::regprocedure), '%pg_advisory_xact_lock%', 'permission mutation serializes administrative invariant changes');
+select like((select prosrc from pg_proc where oid='public.upsert_staff_profile(uuid,text,app_role,boolean)'::regprocedure), '%pg_advisory_xact_lock%', 'profile mutation serializes administrative invariant changes');
 select ok(not has_function_privilege('public','public.set_user_permission_override(uuid,text,boolean)','execute'), 'PUBLIC cannot mutate permissions');
 select ok(not has_function_privilege('anon','public.set_user_permission_override(uuid,text,boolean)','execute'), 'anon cannot mutate permissions');
 select ok(has_function_privilege('authenticated','public.set_user_permission_override(uuid,text,boolean)','execute'), 'authenticated may call guarded permission RPC');
@@ -74,6 +76,13 @@ select throws_ok($$ select public.upsert_staff_profile('f3000000-0000-4000-8000-
 
 select set_config('request.jwt.claims','{"sub":"f3000000-0000-4000-8000-000000000001","aal":"aal2","role":"authenticated"}',true);
 select lives_ok($$ select public.upsert_staff_profile('f3000000-0000-4000-8000-000000000002','Owner Reserva','psychologist_owner',false) $$,'owner may deactivate another owner while one owner remains');
+
+select set_config('request.jwt.claims','{"sub":"f3000000-0000-4000-8000-000000000003","aal":"aal2","role":"authenticated"}',true);
+select throws_ok($$ select public.set_user_permission_override('f3000000-0000-4000-8000-000000000001','permissions.manage',false) $$,'23514','LAST_ACCESS_ADMIN_REQUIRED','delegated admin cannot remove permission administration from the last active owner');
+reset role;
+delete from public.user_permission_overrides where user_id='f3000000-0000-4000-8000-000000000001' and permission_key='permissions.manage';
+set local role authenticated;
+select set_config('request.jwt.claims','{"sub":"f3000000-0000-4000-8000-000000000001","aal":"aal2","role":"authenticated"}',true);
 select throws_ok($$ select public.upsert_staff_profile('f3000000-0000-4000-8000-000000000001','Owner Principal','psychologist_owner',false) $$,'23514','LAST_OWNER_REQUIRED','last active owner cannot be deactivated');
 select throws_ok($$ select public.set_user_permission_override('f3000000-0000-4000-8000-000000000001','permissions.manage',false) $$,'23514','LAST_ACCESS_ADMIN_REQUIRED','last active owner cannot remove own permission administration');
 
