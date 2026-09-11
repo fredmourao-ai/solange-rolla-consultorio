@@ -40,7 +40,7 @@ describe('PersonForm', () => {
     expect(markup).toContain('value="Ana Souza"')
     expect(markup).toContain('value="ana@example.test"')
     expect(markup).toContain('value="Sala 2"')
-    expect(markup).toContain('selected="" value="whatsapp"')
+    expect(markup).toContain('<option value="whatsapp" selected="">WhatsApp</option>')
     expect(markup).toContain('checked=""')
     expect(markup).toContain('Salvar cadastro')
   })
