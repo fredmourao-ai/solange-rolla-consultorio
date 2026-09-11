@@ -41,7 +41,8 @@ describe('UserAccessEditor', () => {
     expect(html).toContain('Perfil-base: Secretaria')
     expect(html).toContain('Permitido')
     expect(html).toContain('Sem acesso')
-    expect(html).not.toContain('patients.update')
+    expect(html).toContain('type="hidden" name="permission_key" value="patients.update"')
+    expect(html).not.toContain('>patients.update<')
   })
 
   it('does not offer a configurable clinical bypass to a secretary', () => {
