@@ -1,17 +1,33 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import {
-  calendarRange, changeAppointmentStatus, availableAppointmentCommands,
-  type CalendarView, type Appointment, type AppointmentStatusRepository, type AppointmentCommand,
+  calendarRange,
+  changeAppointmentStatus,
+  availableAppointmentCommands,
+  type CalendarView,
+  type Appointment,
+  type AppointmentStatusRepository,
+  type AppointmentCommand,
+  type CancellationPolicy,
 } from '@/modules/appointments/public'
-import { buildAppointmentCharge, createReceivableIdempotent, type ReceivableRepository, type ChargeableAppointment } from '@/modules/receivables/public'
+import {
+  buildAppointmentCharge,
+  createReceivableIdempotent,
+  type ReceivableRepository,
+  type ChargeableAppointment,
+} from '@/modules/receivables/public'
 import { recordAuditEvent, type AuditEvent, type AuditEventRepository } from '@/modules/audit/public'
 import { AppointmentCalendar, type AppointmentCalendarItem } from '@/modules/appointments/ui/calendar'
-import { authorizeStaffSession, getStaffSession } from '@/modules/identity/public'
+import {
+  authorizeStaffPermission,
+  getStaffSession,
+  hasSessionPermission,
+  type AppPermission,
+  type StaffSession,
+} from '@/modules/identity/public'
 import { createServerSupabaseClient } from '@/platform/supabase/server'
 import { PageHeader } from '@/shared/ui/page-header'
 import type { Database } from '@/platform/supabase/types'
-import type { CancellationPolicy } from '@/modules/appointments/public'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -28,6 +44,33 @@ function normalizeDate(value?: string): string {
   const fallback = dateOnly.format(new Date())
   if (!value) return fallback
   try { calendarRange('day', value); return value } catch { return fallback }
+}
+
+function permissionForCommand(command: AppointmentCommand): AppPermission {
+  switch (command) {
+    case 'send_confirmation':
+    case 'confirm':
+      return 'appointments.confirm'
+    case 'check_in':
+      return 'appointments.checkin'
+    case 'request_reschedule':
+    case 'reschedule':
+      return 'appointments.reschedule'
+    case 'cancel_in_time':
+    case 'cancel_late':
+    case 'cancel_by_provider':
+      return 'appointments.cancel'
+    case 'mark_no_show':
+      return 'appointments.no_show'
+    case 'complete':
+      return 'appointments.complete'
+    case 'start':
+      return 'clinical.create'
+  }
+}
+
+function commandsFor(session: StaffSession, status: Appointment['status']) {
+  return availableAppointmentCommands(status).filter((command) => hasSessionPermission(session, permissionForCommand(command)))
 }
 
 function auditRepository(client: Awaited<ReturnType<typeof createServerSupabaseClient>>): AuditEventRepository {
@@ -54,12 +97,12 @@ function redirectBackTo(formData: FormData): string {
 
 async function changeAppointmentStatusAction(formData: FormData) {
   'use server'
-
+  const command = String(formData.get('command') ?? '') as AppointmentCommand
+  const permission = permissionForCommand(command)
   const session = await getStaffSession()
-  const authorized = authorizeStaffSession(session, ['psychologist_owner', 'secretary'])
+  const authorized = authorizeStaffPermission(session, permission)
   const client = await createServerSupabaseClient()
   const appointmentId = String(formData.get('appointment_id') ?? '')
-  const command = String(formData.get('command') ?? '') as AppointmentCommand
   const redirectTo = redirectBackTo(formData)
 
   const { data: row, error: readError } = await client
@@ -70,9 +113,14 @@ async function changeAppointmentStatusAction(formData: FormData) {
   if (readError || !row) throw new Error('AGENDA_APPOINTMENT_NOT_FOUND')
 
   const appointment: Appointment = {
-    id: row.id, personId: row.person_id, serviceId: row.service_id,
-    startsAt: row.starts_at, endsAt: row.ends_at, status: row.status as Appointment['status'],
-    policyVersion: row.policy_version, cancellationDeadlineAt: row.cancellation_deadline_at,
+    id: row.id,
+    personId: row.person_id,
+    serviceId: row.service_id,
+    startsAt: row.starts_at,
+    endsAt: row.ends_at,
+    status: row.status as Appointment['status'],
+    policyVersion: row.policy_version,
+    cancellationDeadlineAt: row.cancellation_deadline_at,
     cancellationPolicy: row.cancellation_policy_snapshot as unknown as CancellationPolicy,
   }
 
@@ -82,17 +130,28 @@ async function changeAppointmentStatusAction(formData: FormData) {
         .select('id,person_id,service_id,starts_at,ends_at,status,policy_version,cancellation_deadline_at,cancellation_policy_snapshot')
         .single()
       if (error || !data) throw new Error('AGENDA_STATUS_UPDATE_FAILED')
+      const { error: historyError } = await client.from('appointment_status_history').insert({
+        appointment_id: id,
+        from_status: appointment.status,
+        to_status: status,
+        changed_by_user_id: authorized.userId,
+      })
+      if (historyError) throw new Error('AGENDA_STATUS_HISTORY_FAILED')
       return {
-        id: data.id, personId: data.person_id, serviceId: data.service_id,
-        startsAt: data.starts_at, endsAt: data.ends_at, status: data.status as Appointment['status'],
-        policyVersion: data.policy_version, cancellationDeadlineAt: data.cancellation_deadline_at,
+        id: data.id,
+        personId: data.person_id,
+        serviceId: data.service_id,
+        startsAt: data.starts_at,
+        endsAt: data.ends_at,
+        status: data.status as Appointment['status'],
+        policyVersion: data.policy_version,
+        cancellationDeadlineAt: data.cancellation_deadline_at,
         cancellationPolicy: data.cancellation_policy_snapshot as unknown as CancellationPolicy,
       }
     },
   }
 
   const updated = await changeAppointmentStatus(appointment, command, repository)
-
   await recordAuditEvent({
     actorId: authorized.userId,
     action: 'appointment.status_changed',
@@ -107,9 +166,8 @@ async function changeAppointmentStatusAction(formData: FormData) {
 
 async function chargeAppointmentAction(formData: FormData) {
   'use server'
-
   const session = await getStaffSession()
-  const authorized = authorizeStaffSession(session, ['psychologist_owner', 'secretary'])
+  const authorized = authorizeStaffPermission(session, 'finance.receive')
   const client = await createServerSupabaseClient()
   const appointmentId = String(formData.get('appointment_id') ?? '')
   const redirectTo = redirectBackTo(formData)
@@ -132,57 +190,78 @@ async function chargeAppointmentAction(formData: FormData) {
     lateCancellationChargeEnabled: policy.lateCancellationChargeEnabled,
   }
   const servicePriceCents = row.service?.price_cents
-  if (typeof servicePriceCents !== 'number' || !Number.isInteger(servicePriceCents) || servicePriceCents <= 0) throw new Error('AGENDA_SERVICE_PRICE_INVALID')
+  if (typeof servicePriceCents !== 'number' || !Number.isInteger(servicePriceCents) || servicePriceCents <= 0) {
+    throw new Error('AGENDA_SERVICE_PRICE_INVALID')
+  }
   const charge = buildAppointmentCharge(chargeable, servicePriceCents)
 
   if (charge) {
     const repository: ReceivableRepository = {
       async findByIdempotencyKey(key) {
-        const { data, error } = await client.from('receivables').select('id,source_type,source_id,person_id,payer_person_id,original_amount_cents').eq('idempotency_key', key).maybeSingle()
+        const { data, error } = await client.from('receivables')
+          .select('id,source_type,source_id,person_id,payer_person_id,original_amount_cents')
+          .eq('idempotency_key', key)
+          .maybeSingle()
         if (error) throw new Error('AGENDA_CHARGE_LOOKUP_FAILED')
         if (!data) return null
-        return { id: data.id, sourceType: data.source_type, sourceId: data.source_id, personId: data.person_id, payerPersonId: data.payer_person_id, originalAmountCents: data.original_amount_cents, adjustmentCents: 0, paidCents: 0 }
+        return {
+          id: data.id,
+          sourceType: data.source_type,
+          sourceId: data.source_id,
+          personId: data.person_id,
+          payerPersonId: data.payer_person_id,
+          originalAmountCents: data.original_amount_cents,
+          adjustmentCents: 0,
+          paidCents: 0,
+        }
       },
       async insert(receivable) {
         const { data, error } = await client.from('receivables').insert({
-          source_type: receivable.sourceType, source_id: receivable.sourceId,
-          person_id: receivable.personId, payer_person_id: receivable.payerPersonId,
-          original_amount_cents: receivable.originalAmountCents, idempotency_key: receivable.idempotencyKey,
+          source_type: receivable.sourceType,
+          source_id: receivable.sourceId,
+          person_id: receivable.personId,
+          payer_person_id: receivable.payerPersonId,
+          original_amount_cents: receivable.originalAmountCents,
+          idempotency_key: receivable.idempotencyKey,
         }).select('id,source_type,source_id,person_id,payer_person_id,original_amount_cents').single()
         if (error?.code === '23505') {
           const { data: existing, error: reselectError } = await client.from('receivables')
             .select('id,source_type,source_id,person_id,payer_person_id,original_amount_cents')
-            .eq('idempotency_key', receivable.idempotencyKey).single()
+            .eq('idempotency_key', receivable.idempotencyKey)
+            .single()
           if (reselectError || !existing) throw new Error('AGENDA_CHARGE_CREATE_FAILED')
-          return { id: existing.id, sourceType: existing.source_type, sourceId: existing.source_id, personId: existing.person_id, payerPersonId: existing.payer_person_id, originalAmountCents: existing.original_amount_cents, adjustmentCents: 0, paidCents: 0 }
+          return {
+            id: existing.id,
+            sourceType: existing.source_type,
+            sourceId: existing.source_id,
+            personId: existing.person_id,
+            payerPersonId: existing.payer_person_id,
+            originalAmountCents: existing.original_amount_cents,
+            adjustmentCents: 0,
+            paidCents: 0,
+          }
         }
         if (error || !data) throw new Error('AGENDA_CHARGE_CREATE_FAILED')
-        return { id: data.id, sourceType: data.source_type, sourceId: data.source_id, personId: data.person_id, payerPersonId: data.payer_person_id, originalAmountCents: data.original_amount_cents, adjustmentCents: 0, paidCents: 0 }
+        return {
+          id: data.id,
+          sourceType: data.source_type,
+          sourceId: data.source_id,
+          personId: data.person_id,
+          payerPersonId: data.payer_person_id,
+          originalAmountCents: data.original_amount_cents,
+          adjustmentCents: 0,
+          paidCents: 0,
+        }
       },
     }
     const receivable = await createReceivableIdempotent(charge, repository)
-
-    const { data: confirmation } = await client
-      .from('appointment_confirmations')
-      .select('id,responded_at')
-      .eq('appointment_id', appointmentId)
-      .eq('response', 'cancelled')
-      .order('responded_at', { ascending: false, nullsFirst: false })
-      .limit(1)
-      .maybeSingle()
-
     await recordAuditEvent({
       actorId: authorized.userId,
       action: 'receivable.appointment_charge_created',
       entityType: 'receivable',
       entityId: receivable.id,
       correlationId: appointmentId,
-      metadata: {
-        appointmentId, appointmentStatus: row.status, amountCents: charge.amountCents,
-        cancellationPolicySnapshot: policy,
-        consentEvidenceConfirmationId: confirmation?.id ?? null,
-        consentEvidenceRespondedAt: confirmation?.responded_at ?? null,
-      },
+      metadata: { appointmentId, appointmentStatus: row.status, amountCents: charge.amountCents },
     }, auditRepository(client))
   }
 
@@ -194,6 +273,7 @@ export default async function AgendaPage({ searchParams }: {
 }) {
   const session = await getStaffSession()
   if (!session) redirect('/login')
+  authorizeStaffPermission(session, 'appointments.read')
 
   const query = await searchParams
   const view = normalizeView(query.view)
@@ -202,32 +282,43 @@ export default async function AgendaPage({ searchParams }: {
   const supabase = await createServerSupabaseClient()
   const { data, error } = await supabase
     .from('appointments')
-    .select('id,starts_at,ends_at,status,cancellation_deadline_at,cancellation_policy_snapshot,person:people!appointments_person_id_fkey(civil_name,preferred_name),service:services!appointments_service_id_fkey(name)')
+    .select('id,person_id,starts_at,ends_at,status,cancellation_deadline_at,cancellation_policy_snapshot,person:people!appointments_person_id_fkey(civil_name,preferred_name),service:services!appointments_service_id_fkey(name)')
     .gte('starts_at', range.from.toISOString())
     .lt('starts_at', range.to.toISOString())
     .order('starts_at', { ascending: true })
 
-  if (error) throw new Error(`AGENDA_READ_FAILED:${error.code}`)
+  if (error) throw new Error('AGENDA_READ_FAILED')
 
   const redirectTo = `/agenda?view=${view}&date=${anchor}`
   const items: AppointmentCalendarItem[] = (data ?? []).map((row) => ({
     id: row.id,
+    personId: row.person_id,
     patientName: row.person?.preferred_name || row.person?.civil_name || 'Paciente',
     serviceName: row.service?.name || 'Consulta',
     startsAt: row.starts_at,
     endsAt: row.ends_at,
     status: row.status as AppointmentCalendarItem['status'],
     cancellationDeadlineAt: row.cancellation_deadline_at,
-    availableCommands: availableAppointmentCommands(row.status as AppointmentCalendarItem['status']),
-    chargeable: row.status === 'no_show'
-      ? Boolean((row.cancellation_policy_snapshot as unknown as CancellationPolicy).noShowChargeEnabled)
-      : row.status === 'cancelled_late'
-        ? Boolean((row.cancellation_policy_snapshot as unknown as CancellationPolicy).lateCancellationChargeEnabled)
-        : false,
+    availableCommands: commandsFor(session, row.status as Appointment['status']),
+    chargeable: hasSessionPermission(session, 'finance.receive') && (
+      row.status === 'no_show'
+        ? Boolean((row.cancellation_policy_snapshot as unknown as CancellationPolicy).noShowChargeEnabled)
+        : row.status === 'cancelled_late'
+          ? Boolean((row.cancellation_policy_snapshot as unknown as CancellationPolicy).lateCancellationChargeEnabled)
+          : false
+    ),
+    canOpenPatient: hasSessionPermission(session, 'patients.read'),
+    canStartCare: hasSessionPermission(session, 'clinical.create') && session.role === 'psychologist_owner' && session.aal === 'aal2',
   }))
 
   return <>
-    <PageHeader title="Agenda" description="Consultas e prazos de cancelamento no horário de Brasília." />
+    <PageHeader
+      title="Agenda"
+      description="Consultas, confirmações e rotina de atendimento no horário de Brasília."
+      actions={hasSessionPermission(session, 'appointments.create')
+        ? <Link className="ui-button ui-button--primary" href={`/agenda/gerenciar?date=${anchor}`}>Nova consulta</Link>
+        : undefined}
+    />
     <nav className="calendar-view-switch" aria-label="Visualização da agenda">
       <Link aria-current={view === 'day' ? 'page' : undefined} href={`/agenda?view=day&date=${anchor}`}>Dia</Link>
       <Link aria-current={view === 'week' ? 'page' : undefined} href={`/agenda?view=week&date=${anchor}`}>Semana</Link>
