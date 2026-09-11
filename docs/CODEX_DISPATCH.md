@@ -29,6 +29,18 @@ Antes de iniciar qualquer sessão Codex:
 
 Usar VM remota sempre que estiver saudável e possuir o repositório/ferramentas necessários. Máquinas Windows podem ser usadas como fallback ou para tarefas que dependam especificamente delas, mas o sistema e a execução normal não devem depender de estação de trabalho pessoal.
 
+## Cota / token / usage-limit reset
+
+Ao iniciar uma sessão Codex, validar se a conta possui cota utilizável antes de classificar a execução como bloqueada.
+
+Se o Codex indicar ausência de tokens/cota, `usage limit`, limite esgotado ou condição equivalente e a própria experiência oficial disponibilizar a ação **redeem usage limit reset** (ou rótulo oficial equivalente), o controlador está autorizado a acionar esse resgate/reset e repetir a sessão da mesma tarefa.
+
+Regras:
+- usar somente a opção oficial oferecida pela conta/cliente; não contornar limites por métodos não suportados;
+- registrar no ledger apenas que o reset oficial foi resgatado, sem armazenar credenciais/tokens;
+- depois do resgate, revalidar a disponibilidade e retomar exatamente a mesma task/worktree;
+- só declarar bloqueio externo se não houver reset/resgate oficial disponível ou se a conta continuar impedida após o fluxo oficial.
+
 ## Ciclo
 
 ```text
@@ -37,6 +49,7 @@ ChatGPT seleciona tarefa
 -> valida SHA/branch
 -> cria prompt/brief
 -> inicia Codex CLI
+-> valida cota; se necessário, resgata reset oficial disponível
 -> acompanha execução
 -> coleta commit e evidências
 -> revisa diff e testes
