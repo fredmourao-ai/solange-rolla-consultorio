@@ -196,8 +196,16 @@ jobs:
           DOC=solange-document-worker
           MSG=solange-messaging-worker
 
+          # docker run without --user leaves root-owned files behind (see below); a plain
+          # `rm -rf` as the non-root runner user then can't remove them. Retry with sudo -n
+          # before giving up, instead of leaving unremovable debris for the next promotion.
+          force_rm() {
+            rm -rf "$@" 2>/dev/null && return 0
+            sudo -n rm -rf "$@"
+          }
+
           cleanup_stage() {
-            rm -rf "$STAGE"
+            force_rm "$STAGE"
           }
           rollback() {
             rc=$?
@@ -216,7 +224,7 @@ jobs:
               fi
               if [ -d "$PREVIOUS" ]; then
                 docker stop "$WEB" >/dev/null 2>&1 || true
-                rm -rf "$APP"
+                force_rm "$APP"
                 mv "$PREVIOUS" "$APP"
                 docker start "$WEB" >/dev/null 2>&1 || true
               fi
@@ -231,7 +239,7 @@ jobs:
           test "$(stat -c '%a' "$ROOT/demo.env")" = 600
           /home/ubuntu/.local/bin/solange-backup.sh
 
-          rm -rf "$STAGE" "$PREVIOUS" "$CANDIDATE_STATE"
+          force_rm "$STAGE" "$PREVIOUS" "$CANDIDATE_STATE"
           mkdir -p "$STAGE" "$CANDIDATE_STATE/document" "$CANDIDATE_STATE/messaging"
           rsync -a --delete \
             --exclude '.git' \
@@ -315,8 +323,8 @@ jobs:
               raise SystemExit(result.returncode)
           PY
 
-          docker run --rm --network host -v "$STAGE:/app" -w /app node:24-bookworm-slim npm ci
-          docker run --rm --network host -v "$STAGE:/app" -w /app node:24-bookworm-slim npm run build
+          docker run --rm --network host --user "$(id -u):$(id -g)" -v "$STAGE:/app" -w /app node:24-bookworm-slim npm ci
+          docker run --rm --network host --user "$(id -u):$(id -g)" -v "$STAGE:/app" -w /app node:24-bookworm-slim npm run build
 
           ROOT="$GITHUB_WORKSPACE" DEMO="$STAGING_DEPLOY_ROOT" ENV_FILE="$RUNTIME_ENV" \
             IMAGE="solange-document-worker:$PROMOTE_SHA" CONTAINER="${DOC}-candidate" \
@@ -356,12 +364,16 @@ jobs:
           WEB=solange-client-demo-web
           DOC=solange-document-worker
           MSG=solange-messaging-worker
+          force_rm() {
+            rm -rf "$@" 2>/dev/null && return 0
+            sudo -n rm -rf "$@"
+          }
           rollback_verified_release() {
             rc=$?
             trap - ERR
             if [ -d "$PREVIOUS" ]; then
               docker stop "$WEB" >/dev/null 2>&1 || true
-              rm -rf "$APP"
+              force_rm "$APP"
               mv "$PREVIOUS" "$APP"
               docker start "$WEB" >/dev/null 2>&1 || true
             fi
@@ -455,9 +467,13 @@ jobs:
           WEB=solange-client-demo-web
           DOC=solange-document-worker
           MSG=solange-messaging-worker
+          force_rm() {
+            rm -rf "$@" 2>/dev/null && return 0
+            sudo -n rm -rf "$@"
+          }
           if [ -d "$PREVIOUS" ]; then
             docker stop "$WEB" >/dev/null 2>&1 || true
-            rm -rf "$APP"
+            force_rm "$APP"
             mv "$PREVIOUS" "$APP"
             docker start "$WEB" >/dev/null 2>&1 || true
           fi
@@ -474,7 +490,7 @@ jobs:
           if [ -f "$ROOT/state/previous-deployed-sha.txt" ]; then
             mv "$ROOT/state/previous-deployed-sha.txt" "$ROOT/state/deployed-sha.txt"
           fi
-          rm -rf "$ROOT/state/candidate-$PROMOTE_SHA"
+          force_rm "$ROOT/state/candidate-$PROMOTE_SHA"
 
       - name: Finalize promoted release
         shell: bash
@@ -482,7 +498,7 @@ jobs:
           set -Eeuo pipefail
           ROOT="$STAGING_DEPLOY_ROOT"
           docker rm -f solange-document-worker-previous solange-messaging-worker-previous >/dev/null 2>&1 || true
-          rm -rf "$ROOT/app-previous"
+          rm -rf "$ROOT/app-previous" 2>/dev/null || sudo -n rm -rf "$ROOT/app-previous"
           rm -f "$ROOT/state/previous-deployed-sha.txt"
           # Keep the promoted release state directory: the canonical workers bind-mount it
           # and need the same host path to exist after container restarts.
