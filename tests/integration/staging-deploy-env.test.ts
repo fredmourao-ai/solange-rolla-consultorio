@@ -4,6 +4,11 @@ import { describe, expect, it } from 'vitest'
 const workflow = readFileSync('.github/workflows/staging-promote.yml', 'utf8')
 
 describe('staging deploy environment', () => {
+  it('pins the stateful staging deployment to the dedicated homologation host', () => {
+    const promote = workflow.slice(workflow.indexOf('  promote:'), workflow.indexOf('    environment: staging'))
+    expect(promote).toContain('runs-on: [self-hosted, Linux, ARM64, solange-ci, solange-staging-host]')
+  })
+
   it('propagates every Supabase project identity into the runtime environment', () => {
     const deploy = workflow.slice(workflow.indexOf('- name: Deploy exact SHA to homologation'))
     expect(deploy).toContain('SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_STAGING_PROJECT_REF }}')
