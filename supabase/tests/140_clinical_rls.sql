@@ -7,8 +7,8 @@ select has_table('clinical', 'records', 'clinical records exist');
 select ok((select relrowsecurity from pg_class where oid = 'clinical.records'::regclass), 'clinical records enable RLS');
 select ok((select relforcerowsecurity from pg_class where oid = 'clinical.records'::regclass), 'clinical records force RLS');
 select ok(not has_table_privilege('anon', 'clinical.records', 'SELECT'), 'anonymous has no clinical record select privilege');
-select ok((select pg_get_expr(polqual, polrelid) from pg_policy where polname = 'clinical_records_owner_aal2') like '%psychologist_owner%', 'clinical policy requires owner role');
-select ok((select pg_get_expr(polqual, polrelid) from pg_policy where polname = 'clinical_records_owner_aal2') like '%aal2%', 'clinical policy requires AAL2');
+select ok((select pg_get_expr(polqual, polrelid) from pg_policy where polname = 'clinical_records_select_authorized') like '%psychologist_owner%', 'clinical policy requires owner role');
+select ok((select pg_get_expr(polqual, polrelid) from pg_policy where polname = 'clinical_records_select_authorized') like '%aal2%', 'clinical policy requires AAL2');
 
 insert into auth.users (id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data)
 values

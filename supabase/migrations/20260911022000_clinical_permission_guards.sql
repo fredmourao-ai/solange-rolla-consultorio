@@ -2,6 +2,26 @@
 -- cross-module-task: docs/task-contracts/clinical-permission-guards-113.json
 -- allow-static-routines: true
 
+-- clinical_records_immutable_update (20260827003000_clinical_attachments.sql) only
+-- guarded UPDATE; DELETE was left open, so a correction still had to happen by
+-- superseding a record, but nothing stopped erasing history outright. Also
+-- pin the SQLSTATE the original function left as the PL/pgSQL default
+-- (P0001) to 55000 (object_not_in_prerequisite_state), matching what callers
+-- actually check for.
+create or replace function clinical.reject_clinical_record_mutation()
+returns trigger
+language plpgsql
+set search_path = clinical
+as $$
+begin
+  raise exception 'CLINICAL_RECORD_IMMUTABLE' using errcode = '55000';
+end;
+$$;
+
+create trigger clinical_records_immutable_delete
+before delete on clinical.records
+for each row execute function clinical.reject_clinical_record_mutation();
+
 drop policy if exists clinical_records_owner_aal2 on clinical.records;
 
 create policy clinical_records_select_authorized
