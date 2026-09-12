@@ -36,3 +36,7 @@ jobs:
           echo "--- root-owned file count in app ---"
           find "$ROOT/app" -not -user "$(id -un)" 2>/dev/null | wc -l
           find "$ROOT/app-previous" -not -user "$(id -un)" 2>/dev/null | wc -l
+          echo "--- passwordless sudo available? ---"
+          sudo -n true 2>&1 && echo "SUDO_NOPASSWD_AVAILABLE" || echo "SUDO_NOPASSWD_UNAVAILABLE"
+          echo "--- disk space ---"
+          df -h "$ROOT" 2>&1
