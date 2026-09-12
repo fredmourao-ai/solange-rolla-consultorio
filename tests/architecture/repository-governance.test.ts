@@ -5,6 +5,11 @@ import { describe, expect, it } from 'vitest'
 
 const root = fileURLToPath(new URL('../../', import.meta.url))
 const requiredRunnerLabels = ['self-hosted', 'Linux', 'ARM64', 'solange-ci']
+// staging-promote.yml declares two jobs in order: canonical-gate (shared runner) then
+// promote (pinned to the dedicated homologation host, which persists release state).
+const runnerLabelExceptionsByFile: Record<string, string[][]> = {
+  'staging-promote.yml': [requiredRunnerLabels, [...requiredRunnerLabels, 'solange-staging-host']],
+}
 
 function indexMode(path: string): string {
   return execFileSync('git', ['ls-files', '-s', '--', path], {
@@ -93,9 +98,10 @@ describe('repository governance contract', () => {
       const parsed = runsOnLabels(workflow)
 
       expect(parsed).toHaveLength(declarations.length)
-      for (const labels of parsed) {
-        expect(labels).toEqual(requiredRunnerLabels)
-      }
+      const expected = runnerLabelExceptionsByFile[name]
+      parsed.forEach((labels, index) => {
+        expect(labels).toEqual(expected?.[index] ?? requiredRunnerLabels)
+      })
     }
   })
 
