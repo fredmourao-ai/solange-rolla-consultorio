@@ -1,4 +1,4 @@
--- owners: audit,clinical
+-- owners: appointments,audit,clinical
 -- cross-module-task: docs/task-contracts/clinical-permission-guards-113.json
 -- allow-static-routines: true
 
