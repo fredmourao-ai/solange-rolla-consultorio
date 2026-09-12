@@ -2,7 +2,7 @@
   "version": 1,
   "status": "approved",
   "issue": 113,
-  "migration": "20260911011000_staff_permission_admin_rpcs.sql",
+  "migration": "20260912192518_staff_permission_admin_rpcs.sql",
   "owners": ["identity", "audit"],
   "objects": [
     {"name": "public.profiles", "owner": "identity"},

@@ -15,6 +15,11 @@ export default defineConfig({
   },
   resolve: {
     alias: {
+      // Mirrors tsconfig.json's "@/*" -> "./src/*" path mapping. Next.js resolves
+      // that alias itself at build time, but vitest runs outside Next.js and
+      // needs it declared explicitly to import any module under `@/` for real
+      // (rather than through a `vi.mock`).
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
       'server-only': fileURLToPath(
         new URL('./tests/setup/server-only.ts', import.meta.url),
       ),
