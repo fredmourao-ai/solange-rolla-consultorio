@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "status": "approved",
+  "issue": 113,
+  "migration": "20260911021000_appointments_operational_states.sql",
+  "owners": ["appointments"],
+  "objects": [
+    { "name": "public.appointments", "owner": "appointments" }
+  ]
+}
