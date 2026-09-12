@@ -1,0 +1,38 @@
+name: Diagnostic - Staging Host Inspect
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: [self-hosted, Linux, ARM64, solange-ci, solange-staging-host]
+    timeout-minutes: 5
+    steps:
+      - name: Inspect staging deploy root (read-only)
+        shell: bash
+        run: |
+          set -uo pipefail
+          ROOT=/home/ubuntu/solange-client-demo
+          echo "--- ls ROOT ---"
+          ls -la "$ROOT" 2>&1
+          echo "--- ls ROOT/app (top level) ---"
+          ls -la "$ROOT/app" 2>&1 | head -40
+          echo "--- ROOT/app owner sample ---"
+          find "$ROOT/app" -maxdepth 1 -not -user "$(id -un)" 2>&1 | head -20
+          echo "--- package.json present? ---"
+          test -f "$ROOT/app/package.json" && echo "package.json EXISTS" || echo "package.json MISSING"
+          echo "--- src dir present? ---"
+          test -d "$ROOT/app/src" && echo "src EXISTS" || echo "src MISSING"
+          echo "--- docker ps ---"
+          docker ps -a --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}' 2>&1
+          echo "--- state dir ---"
+          ls -la "$ROOT/state" 2>&1
+          cat "$ROOT/state/deployed-sha.txt" 2>&1 || echo "no deployed-sha.txt"
+          echo "--- health check via container ---"
+          curl -fsS --max-time 5 http://127.0.0.1:3000/api/health 2>&1 || echo "health check failed/unreachable"
+          echo "--- root-owned file count in app ---"
+          find "$ROOT/app" -not -user "$(id -un)" 2>/dev/null | wc -l
+          find "$ROOT/app-previous" -not -user "$(id -un)" 2>/dev/null | wc -l
