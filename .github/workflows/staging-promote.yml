@@ -110,7 +110,7 @@ jobs:
   promote:
     needs: canonical-gate
     if: needs.canonical-gate.outputs.ready == 'true'
-    runs-on: [self-hosted, Linux, ARM64, solange-ci]
+    runs-on: [self-hosted, Linux, ARM64, solange-ci, solange-staging-host]
     environment: staging
     timeout-minutes: 45
     env:
