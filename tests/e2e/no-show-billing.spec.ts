@@ -15,7 +15,7 @@ async function ensureAppointmentDetailsOpen(page: import('@playwright/test').Pag
   const item = page.locator(`li.appointment-calendar__item[data-appointment-id="${appointmentId}"]`)
   const details = item.locator('details')
   if (!(await details.evaluate((element) => (element as HTMLDetailsElement).open))) {
-    await details.getByText('Abrir consulta').click()
+    await details.getByText('Ver detalhes').click()
   }
 }
 
