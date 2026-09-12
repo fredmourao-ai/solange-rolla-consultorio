@@ -2,6 +2,8 @@ export const APPOINTMENT_STATUSES = [
   'scheduled',
   'pending_confirmation',
   'confirmed',
+  'checked_in',
+  'in_progress',
   'reschedule_requested',
   'rescheduled',
   'cancelled_in_time',
@@ -16,6 +18,8 @@ export type AppointmentStatus = (typeof APPOINTMENT_STATUSES)[number]
 export type AppointmentCommand =
   | 'send_confirmation'
   | 'confirm'
+  | 'check_in'
+  | 'start'
   | 'request_reschedule'
   | 'reschedule'
   | 'cancel_in_time'
@@ -39,12 +43,19 @@ const transitions: Record<AppointmentStatus, Partial<Record<AppointmentCommand, 
     cancel_by_provider: 'cancelled_by_provider',
   },
   confirmed: {
+    check_in: 'checked_in',
     request_reschedule: 'reschedule_requested',
-    complete: 'completed',
     mark_no_show: 'no_show',
     cancel_in_time: 'cancelled_in_time',
     cancel_late: 'cancelled_late',
     cancel_by_provider: 'cancelled_by_provider',
+  },
+  checked_in: {
+    start: 'in_progress',
+    cancel_by_provider: 'cancelled_by_provider',
+  },
+  in_progress: {
+    complete: 'completed',
   },
   reschedule_requested: {
     reschedule: 'rescheduled',
