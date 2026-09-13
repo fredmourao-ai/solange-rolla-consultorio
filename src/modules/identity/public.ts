@@ -11,3 +11,9 @@ export {
 } from './application/require-role'
 export type { StaffSession } from './application/require-role'
 export { getStaffSession } from './application/get-session'
+export { isActiveStaffWithRole, listActiveStaffByRole } from './application/list-staff-by-role'
+export type {
+  StaffDirectoryEntry,
+  StaffDirectoryRepository,
+  StaffProfile,
+} from './application/list-staff-by-role'
