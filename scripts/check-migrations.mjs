@@ -429,22 +429,33 @@ function sqlObjects(migration) {
   }
   const staticRoutineTargets = new Set(['function', 'policy', 'trigger', 'type'])
 
-  const isAlterTableConstraintDrop = (index) => {
-    if (tokens[index] !== 'drop' || tokens[index + 1] !== 'constraint') return false
+  const alterTableDropSubClauses = new Set(['constraint', 'not', 'default'])
+  const isAlterTableStatement = (index) => {
     let start = index - 1
     while (start >= 0 && tokens[start] !== ';') start -= 1
     const statement = tokens.slice(start + 1, index)
     return statement[0] === 'alter' && statement[1] === 'table'
   }
+  const isAlterTableSubClause = (index) => {
+    if (tokens[index] === 'drop' && alterTableDropSubClauses.has(tokens[index + 1])) {
+      return isAlterTableStatement(index)
+    }
+    // "alter column ..." is a sub-clause of an enclosing ALTER TABLE, not a
+    // second top-level ALTER statement, and has no DDL target of its own.
+    if (tokens[index] === 'alter' && tokens[index + 1] === 'column') {
+      return isAlterTableStatement(index)
+    }
+    return false
+  }
 
   for (let index = 0; index < tokens.length; index += 1) {
     const token = tokens[index]
-    const alterTableConstraintDrop = isAlterTableConstraintDrop(index)
+    const alterTableSubClause = isAlterTableSubClause(index)
     if (token === 'execute' && ['begin', 'do'].includes(tokens[index - 1])) {
       parsed.unsupported = true
       continue
     }
-    if (supportedDdlTargets[token] && !alterTableConstraintDrop) {
+    if (supportedDdlTargets[token] && !alterTableSubClause) {
       let targetIndex = index + 1
       while (['if', 'not', 'exists', 'or', 'replace', 'temporary', 'unlogged', 'unique'].includes(tokens[targetIndex])) {
         targetIndex += 1
@@ -462,7 +473,7 @@ function sqlObjects(migration) {
     if (token === 'reassign') {
       parsed.unsupported = true
     }
-    if (multiTargetCommands.has(token) && !alterTableConstraintDrop) {
+    if (multiTargetCommands.has(token) && !alterTableSubClause) {
       for (let cursor = index + 1; cursor < tokens.length; cursor += 1) {
         if (tokens[cursor] === ';') break
         if (tokens[cursor] === ',') {
