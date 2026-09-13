@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "status": "approved",
+  "issue": 129,
+  "migration": "20260912201659_collaboration_tasks.sql",
+  "owners": ["appointments", "identity", "people"],
+  "objects": [
+    { "name": "public.tasks", "owner": "identity" },
+    { "name": "public.permission_definitions", "owner": "identity" },
+    { "name": "public.role_permission_defaults", "owner": "identity" },
+    { "name": "public.people", "owner": "people" },
+    { "name": "public.appointments", "owner": "appointments" }
+  ]
+}

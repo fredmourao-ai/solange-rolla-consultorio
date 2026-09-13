@@ -123,7 +123,10 @@ insert into public.events (
 values (
   'd3000000-0000-4000-8000-000000000001', 'Encontro Demonstração',
   'Evento sintético para apresentação do sistema.', 'group',
-  '2026-09-12T09:00:00-03:00', '2026-09-12T12:00:00-03:00', 'America/Sao_Paulo',
+  -- Anchored to now() (not a fixed calendar date) so it always falls inside
+  -- the reports page's rolling "next 30 days" window, regardless of when
+  -- `supabase db reset` runs.
+  now() + interval '1 day', now() + interval '1 day 3 hours', 'America/Sao_Paulo',
   'Espaço Demonstração', 'in_person', 12, 18000, 'open'
 )
 on conflict (id) do update set

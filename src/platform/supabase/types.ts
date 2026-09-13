@@ -1822,6 +1822,66 @@ export type Database = {
           },
         ]
       }
+      tasks: {
+        Row: {
+          appointment_id: string | null
+          assigned_to_user_id: string
+          completed_at: string | null
+          created_at: string
+          created_by_user_id: string
+          due_at: string | null
+          id: string
+          person_id: string | null
+          status: string
+          title: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          appointment_id?: string | null
+          assigned_to_user_id: string
+          completed_at?: string | null
+          created_at?: string
+          created_by_user_id: string
+          due_at?: string | null
+          id?: string
+          person_id?: string | null
+          status?: string
+          title: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          appointment_id?: string | null
+          assigned_to_user_id?: string
+          completed_at?: string | null
+          created_at?: string
+          created_by_user_id?: string
+          due_at?: string | null
+          id?: string
+          person_id?: string | null
+          status?: string
+          title?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_permission_overrides: {
         Row: {
           allowed: boolean

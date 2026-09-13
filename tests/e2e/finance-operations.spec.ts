@@ -27,6 +27,12 @@ test('owner records partial payment and audited adjustment from UI', async ({ pa
   await expect.poll(() => sql(`select status from public.receivables where id=${q(id)}`)).toBe('partial')
   await expect.poll(() => sql(`select count(*) from public.audit_events where action='payment.recorded' and metadata->>'receivableId'=${q(id)}`)).toBe('1')
 
+  // Reload to guarantee the DOM reflects the post-payment server state before
+  // interacting with the adjustment form. `toHaveURL` above only confirms the
+  // browser URL, not that the client has already re-rendered with fresh data,
+  // and submitting the adjustment against a not-yet-refreshed form node was
+  // silently swallowed here.
+  await page.reload({ waitUntil: 'domcontentloaded' })
   const updatedCard = page.locator('article').filter({ has: page.locator(`input[name="receivable_id"][value="${id}"]`) })
   const adjustmentForm = updatedCard.locator('form:has(button:has-text("Aplicar ajuste"))')
   await adjustmentForm.locator('input[name="amount"]').fill('10.00')
