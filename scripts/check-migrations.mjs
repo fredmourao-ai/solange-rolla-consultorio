@@ -425,7 +425,7 @@ function sqlObjects(migration) {
   const supportedDdlTargets = {
     alter: new Set(['extension', 'schema', 'sequence', 'table', 'view']),
     create: new Set(['extension', 'function', 'index', 'policy', 'schema', 'sequence', 'table', 'trigger', 'type', 'view']),
-    drop: new Set(['extension', 'index', 'schema', 'sequence', 'table', 'view']),
+    drop: new Set(['extension', 'index', 'policy', 'schema', 'sequence', 'table', 'view']),
   }
   const staticRoutineTargets = new Set(['function', 'policy', 'trigger', 'type'])
 
