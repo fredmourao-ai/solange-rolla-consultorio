@@ -80,4 +80,22 @@ describe('getStaffSession permissions', () => {
 
     await expect(getStaffSession()).resolves.toMatchObject({ permissions: [] })
   })
+
+  it('recognizes the collaboration tasks permission keys granted by the database instead of wiping the session', async () => {
+    mocks.createServerSupabaseClient.mockResolvedValue(
+      clientWith({
+        permissions: [
+          { permission_key: 'patients.read' },
+          { permission_key: 'tasks.read' },
+          { permission_key: 'tasks.create' },
+          { permission_key: 'tasks.update' },
+          { permission_key: 'tasks.assign' },
+        ],
+      }),
+    )
+
+    await expect(getStaffSession()).resolves.toMatchObject({
+      permissions: ['patients.read', 'tasks.read', 'tasks.create', 'tasks.update', 'tasks.assign'],
+    })
+  })
 })

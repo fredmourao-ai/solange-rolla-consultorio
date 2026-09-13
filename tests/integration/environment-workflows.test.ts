@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest'
 const previewScript = path.join(process.cwd(), 'scripts/preview-env.mjs')
 const stagingScript = path.join(process.cwd(), 'scripts/staging-lock.mjs')
 const stagingWorkflow = path.join(process.cwd(), '.github/workflows/staging-promote.yml')
+const backupScript = path.join(process.cwd(), 'scripts/backup-homologation.sh')
 const base = {
   SUPABASE_BRANCHING_ENABLED: 'true',
   APP_ENV: 'preview',
@@ -103,6 +104,29 @@ describe('environment workflow contracts', () => {
     expect(workflow).toContain('Rollback staging release after failed validation')
     expect(workflow).toContain('Finalize promoted release')
     expect(workflow.indexOf('Real UI staging homologation')).toBeLessThan(workflow.indexOf('Finalize promoted release'))
+  })
+
+  it('keeps staging backups host-local and independent of Fred-Win', () => {
+    const workflow = readFileSync(stagingWorkflow, 'utf8')
+    const backup = readFileSync(backupScript, 'utf8')
+    expect(backup).toContain('DEST=${SOLANGE_BACKUP_DEST:-/home/ubuntu/solange-client-demo/backups}')
+    expect(backup).not.toContain('/mnt/fredwin-backup')
+    expect(workflow).toContain('SOLANGE_BACKUP_DEST="$ROOT/backups" scripts/backup-homologation.sh')
+    expect(workflow).not.toContain('/home/ubuntu/.local/bin/solange-backup.sh')
+  })
+
+  it('rolls back only resources created by the current staging transaction', () => {
+    const workflow = readFileSync(stagingWorkflow, 'utf8')
+    expect(workflow).toContain('TRANSACTION="$ROOT/state/deploy-transaction-$PROMOTE_SHA"')
+    expect(workflow).toContain('APP_SWAPPED=0')
+    expect(workflow).toContain('WORKERS_SWAPPED=0')
+    expect(workflow).toContain('if [ "$APP_SWAPPED" -eq 1 ] && [ -d "$PREVIOUS" ]; then')
+    expect(workflow).toContain('[ -f "$TRANSACTION" ] || exit 0')
+    expect(workflow).toContain('rm -f "$TRANSACTION"')
+    expect(workflow).toContain(`printf '%s\\n' "$PROMOTE_SHA" > "$TRANSACTION"`)
+    expect(workflow).toContain('test -f "$STAGE/package.json"')
+    expect(workflow).toContain('test -f "$STAGE/.env.production.local"')
+    expect(workflow).toContain('test -s "$STAGE/.next/BUILD_ID"')
   })
 
   it('requires explicit staging approval and distinct project refs', () => {

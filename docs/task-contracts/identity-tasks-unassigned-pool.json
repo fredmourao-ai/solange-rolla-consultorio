@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "status": "approved",
+  "issue": 136,
+  "migration": "20260913145904_identity_tasks_unassigned_pool.sql",
+  "owners": ["identity"],
+  "objects": [
+    { "name": "public.tasks", "owner": "identity" }
+  ]
+}

@@ -9,6 +9,7 @@ const requiredRunnerLabels = ['self-hosted', 'Linux', 'ARM64', 'solange-ci']
 // promote (pinned to the dedicated homologation host, which persists release state).
 const runnerLabelExceptionsByFile: Record<string, string[][]> = {
   'staging-promote.yml': [requiredRunnerLabels, [...requiredRunnerLabels, 'solange-staging-host']],
+  'diag-staging-host.yml': [[...requiredRunnerLabels, 'solange-staging-host']],
 }
 
 function indexMode(path: string): string {
@@ -182,6 +183,12 @@ describe('repository governance contract', () => {
     const workflow = projectFile('.github/workflows/repository-governance.yml')
 
     expect(workflow).toContain('workflow_dispatch:')
+  })
+
+  it('runs staging build containers with a writable npm home for the non-root runner uid', () => {
+    const workflow = projectFile('.github/workflows/staging-promote.yml')
+
+    expect(workflow).toContain('--user "$(id -u):$(id -g)" -e HOME=/tmp -e npm_config_cache=/tmp/.npm')
   })
 
   it('runs repository-specific structural gates before merge', () => {

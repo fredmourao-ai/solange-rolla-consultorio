@@ -1,7 +1,24 @@
 import { notFound, redirect } from 'next/navigation'
-import { authorizeStaffSession, AuthorizationError, getStaffSession } from '@/modules/identity/public'
-import { createClinicalRecord, listClinicalRecords } from '@/modules/clinical/public'
-import type { ClinicalRecord, ClinicalRecordInsert } from '@/modules/clinical/public'
+import {
+  authorizeStaffPermission,
+  authorizeStaffSession,
+  AuthorizationError,
+  getStaffSession,
+  isActiveStaffWithRole,
+  listActiveStaffByRole,
+  type StaffDirectoryRepository,
+} from '@/modules/identity/public'
+import {
+  completeAppointmentWithHandoff,
+  HANDOFF_TASK_TYPES,
+  listClinicalRecords,
+  type AssigneeDirectory,
+  type ClinicalRecord,
+  type ClinicalRecordInsert,
+  type HandoffInput,
+  type HandoffTaskType,
+} from '@/modules/clinical/public'
+import type { Task, TaskRepository } from '@/modules/tasks/public'
 import { ClinicalRecordEditor } from '@/modules/clinical/ui/clinical-record-editor'
 import { ClinicalTimeline } from '@/modules/clinical/ui/clinical-timeline'
 import { createSensitiveDataCrypto } from '@/platform/crypto/aes-gcm'
@@ -11,15 +28,70 @@ import type { Database } from '@/platform/supabase/types'
 
 export const dynamic = 'force-dynamic'
 
-async function createClinicalRecordAction(formData: FormData) {
+function isHandoffTaskType(value: string): value is HandoffTaskType {
+  return (HANDOFF_TASK_TYPES as readonly string[]).includes(value)
+}
+
+async function completeAppointmentAction(formData: FormData) {
   'use server'
 
   const session = await getStaffSession()
   const authorizedSession = authorizeStaffSession(session, ['psychologist_owner'], { aal2: true })
+  authorizeStaffPermission(session, 'appointments.complete', { aal2: true })
   const client = await createServerSupabaseClient()
   const personId = String(formData.get('person_id') ?? '')
   const appointmentId = String(formData.get('appointment_id') ?? '')
   const plaintext = String(formData.get('plaintext') ?? '')
+
+  const rawHandoffType = String(formData.get('handoff_type') ?? '')
+  let handoff: HandoffInput | undefined
+  if (rawHandoffType) {
+    if (!isHandoffTaskType(rawHandoffType)) throw new Error('HANDOFF_TYPE_INVALID')
+    authorizeStaffPermission(session, 'tasks.create', { aal2: true })
+    authorizeStaffPermission(session, 'tasks.assign', { aal2: true })
+
+    const assignedToUserId = String(formData.get('handoff_assigned_to') ?? '')
+    const rawDays = formData.get('handoff_follow_up_days')
+    handoff = {
+      type: rawHandoffType,
+      assignedToUserId,
+      followUpInDays: rawDays ? Number(rawDays) : undefined,
+    }
+  }
+
+  const staffDirectory: Pick<StaffDirectoryRepository, 'findByUserId'> = {
+    async findByUserId(userId) {
+      const { data } = await client
+        .from('profiles')
+        .select('user_id, role, active')
+        .eq('user_id', userId)
+        .maybeSingle()
+      if (!data) return null
+      return { userId: data.user_id, role: data.role, active: data.active }
+    },
+  }
+
+  const assigneeDirectory: AssigneeDirectory = {
+    async isActiveSecretary(userId: string) {
+      return isActiveStaffWithRole(userId, 'secretary', staffDirectory)
+    },
+  }
+
+  const taskRepository: TaskRepository = {
+    async insert(task: Task): Promise<void> {
+      const { error } = await client.from('tasks').insert({
+        id: task.id,
+        type: task.type,
+        title: task.title,
+        created_by_user_id: task.createdByUserId,
+        assigned_to_user_id: task.assignedToUserId,
+        person_id: task.personId,
+        appointment_id: task.appointmentId,
+        due_at: task.dueAt,
+      })
+      if (error) throw new Error('HANDOFF_TASK_CREATE_FAILED')
+    },
+  }
 
   const repository = {
     async insert(input: ClinicalRecordInsert): Promise<ClinicalRecord> {
@@ -65,11 +137,16 @@ async function createClinicalRecordAction(formData: FormData) {
     },
   }
 
-  await createClinicalRecord({ appointmentId, personId, authorUserId: authorizedSession.userId, plaintext }, {
-    crypto: createSensitiveDataCrypto(),
-    repository,
-    audit,
-  })
+  await completeAppointmentWithHandoff(
+    { appointmentId, personId, authorUserId: authorizedSession.userId, plaintext, handoff },
+    {
+      crypto: createSensitiveDataCrypto(),
+      repository,
+      audit,
+      taskRepository,
+      assigneeDirectory,
+    },
+  )
   redirect(`/clinico/${personId}`)
 }
 
@@ -100,6 +177,20 @@ export default async function ClinicalPersonPage({ params }: { params: Promise<{
     })),
   })
 
+  const secretaries = await listActiveStaffByRole('secretary', {
+    async listActiveByRole(role) {
+      const { data: profiles } = await client
+        .from('profiles')
+        .select('user_id, display_name, active')
+        .eq('role', role)
+        .eq('active', true)
+      return (profiles ?? []).map((profile) => ({ userId: profile.user_id, displayName: profile.display_name }))
+    },
+    async findByUserId() {
+      return null
+    },
+  })
+
   return (
     <>
       <header className="page-header">
@@ -112,7 +203,7 @@ export default async function ClinicalPersonPage({ params }: { params: Promise<{
         <h2 id="clinical-timeline-title" className="ui-card__title">Linha do tempo</h2>
         <ClinicalTimeline records={records} />
       </section>
-      <ClinicalRecordEditor personId={personId} action={createClinicalRecordAction} />
+      <ClinicalRecordEditor personId={personId} action={completeAppointmentAction} secretaries={secretaries} />
     </>
   )
 }

@@ -47,14 +47,18 @@ test('staff charges a no-show for the full service price, auditable and idempote
   await signInDemo(page)
   await page.goto('/agenda?view=day&date=2020-01-07', { waitUntil: 'domcontentloaded' })
   await ensureAppointmentDetailsOpen(page, appointmentId)
-  await page.getByRole('button', { name: 'Registrar cobrança' }).click()
+  const chargeButton = () => page.locator(`li.appointment-calendar__item[data-appointment-id="${appointmentId}"]`).getByRole('button', { name: 'Registrar cobrança' })
+  await chargeButton().click()
 
   const receivableQuery = `select source_type,source_id,person_id,payer_person_id,original_amount_cents from public.receivables where idempotency_key=${quote(`appointment:${appointmentId}:charge`)}`
   await expect.poll(() => sql(receivableQuery)).toBe(`appointment|${appointmentId}|d0000000-0000-4000-8000-000000000001|d0000000-0000-4000-8000-000000000001|30000`)
   await expect.poll(() => sql(`select count(*) from public.audit_events where action='receivable.appointment_charge_created' and correlation_id=${quote(appointmentId)}`)).toBe('1')
 
+  // The Server Action redirects back to the same URL and refreshes the RSC tree asynchronously.
+  // Reload establishes a fresh UI boundary before retrying the same idempotent charge.
+  await page.reload({ waitUntil: 'domcontentloaded' })
   await ensureAppointmentDetailsOpen(page, appointmentId)
-  await page.getByRole('button', { name: 'Registrar cobrança' }).click()
+  await chargeButton().click()
   await expect.poll(() => sql(`select count(*) from public.receivables where source_type='appointment' and source_id=${quote(appointmentId)}`)).toBe('1')
 })
 
@@ -70,6 +74,7 @@ test('a no-show charge is unavailable when the policy snapshot disabled it', asy
   await signInDemo(page)
   await page.goto('/agenda?view=day&date=2020-01-08', { waitUntil: 'domcontentloaded' })
   await ensureAppointmentDetailsOpen(page, id)
-  await expect(page.getByRole('button', { name: 'Registrar cobrança' })).toHaveCount(0)
+  const item = page.locator(`li.appointment-calendar__item[data-appointment-id="${id}"]`)
+  await expect(item.getByRole('button', { name: 'Registrar cobrança' })).toHaveCount(0)
   expect(sql(`select count(*) from public.receivables where source_type='appointment' and source_id=${quote(id)}`)).toBe('0')
 })
