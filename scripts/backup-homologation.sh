@@ -1,6 +1,6 @@
 #!/bin/sh
 set -eu
-DEST=${SOLANGE_BACKUP_DEST:-/mnt/fredwin-backup/solange/homologacao}
+DEST=${SOLANGE_BACKUP_DEST:-/home/ubuntu/solange-client-demo/backups}
 SOURCE_CONTAINER=${SOLANGE_DB_CONTAINER:-supabase_db_solange-client-demo}
 NETWORK=${SOLANGE_DB_NETWORK:-supabase_network_solange-client-demo}
 [ -d "$DEST" ] && [ -w "$DEST" ] || { echo 'backup_failed: destination unavailable' >&2; exit 1; }
