@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "status": "approved",
+  "issue": 113,
+  "migration": "20260913181500_staff_permission_admin_rpcs.sql",
+  "owners": ["identity", "audit"],
+  "objects": [
+    {"name": "public.profiles", "owner": "identity"},
+    {"name": "public.permission_definitions", "owner": "identity"},
+    {"name": "public.role_permission_defaults", "owner": "identity"},
+    {"name": "public.user_permission_overrides", "owner": "identity"},
+    {"name": "public.list_staff_users", "owner": "identity"},
+    {"name": "public.list_user_access", "owner": "identity"},
+    {"name": "public.set_user_permission_override", "owner": "identity"},
+    {"name": "public.clear_user_permission_override", "owner": "identity"},
+    {"name": "public.upsert_staff_profile", "owner": "identity"},
+    {"name": "public.audit_events", "owner": "audit"}
+  ]
+}

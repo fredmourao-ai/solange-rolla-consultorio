@@ -51,10 +51,12 @@ select throws_ok(
 
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-000000000001","aal":"aal2","role":"authenticated"}', true);
 select is((select count(*)::int from public.profiles where user_id in ('00000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000002','00000000-0000-0000-0000-000000000003')), 3, 'owner at AAL2 can enumerate test profiles');
-select lives_ok(
+select throws_ok(
   $$ insert into public.profiles (user_id, role, display_name)
      values ('00000000-0000-0000-0000-000000000004', 'secretary', 'Teste Managed') $$,
-  'owner at AAL2 can create profiles'
+  '42501',
+  null,
+  'owner at AAL2 must use audited administration RPC instead of direct profile insert'
 );
 
 select * from finish();
