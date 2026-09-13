@@ -185,6 +185,12 @@ describe('repository governance contract', () => {
     expect(workflow).toContain('workflow_dispatch:')
   })
 
+  it('runs staging build containers with a writable npm home for the non-root runner uid', () => {
+    const workflow = projectFile('.github/workflows/staging-promote.yml')
+
+    expect(workflow).toContain('--user "$(id -u):$(id -g)" -e HOME=/tmp -e npm_config_cache=/tmp/.npm')
+  })
+
   it('runs repository-specific structural gates before merge', () => {
     const script = projectFile('scripts/repository-governance-validate.sh')
 
