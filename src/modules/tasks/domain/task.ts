@@ -6,6 +6,7 @@ export const TASK_TYPES = [
   'resend_form',
   'collect_payment',
   'review_document',
+  'special_confirmation',
   'other_admin',
 ] as const
 export type TaskType = (typeof TASK_TYPES)[number]
