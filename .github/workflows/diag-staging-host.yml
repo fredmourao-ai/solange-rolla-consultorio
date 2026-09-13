@@ -34,9 +34,17 @@ jobs:
           echo "--- health check via container ---"
           curl -fsS --max-time 5 http://127.0.0.1:3000/api/health 2>&1 || echo "health check failed/unreachable"
           echo "--- root-owned file count in app ---"
-          find "$ROOT/app" -not -user "$(id -un)" 2>/dev/null | wc -l
-          find "$ROOT/app-previous" -not -user "$(id -un)" 2>/dev/null | wc -l
+          find "$ROOT/app" -not -user "$(id -un)" 2>/dev/null | wc -l || true
+          find "$ROOT/app-previous" -not -user "$(id -un)" 2>/dev/null | wc -l || true
           echo "--- passwordless sudo available? ---"
           sudo -n true 2>&1 && echo "SUDO_NOPASSWD_AVAILABLE" || echo "SUDO_NOPASSWD_UNAVAILABLE"
           echo "--- disk space ---"
-          df -h "$ROOT" 2>&1
+          df -h "$ROOT" 2>&1 || true
+          echo "--- web container status and crash logs ---"
+          docker inspect solange-client-demo-web --format '{{.State.Status}} exit={{.State.ExitCode}} error={{.State.Error}}' 2>&1 || true
+          docker logs --tail 80 solange-client-demo-web 2>&1 || true
+          echo "--- backup destination mount ---"
+          BACKUP_DEST=/mnt/fredwin-backup/solange/homologacao
+          mountpoint -q /mnt/fredwin-backup 2>&1 && echo "MOUNTED" || echo "NOT_MOUNTED"
+          ls -la "$BACKUP_DEST" 2>&1 || true
+          test -w "$BACKUP_DEST" 2>&1 && echo "WRITABLE" || echo "NOT_WRITABLE_OR_MISSING"
