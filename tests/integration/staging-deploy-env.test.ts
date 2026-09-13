@@ -43,3 +43,34 @@ describe('staging database endpoint readiness', () => {
     expect(deploy).toContain('staging database endpoint unavailable after repair')
   })
 })
+
+describe('staging runtime URL and reconciler contract', () => {
+  it('builds the candidate with the current external staging URL', () => {
+    const deploy = workflow.slice(workflow.indexOf('- name: Deploy exact SHA to homologation'))
+    expect(deploy).toContain('"$ROOT/state/current-url.txt"')
+    expect(deploy).toContain("'APP_URL': app_url")
+  })
+
+  it('normalizes web restart policy and remounts the reconciler after the app swap', () => {
+    const deploy = workflow.slice(workflow.indexOf('- name: Deploy exact SHA to homologation'))
+    expect(deploy).toContain('RECONCILER=solange-demo-reconciler')
+    expect(deploy).toContain('docker update --restart unless-stopped "$WEB"')
+    expect(deploy).toContain('docker restart "$RECONCILER"')
+  })
+
+  it('uses the versioned reconciler instead of the legacy host preflight', () => {
+    const deploy = workflow.slice(workflow.indexOf('- name: Deploy exact SHA to homologation'))
+    expect(deploy).toContain('ops/staging/reconcile-demo.sh')
+    expect(deploy).not.toContain('"$ROOT/preflight.sh"')
+  })
+})
+
+describe('staging reconciler transactional rollback', () => {
+  it('backs up and restores the reconciler script with the release transaction', () => {
+    const deploy = workflow.slice(workflow.indexOf('- name: Deploy exact SHA to homologation'))
+    expect(deploy).toContain('RECONCILER_PREVIOUS="$ROOT/reconcile-previous.sh"')
+    expect(deploy).toContain('cp -p "$ROOT/reconcile.sh" "$RECONCILER_PREVIOUS"')
+    expect(deploy).toContain('mv "$RECONCILER_PREVIOUS" "$ROOT/reconcile.sh"')
+    expect(deploy).toContain('rm -f "$ROOT/reconcile-previous.sh"')
+  })
+})
