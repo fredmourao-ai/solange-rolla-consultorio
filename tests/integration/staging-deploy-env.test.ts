@@ -33,3 +33,13 @@ describe('staging deploy live-channel flags', () => {
     expect(deploy).not.toContain('WHATSApP_LIVE_ENABLED')
   })
 })
+
+describe('staging database endpoint readiness', () => {
+  it('repairs a missing loopback database publication before migration push', () => {
+    const deploy = workflow.slice(workflow.indexOf('- name: Deploy exact SHA to homologation'))
+    expect(deploy).toContain('STAGING_DB_CONTAINER=supabase_db_solange-client-demo')
+    expect(deploy).toContain('pg_isready -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER"')
+    expect(deploy).toContain('docker restart -t 30 "$STAGING_DB_CONTAINER"')
+    expect(deploy).toContain('staging database endpoint unavailable after repair')
+  })
+})

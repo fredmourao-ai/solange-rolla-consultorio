@@ -195,6 +195,7 @@ jobs:
           WEB=solange-client-demo-web
           DOC=solange-document-worker
           MSG=solange-messaging-worker
+          STAGING_DB_CONTAINER=supabase_db_solange-client-demo
           TRANSACTION="$ROOT/state/deploy-transaction-$PROMOTE_SHA"
           APP_SWAPPED=0
           WORKERS_SWAPPED=0
@@ -313,6 +314,40 @@ jobs:
               env[key] = value
           subprocess.run(['npm', 'run', 'environment:check'], cwd=sys.argv[2], env=env, check=True)
           PY
+
+          read -r DB_HOST DB_PORT DB_USER < <(python3 - "$RUNTIME_ENV" <<'PY'
+          import pathlib, sys
+          from urllib.parse import urlsplit
+          values = {}
+          for raw in pathlib.Path(sys.argv[1]).read_text().splitlines():
+              if raw and not raw.startswith('#') and '=' in raw:
+                  key, value = raw.split('=', 1)
+                  values[key] = value
+          parsed = urlsplit(values.get('DB_URL', ''))
+          if not parsed.hostname:
+              raise SystemExit('DB_URL missing host for staging readiness check')
+          print(parsed.hostname, parsed.port or 5432, parsed.username or 'postgres')
+          PY
+          )
+          if [ "$DB_HOST" = 127.0.0.1 ] || [ "$DB_HOST" = localhost ]; then
+            if ! pg_isready -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" >/dev/null 2>&1; then
+              echo "staging database endpoint unavailable; repairing Docker publication" >&2
+              docker inspect "$STAGING_DB_CONTAINER" >/dev/null
+              docker restart -t 30 "$STAGING_DB_CONTAINER" >/dev/null
+              ready=0
+              for _ in $(seq 1 30); do
+                if pg_isready -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" >/dev/null 2>&1; then
+                  ready=1
+                  break
+                fi
+                sleep 1
+              done
+              if [ "$ready" -ne 1 ]; then
+                echo "staging database endpoint unavailable after repair" >&2
+                exit 1
+              fi
+            fi
+          fi
 
           python3 - "$RUNTIME_ENV" <<'PY'
           import pathlib, subprocess, sys
