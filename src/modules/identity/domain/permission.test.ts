@@ -10,6 +10,13 @@ describe('permission catalog', () => {
     expect(APP_PERMISSIONS).toContain('permissions.manage')
   })
 
+  it('recognizes the collaboration tasks permission keys granted by the database', () => {
+    expect(APP_PERMISSIONS).toContain('tasks.read')
+    expect(APP_PERMISSIONS).toContain('tasks.create')
+    expect(APP_PERMISSIONS).toContain('tasks.update')
+    expect(APP_PERMISSIONS).toContain('tasks.assign')
+  })
+
   it('rejects unknown permissions', () => {
     expect(isAppPermission('appointments.create')).toBe(true)
     expect(isAppPermission('clinical.god_mode')).toBe(false)
