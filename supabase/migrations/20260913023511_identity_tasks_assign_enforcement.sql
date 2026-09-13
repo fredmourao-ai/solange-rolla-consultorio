@@ -1,5 +1,5 @@
--- owners: appointments,identity,people
--- cross-module-task: docs/task-contracts/collaboration-tasks-onda4.json
+-- owners: identity
+-- task-contract: docs/task-contracts/identity-tasks-assign-enforcement.json
 -- allow-static-routines: true
 
 -- The tasks.assign permission exists since the collaboration tasks

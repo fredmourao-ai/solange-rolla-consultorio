@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "status": "approved",
+  "issue": 131,
+  "migration": "20260913023511_identity_tasks_assign_enforcement.sql",
+  "owners": ["identity"],
+  "objects": [
+    { "name": "public.tasks", "owner": "identity" }
+  ]
+}

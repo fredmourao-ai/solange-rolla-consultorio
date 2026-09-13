@@ -181,7 +181,7 @@ test('owner elevates to AAL2 through the UI, writes a clinical record, and logs 
   await expect(page.getByRole('heading', { name: 'Clínico' })).toBeVisible()
   await page.getByLabel('ID do atendimento').fill(appointmentId)
   await page.getByLabel('Registro atual').fill('Registro clínico sintético de homologação, sem dado real.')
-  await page.getByRole('button', { name: 'Criar nova versão' }).click()
+  await page.getByRole('button', { name: 'Concluir atendimento' }).click()
   await expect.poll(() => sql(`select count(*) from clinical.records where person_id=${q(personId)}`)).toBe('1')
 
   await page.getByRole('button', { name: 'Sair' }).click()
