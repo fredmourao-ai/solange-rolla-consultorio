@@ -1964,6 +1964,10 @@ export type Database = {
           result_idempotency_key: string
         }[]
       }
+      clear_user_permission_override: {
+        Args: { p_permission_key: string; p_user_id: string }
+        Returns: undefined
+      }
       consume_public_rate_limit: {
         Args: {
           p_limit: number
@@ -2046,6 +2050,33 @@ export type Database = {
         Args: never
         Returns: {
           permission_key: string
+        }[]
+      }
+      list_staff_users: {
+        Args: never
+        Returns: {
+          active: boolean
+          created_at: string
+          display_name: string
+          email: string
+          last_sign_in_at: string
+          role: Database["public"]["Enums"]["app_role"]
+          updated_at: string
+          user_id: string
+        }[]
+      }
+      list_user_access: {
+        Args: { p_user_id: string }
+        Returns: {
+          area: string
+          clinical: boolean
+          effective_allowed: boolean
+          label: string
+          override_allowed: boolean
+          permission_key: string
+          requires_aal2: boolean
+          role_default: boolean
+          sort_order: number
         }[]
       }
       persist_appointment_response: {
@@ -2163,6 +2194,14 @@ export type Database = {
         }
         Returns: string[]
       }
+      set_user_permission_override: {
+        Args: {
+          p_allowed: boolean
+          p_permission_key: string
+          p_user_id: string
+        }
+        Returns: undefined
+      }
       sign_form_submission: {
         Args: {
           p_canonical_hash_sha256: string
@@ -2184,6 +2223,15 @@ export type Database = {
           result_submission_version_id: string
           result_typed_name: string
         }[]
+      }
+      upsert_staff_profile: {
+        Args: {
+          p_active: boolean
+          p_display_name: string
+          p_role: Database["public"]["Enums"]["app_role"]
+          p_user_id: string
+        }
+        Returns: undefined
       }
     }
     Enums: {
