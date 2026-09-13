@@ -4,7 +4,7 @@
 Fila de tarefas administrativas para handoff entre Secretaria e Profissional (ex.: agendar retorno, contatar paciente, reenviar formulário, cobrar pagamento, revisar documento).
 
 ## Public API
-Criação e transição de status de tarefas administrativas, com correlação opcional a paciente/consulta.
+Criação e transição de status de tarefas administrativas, com correlação opcional a paciente/consulta. `createSecretaryHandoffTask` cria o handoff Secretaria → Profissional (documento para revisão, retorno solicitado, confirmação especial, outra pendência), sempre com título fechado e predefinido por tipo, e verifica que o destinatário é uma profissional ativa antes de criar a tarefa.
 
 ## Owns
 Tarefas administrativas e suas transições de status (`open`, `in_progress`, `done`, `cancelled`).

@@ -51,6 +51,7 @@ describe('createTask', () => {
       'resend_form',
       'collect_payment',
       'review_document',
+      'special_confirmation',
       'other_admin',
     ])
   })
