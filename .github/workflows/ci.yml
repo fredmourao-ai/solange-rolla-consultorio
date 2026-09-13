@@ -135,9 +135,6 @@ jobs:
       github.event.pull_request.head.repo.full_name == github.repository
     runs-on: [self-hosted, Linux, ARM64, solange-ci]
     timeout-minutes: 35
-    concurrency:
-      group: solange-supabase-docker-stack
-      cancel-in-progress: false
     steps:
       - name: Checkout
         uses: actions/checkout@v7
