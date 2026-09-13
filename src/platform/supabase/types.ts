@@ -1825,7 +1825,7 @@ export type Database = {
       tasks: {
         Row: {
           appointment_id: string | null
-          assigned_to_user_id: string
+          assigned_to_user_id: string | null
           completed_at: string | null
           created_at: string
           created_by_user_id: string
@@ -1839,7 +1839,7 @@ export type Database = {
         }
         Insert: {
           appointment_id?: string | null
-          assigned_to_user_id: string
+          assigned_to_user_id?: string | null
           completed_at?: string | null
           created_at?: string
           created_by_user_id: string
@@ -1853,7 +1853,7 @@ export type Database = {
         }
         Update: {
           appointment_id?: string | null
-          assigned_to_user_id?: string
+          assigned_to_user_id?: string | null
           completed_at?: string | null
           created_at?: string
           created_by_user_id?: string

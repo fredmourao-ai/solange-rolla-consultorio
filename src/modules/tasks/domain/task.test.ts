@@ -32,6 +32,12 @@ describe('createTask', () => {
     expect(task.dueAt).toBe('2026-10-01T00:00:00.000Z')
   })
 
+  it('allows an unassigned task to be created for the shared pool', () => {
+    const withoutAssignee = { ...base, assignedToUserId: undefined }
+    const task = createTask(withoutAssignee)
+    expect(task.assignedToUserId).toBeNull()
+  })
+
   it('rejects an unstructured type', () => {
     expect(() => createTask({ ...base, type: 'anything' as never })).toThrow('TASK_TYPE_INVALID')
   })

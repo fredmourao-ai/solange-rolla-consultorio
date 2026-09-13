@@ -18,6 +18,12 @@ export default defineConfig({
       'server-only': fileURLToPath(
         new URL('./tests/setup/server-only.ts', import.meta.url),
       ),
+      // Mirrors tsconfig.json's "@/*" -> "./src/*" path mapping. Without an
+      // explicit alias here, "@/..." imports only resolve by accident, via
+      // Vite's own tsconfig auto-detection in the plain module graph — and
+      // that detection is bypassed once a test file uses vi.mock, which
+      // switches unmocked imports to a resolver that doesn't know about it.
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
 })

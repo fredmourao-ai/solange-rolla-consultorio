@@ -19,7 +19,7 @@ export type Task = {
   title: string
   status: TaskStatus
   createdByUserId: string
-  assignedToUserId: string
+  assignedToUserId: string | null
   personId: string | null
   appointmentId: string | null
   dueAt: string | null
@@ -30,7 +30,7 @@ export type TaskInput = {
   type: TaskType
   title: string
   createdByUserId: string
-  assignedToUserId: string
+  assignedToUserId?: string | null
   personId?: string | null
   appointmentId?: string | null
   dueAt?: string | null
@@ -48,7 +48,7 @@ export function createTask(input: TaskInput): Task {
     title,
     status: 'open',
     createdByUserId: input.createdByUserId,
-    assignedToUserId: input.assignedToUserId,
+    assignedToUserId: input.assignedToUserId ?? null,
     personId: input.personId ?? null,
     appointmentId: input.appointmentId ?? null,
     dueAt: input.dueAt ?? null,

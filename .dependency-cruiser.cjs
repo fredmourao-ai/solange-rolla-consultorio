@@ -84,6 +84,13 @@ module.exports = {
       to: { path: `^${moduleRoot}(?:/|$)` },
     },
     {
+      name: 'secretary-dashboard-never-imports-clinical',
+      comment: 'The dashboard is exclusively administrative and must never reach into the clinical module.',
+      severity: 'error',
+      from: { path: `^${appRoot}/\\(protected\\)/dashboard(?:/|$)` },
+      to: { path: `^${moduleRoot}/clinical(?:/|$)` },
+    },
+    {
       name: 'no-circular-dependencies',
       comment: 'Circular dependencies are prohibited.',
       severity: 'error',
