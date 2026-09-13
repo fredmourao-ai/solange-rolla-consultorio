@@ -9,6 +9,7 @@ const requiredRunnerLabels = ['self-hosted', 'Linux', 'ARM64', 'solange-ci']
 // promote (pinned to the dedicated homologation host, which persists release state).
 const runnerLabelExceptionsByFile: Record<string, string[][]> = {
   'staging-promote.yml': [requiredRunnerLabels, [...requiredRunnerLabels, 'solange-staging-host']],
+  'diag-staging-host.yml': [[...requiredRunnerLabels, 'solange-staging-host']],
 }
 
 function indexMode(path: string): string {
