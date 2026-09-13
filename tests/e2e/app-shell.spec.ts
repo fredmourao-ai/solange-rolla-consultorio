@@ -16,7 +16,7 @@ test('dashboard shell exposes real operational navigation', async ({ page }) => 
   await signIn(page)
   await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible()
   const expected = {
-    Dashboard: '/dashboard', Pessoas: '/pessoas', Agenda: '/agenda', Eventos: '/eventos',
+    'Início': '/dashboard', Pacientes: '/pessoas', Agenda: '/agenda', Eventos: '/eventos',
     Financeiro: '/financeiro', Fiscal: '/fiscal', Relatórios: '/relatorios',
   }
   for (const [name, href] of Object.entries(expected)) {
