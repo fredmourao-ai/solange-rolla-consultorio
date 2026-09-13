@@ -166,7 +166,12 @@ jobs:
           else
             echo "No local Supabase stack to stop."
           fi
-          npx supabase@2.115.0 start
+          if ! npx supabase@2.115.0 start; then
+            echo "::warning::Local Supabase failed initial health check; retrying once after cleanup."
+            npx supabase@2.115.0 stop --no-backup || true
+            sleep 5
+            npx supabase@2.115.0 start
+          fi
           npx supabase@2.115.0 db reset
       - name: Prepare local E2E environment
         shell: bash
