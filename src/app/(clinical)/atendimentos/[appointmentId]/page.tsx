@@ -76,6 +76,9 @@ function auditRepository(client: Awaited<ReturnType<typeof createServerSupabaseC
 async function requireClinicalSession(returnTo: string, permission: 'clinical.read' | 'clinical.create') {
   const session = await getStaffSession()
   if (!session) notFound()
+  if (session.aal !== 'aal2') {
+    redirect(`/seguranca?reason=mfa_required&returnTo=${encodeURIComponent(returnTo)}`)
+  }
   try {
     return authorizeStaffPermission(session, permission, { aal2: true })
   } catch (error) {
@@ -415,45 +418,3 @@ export default async function CareWorkspacePage({
       actions={<Link className="ui-button ui-button--outline" href={`/pessoas/${appointment.person_id}`}>Ficha do paciente</Link>}
     />
 
-    {search.error === 'not_ready' ? <p role="alert" className="form-field__error">A Secretaria ainda não registrou a chegada deste paciente.</p> : null}
-    {search.error === 'not_in_progress' ? <p role="alert" className="form-field__error">Este atendimento não está em andamento.</p> : null}
-
-    <div className="dashboard-grid">
-      <section className="ui-card">
-        <h2 className="ui-card__title">Consulta atual</h2>
-        <p><strong>Situação:</strong> {appointment.status === 'checked_in' ? 'Paciente aguardando atendimento' : appointment.status === 'in_progress' ? 'Em atendimento' : appointment.status === 'completed' ? 'Realizada' : 'Consulta não iniciada'}</p>
-      </section>
-      <section className="ui-card">
-        <h2 className="ui-card__title">Continuidade</h2>
-        <p><strong>Última consulta:</strong> {previous ? dateTime.format(new Date(previous.starts_at)) : 'Primeiro atendimento registrado'}</p>
-        <p><strong>Próxima consulta:</strong> {next ? dateTime.format(new Date(next.starts_at)) : 'Ainda não agendada'}</p>
-      </section>
-    </div>
-
-    {appointment.status === 'checked_in' && canCreate ? <section className="ui-card care-workspace__start">
-      <h2 className="ui-card__title">Paciente aguardando</h2>
-      <p>Ao iniciar, a Secretaria verá somente “Em atendimento”. Nenhuma informação clínica será compartilhada.</p>
-      <form action={startCareAction}>
-        <input type="hidden" name="appointment_id" value={appointment.id} />
-        <button className="ui-button ui-button--primary" type="submit">Iniciar atendimento</button>
-      </form>
-    </section> : null}
-
-    <section className="ui-card" aria-labelledby="clinical-history-title">
-      <h2 className="ui-card__title" id="clinical-history-title">Histórico clínico</h2>
-      <p className="ui-card__description">Consulte as evoluções anteriores sem sair do atendimento atual.</p>
-      <ClinicalHistory records={history} />
-    </section>
-
-    {appointment.status === 'in_progress' && canCreate && canComplete ? <section className="ui-card" aria-labelledby="current-session-title">
-      <h2 className="ui-card__title" id="current-session-title">Atendimento de hoje</h2>
-      <CareSessionEditor appointmentId={appointment.id} personId={appointment.person_id} action={finishCareAction} secretaries={secretaries} />
-    </section> : null}
-
-    {appointment.status === 'completed' ? <section className="ui-card">
-      <h2 className="ui-card__title">Atendimento finalizado</h2>
-      <p>O registro desta sessão está preservado no histórico clínico.</p>
-      <Link className="ui-button ui-button--primary" href={`/pessoas/${appointment.person_id}`}>Voltar para a ficha</Link>
-    </section> : null}
-  </>
-}

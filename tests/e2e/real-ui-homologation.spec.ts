@@ -174,8 +174,22 @@ test('owner elevates to AAL2 through the UI, writes a clinical record, and logs 
   const appointment = page.locator('li.appointment-calendar__item').filter({ has: page.locator(`input[value="${appointmentId}"]`) })
   await appointment.getByText('Abrir consulta').click()
   const status = appointment.getByRole('form', { name: 'Ações da consulta' })
-  await status.locator('select[name="command"]').selectOption('check_in')
+  await status.locator('select[name="command"]').selectOption('send_confirmation')
   await status.getByRole('button', { name: 'Aplicar' }).click()
+  await expect.poll(() => sql(`select status from public.appointments where id=${q(appointmentId)}`)).toBe('pending_confirmation')
+
+  await page.goto(`/agenda?view=day&date=${appointmentDate}`, { waitUntil: 'domcontentloaded' })
+  await appointment.getByText('Abrir consulta').click()
+  const confirm = appointment.getByRole('form', { name: 'Ações da consulta' })
+  await confirm.locator('select[name="command"]').selectOption('confirm')
+  await confirm.getByRole('button', { name: 'Aplicar' }).click()
+  await expect.poll(() => sql(`select status from public.appointments where id=${q(appointmentId)}`)).toBe('confirmed')
+
+  await page.goto(`/agenda?view=day&date=${appointmentDate}`, { waitUntil: 'domcontentloaded' })
+  await appointment.getByText('Abrir consulta').click()
+  const checkIn = appointment.getByRole('form', { name: 'Ações da consulta' })
+  await checkIn.locator('select[name="command"]').selectOption('check_in')
+  await checkIn.getByRole('button', { name: 'Aplicar' }).click()
   await expect.poll(() => sql(`select status from public.appointments where id=${q(appointmentId)}`)).toBe('checked_in')
 
   await page.goto(`/atendimentos/${appointmentId}`, { waitUntil: 'domcontentloaded' })
