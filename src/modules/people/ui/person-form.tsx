@@ -9,8 +9,11 @@ export type PersonFormValues = {
   cpf: string
   email: string
   phone: string
+  preferred_channel: 'whatsapp' | 'email' | 'phone' | 'none'
+  birthday_messages_enabled: boolean
   fiscal_street: string
   fiscal_number: string
+  fiscal_complement: string
   fiscal_district: string
   fiscal_city: string
   fiscal_state: string
@@ -19,33 +22,98 @@ export type PersonFormValues = {
 
 export type PersonFormState = { revision: number; error: string | null; values: PersonFormValues }
 
-const EMPTY_VALUES: PersonFormValues = {
-  civil_name: '', preferred_name: '', birth_date: '', cpf: '', email: '', phone: '',
-  fiscal_street: '', fiscal_number: '', fiscal_district: '', fiscal_city: '', fiscal_state: '', fiscal_postal_code: '',
+export const EMPTY_PERSON_FORM_VALUES: PersonFormValues = {
+  civil_name: '',
+  preferred_name: '',
+  birth_date: '',
+  cpf: '',
+  email: '',
+  phone: '',
+  preferred_channel: 'none',
+  birthday_messages_enabled: false,
+  fiscal_street: '',
+  fiscal_number: '',
+  fiscal_complement: '',
+  fiscal_district: '',
+  fiscal_city: '',
+  fiscal_state: '',
+  fiscal_postal_code: '',
 }
-const INITIAL_STATE: PersonFormState = { revision: 0, error: null, values: EMPTY_VALUES }
 
-export function PersonForm({ action }: { action: (state: PersonFormState, formData: FormData) => Promise<PersonFormState> }) {
-  const [state, formAction, pending] = useActionState(action, INITIAL_STATE)
+type PersonFormAction = (state: PersonFormState, formData: FormData) => Promise<PersonFormState>
+
+export function PersonForm({
+  action,
+  initialValues = EMPTY_PERSON_FORM_VALUES,
+  mode = 'create',
+}: {
+  action: PersonFormAction
+  initialValues?: PersonFormValues
+  mode?: 'create' | 'edit'
+}) {
+  const [state, formAction, pending] = useActionState(action, {
+    revision: 0,
+    error: null,
+    values: initialValues,
+  })
   const values = state.values
+  const editing = mode === 'edit'
+
   return <form key={state.revision} className="person-form" action={formAction}>
-    {state.error && <p role="alert">{state.error}</p>}
-    <label htmlFor="civil-name">Nome civil</label><input id="civil-name" name="civil_name" required defaultValue={values.civil_name} />
-    <label htmlFor="preferred-name">Nome preferido</label><input id="preferred-name" name="preferred_name" defaultValue={values.preferred_name} />
-    <label htmlFor="birth-date">Data de nascimento</label><input id="birth-date" name="birth_date" type="date" required defaultValue={values.birth_date} />
-    <label htmlFor="cpf">CPF</label><input id="cpf" name="cpf" inputMode="numeric" autoComplete="off" defaultValue={values.cpf} />
-    <label htmlFor="email">E-mail</label><input id="email" name="email" type="email" defaultValue={values.email} />
-    <label htmlFor="phone">Telefone</label><input id="phone" name="phone" inputMode="tel" defaultValue={values.phone} />
+    {state.error && <p role="alert" className="form-field__error">{state.error}</p>}
+
+    <fieldset>
+      <legend>Identificação</legend>
+      <label htmlFor="civil-name">Nome civil</label>
+      <input id="civil-name" name="civil_name" required maxLength={200} defaultValue={values.civil_name} />
+      <label htmlFor="preferred-name">Nome preferido</label>
+      <input id="preferred-name" name="preferred_name" maxLength={200} defaultValue={values.preferred_name} />
+      <label htmlFor="birth-date">Data de nascimento</label>
+      <input id="birth-date" name="birth_date" type="date" required defaultValue={values.birth_date} />
+      <label htmlFor="cpf">CPF</label>
+      <input id="cpf" name="cpf" inputMode="numeric" autoComplete="off" defaultValue={values.cpf} />
+    </fieldset>
+
+    <fieldset>
+      <legend>Contato</legend>
+      <label htmlFor="email">E-mail</label>
+      <input id="email" name="email" type="email" autoComplete="email" defaultValue={values.email} />
+      <label htmlFor="phone">Telefone / WhatsApp</label>
+      <input id="phone" name="phone" inputMode="tel" autoComplete="tel" defaultValue={values.phone} />
+      <label htmlFor="preferred-channel">Canal preferido</label>
+      <select id="preferred-channel" name="preferred_channel" defaultValue={values.preferred_channel}>
+        <option value="none">Nenhum</option>
+        <option value="whatsapp">WhatsApp</option>
+        <option value="email">E-mail</option>
+        <option value="phone">Telefone</option>
+      </select>
+      <label className="form-field--checkbox">
+        <input type="checkbox" name="birthday_messages_enabled" defaultChecked={values.birthday_messages_enabled} />
+        <span>Enviar mensagem de aniversário</span>
+      </label>
+    </fieldset>
+
     <fieldset className="person-form__fiscal" aria-describedby="fiscal-address-help">
       <legend>Dados fiscais para NFS-e</legend>
-      <p id="fiscal-address-help">Para preparar a pessoa para NFS-e, informe CPF e o endereço fiscal completo.</p>
-      <label htmlFor="fiscal-street">Logradouro</label><input id="fiscal-street" name="fiscal_street" autoComplete="street-address" defaultValue={values.fiscal_street} />
-      <label htmlFor="fiscal-number">Número</label><input id="fiscal-number" name="fiscal_number" defaultValue={values.fiscal_number} />
-      <label htmlFor="fiscal-district">Bairro</label><input id="fiscal-district" name="fiscal_district" defaultValue={values.fiscal_district} />
-      <label htmlFor="fiscal-city">Cidade</label><input id="fiscal-city" name="fiscal_city" autoComplete="address-level2" defaultValue={values.fiscal_city} />
-      <label htmlFor="fiscal-state">UF</label><input id="fiscal-state" name="fiscal_state" maxLength={2} autoComplete="address-level1" defaultValue={values.fiscal_state} />
-      <label htmlFor="fiscal-postal-code">CEP</label><input id="fiscal-postal-code" name="fiscal_postal_code" inputMode="numeric" autoComplete="postal-code" defaultValue={values.fiscal_postal_code} />
+      <p id="fiscal-address-help">Para preparar a emissão fiscal, informe CPF e o endereço completo.</p>
+      <label htmlFor="fiscal-postal-code">CEP</label>
+      <input id="fiscal-postal-code" name="fiscal_postal_code" inputMode="numeric" autoComplete="postal-code" defaultValue={values.fiscal_postal_code} />
+      <label htmlFor="fiscal-street">Logradouro</label>
+      <input id="fiscal-street" name="fiscal_street" autoComplete="address-line1" defaultValue={values.fiscal_street} />
+      <label htmlFor="fiscal-number">Número</label>
+      <input id="fiscal-number" name="fiscal_number" defaultValue={values.fiscal_number} />
+      <label htmlFor="fiscal-complement">Complemento</label>
+      <input id="fiscal-complement" name="fiscal_complement" autoComplete="address-line2" defaultValue={values.fiscal_complement} />
+      <label htmlFor="fiscal-district">Bairro</label>
+      <input id="fiscal-district" name="fiscal_district" defaultValue={values.fiscal_district} />
+      <label htmlFor="fiscal-city">Cidade</label>
+      <input id="fiscal-city" name="fiscal_city" autoComplete="address-level2" defaultValue={values.fiscal_city} />
+      <label htmlFor="fiscal-state">UF</label>
+      <input id="fiscal-state" name="fiscal_state" maxLength={2} autoComplete="address-level1" defaultValue={values.fiscal_state} />
     </fieldset>
-    <button type="submit" disabled={pending}>{pending ? 'Cadastrando…' : 'Cadastrar pessoa'}</button>
+
+    <button type="submit" className="ui-button ui-button--primary" disabled={pending}>
+      {pending ? (editing ? 'Salvando…' : 'Cadastrando…') : (editing ? 'Salvar cadastro' : 'Cadastrar paciente')}
+    </button>
   </form>
 }
