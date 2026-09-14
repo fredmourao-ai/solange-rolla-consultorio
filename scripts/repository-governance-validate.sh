@@ -3,6 +3,7 @@ set -Eeuo pipefail
 
 root="$(git rev-parse --show-toplevel)"
 cd "$root"
+bash scripts/agent-continuity-validate.sh
 staged_index="${SOLANGE_GIT_INDEX_FILE-}"
 
 check_project_boundaries() {
