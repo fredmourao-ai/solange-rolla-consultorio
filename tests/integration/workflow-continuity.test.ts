@@ -28,4 +28,12 @@ describe('workflow continuity under rapid PR updates', () => {
     expect(staging).toContain("new URLSearchParams({ head_sha: sha, event, per_page: '100' })")
     expect(staging).not.toContain("new URLSearchParams({ head_sha: sha, per_page: '100' })")
   })
+
+  it('recreates the staging web container so runtime env tracks the promoted SHA', () => {
+    expect(staging).toContain('docker run -d --name "$WEB"')
+    expect(staging).toContain('--env-file "$RUNTIME_ENV"')
+    expect(staging).toContain('docker rename "$WEB" "${WEB}-previous"')
+    expect(staging).toContain('docker rename "${WEB}-previous" "$WEB"')
+    expect(staging).not.toContain('docker start "$WEB" >/dev/null\n\n          docker rm -f "${DOC}-previous"')
+  })
 })
