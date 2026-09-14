@@ -11,5 +11,5 @@ export default async function ProtectedLayout({ children }: { children: ReactNod
   if (!session) redirect('/login')
   authorizeStaffSession(session, ['psychologist_owner', 'secretary', 'accounting'])
 
-  return <AppShell role={session.role}>{children}</AppShell>
+  return <AppShell permissions={session.permissions}>{children}</AppShell>
 }

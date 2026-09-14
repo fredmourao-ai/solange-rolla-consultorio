@@ -15,5 +15,5 @@ export const metadata: Metadata = { robots: { index: false, follow: false } }
  */
 export default async function ClinicalLayout({ children }: { children: ReactNode }) {
   const session = await getStaffSession()
-  return <AppShell role={session?.role ?? 'staff'}>{children}</AppShell>
+  return <AppShell permissions={session?.permissions ?? []}>{children}</AppShell>
 }
