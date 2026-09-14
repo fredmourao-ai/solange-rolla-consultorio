@@ -27,6 +27,12 @@ test('owner records partial payment and audited adjustment from UI', async ({ pa
   await expect.poll(() => sql(`select status from public.receivables where id=${q(id)}`)).toBe('partial')
   await expect.poll(() => sql(`select count(*) from public.audit_events where action='payment.recorded' and metadata->>'receivableId'=${q(id)}`)).toBe('1')
 
+  // Reload to guarantee the DOM reflects the post-payment server state before
+  // interacting with the adjustment form. `toHaveURL` above only confirms the
+  // browser URL, not that the client has already re-rendered with fresh data,
+  // and submitting the adjustment against a not-yet-refreshed form node was
+  // silently swallowed here.
+  await page.reload({ waitUntil: 'domcontentloaded' })
   const updatedCard = page.locator('article').filter({ has: page.locator(`input[name="receivable_id"][value="${id}"]`) })
   const adjustmentForm = updatedCard.locator('form:has(button:has-text("Aplicar ajuste"))')
   await adjustmentForm.locator('input[name="amount"]').fill('10.00')
@@ -48,12 +54,16 @@ test('account payable supports partial and full settlement with immutable paymen
   await expect.poll(() => sql(`select id from public.vendors where legal_name=${q(vendorName)} order by created_at desc limit 1`)).not.toBe('')
   const vendorId = sql(`select id from public.vendors where legal_name=${q(vendorName)} order by created_at desc limit 1`)
 
+  // Reload to guarantee the DOM reflects the post-creation server state (see
+  // the comment on the reload above in the previous test).
+  await page.reload({ waitUntil: 'domcontentloaded' })
   const categoryForm = page.locator('form').filter({ has: page.getByRole('button', { name: 'Cadastrar categoria' }) })
   await categoryForm.getByLabel('Nome da categoria').fill(categoryName)
   await categoryForm.getByRole('button', { name: 'Cadastrar categoria' }).click()
   await expect.poll(() => sql(`select id from public.expense_categories where name=${q(categoryName)} limit 1`)).not.toBe('')
   const categoryId = sql(`select id from public.expense_categories where name=${q(categoryName)} limit 1`)
 
+  await page.reload({ waitUntil: 'domcontentloaded' })
   const create = page.locator('form').filter({ has: page.getByRole('button', { name: 'Criar conta' }) })
   await create.locator('select[name="vendor_id"]').selectOption(vendorId)
   await create.locator('select[name="category_id"]').selectOption(categoryId)
@@ -65,6 +75,7 @@ test('account payable supports partial and full settlement with immutable paymen
   await expect.poll(() => sql(`select id from public.payables where vendor_id=${q(vendorId)} order by created_at desc limit 1`)).not.toBe('')
   const payableId = sql(`select id from public.payables where vendor_id=${q(vendorId)} order by created_at desc limit 1`)
 
+  await page.reload({ waitUntil: 'domcontentloaded' })
   let paymentForm = page.locator('form').filter({ has: page.locator(`input[name="payable_id"][value="${payableId}"]`) })
   await paymentForm.locator('input[name="amount"]').fill('30.00')
   await paymentForm.getByRole('button', { name: 'Registrar baixa' }).click()

@@ -129,6 +129,11 @@
       "audit",
       "payables",
       "receivables"
+    ],
+    "collaboration_tasks": [
+      "appointments",
+      "identity",
+      "people"
     ]
   },
   "objects": {
@@ -207,6 +212,7 @@
     "public.refresh_receivable_status_atomic": "receivables",
     "public.record_receivable_payment_atomic": "receivables",
     "public.refund_receivable_payment_atomic": "receivables",
-    "public.record_payable_payment_atomic": "payables"
+    "public.record_payable_payment_atomic": "payables",
+    "public.tasks": "identity"
   }
 }

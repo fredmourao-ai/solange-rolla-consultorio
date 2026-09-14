@@ -13,7 +13,11 @@ Autenticar a equipe e publicar o vocabulário mínimo de papéis e sessão.
 
 ## Public API
 
-Consumidores importam `AppRole`, `APP_ROLES` e `isAppRole` de `public.ts`.
+Consumidores importam `AppRole`, `APP_ROLES` e `isAppRole` de `public.ts`, além
+de `listActiveStaffByRole`/`isActiveStaffWithRole` para outros módulos
+resolverem, de forma somente-leitura, quem é um usuário staff ativo com um
+papel específico (ex.: validar que um destinatário de handoff é uma
+`secretary` ativa) sem acessar a tabela `profiles` diretamente.
 
 ## Owns
 

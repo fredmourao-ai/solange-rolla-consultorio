@@ -45,6 +45,10 @@ export const APP_PERMISSIONS = [
   'permissions.manage',
   'settings.manage',
   'audit.read',
+  'tasks.read',
+  'tasks.create',
+  'tasks.update',
+  'tasks.assign',
 ] as const
 
 export type AppPermission = (typeof APP_PERMISSIONS)[number]

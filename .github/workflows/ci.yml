@@ -145,6 +145,15 @@ jobs:
           cache: npm
       - name: Install locked dependencies
         run: npm ci
+      - name: Ensure PostgreSQL client is available
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! command -v psql >/dev/null 2>&1; then
+            sudo apt-get update -y
+            sudo apt-get install -y postgresql-client
+          fi
+          psql --version
       - name: Start and reset isolated local Supabase
         shell: bash
         run: |
@@ -154,7 +163,12 @@ jobs:
           else
             echo "No local Supabase stack to stop."
           fi
-          npx supabase@2.115.0 start
+          if ! npx supabase@2.115.0 start; then
+            echo "::warning::Local Supabase failed initial health check; retrying once after cleanup."
+            npx supabase@2.115.0 stop --no-backup || true
+            sleep 5
+            npx supabase@2.115.0 start
+          fi
           npx supabase@2.115.0 db reset
       - name: Prepare local E2E environment
         shell: bash

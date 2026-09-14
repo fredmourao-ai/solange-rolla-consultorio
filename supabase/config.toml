@@ -29,3 +29,9 @@ max_enrolled_factors = 10
 [auth.mfa.totp]
 enroll_enabled = true
 verify_enabled = true
+
+[studio]
+enabled = false
+
+[analytics]
+enabled = false

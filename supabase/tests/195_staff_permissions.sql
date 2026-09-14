@@ -28,7 +28,7 @@ select ok(
   'list_current_permissions fixes search_path'
 );
 
-select is((select count(*)::integer from public.permission_definitions), 46, 'catalog contains every Task 1 key');
+select is((select count(*)::integer from public.permission_definitions), 50, 'catalog contains every Task 1 key plus collaboration tasks');
 select results_eq(
   $$ select permission_key from public.permission_definitions order by permission_key $$,
   $$ select permission_key from (values
@@ -45,11 +45,12 @@ select results_eq(
     ('patients.archive'), ('patients.create'), ('patients.read'),
     ('patients.relationships.manage'), ('patients.update'), ('permissions.manage'),
     ('reports.financial.read'), ('reports.fiscal.read'), ('reports.operational.read'),
-    ('settings.manage'), ('users.manage'), ('users.read')
+    ('settings.manage'), ('tasks.assign'), ('tasks.create'), ('tasks.read'), ('tasks.update'),
+    ('users.manage'), ('users.read')
   ) as expected(permission_key) order by permission_key $$,
-  'SQL catalog exactly matches Task 1'
+  'SQL catalog exactly matches Task 1 plus the Onda 4 collaboration task keys'
 );
-select is((select count(*)::integer from public.permission_definitions where permission_key like 'tasks.%'), 0, 'future task permissions are absent');
+select is((select count(*)::integer from public.permission_definitions where permission_key like 'tasks.%'), 4, 'collaboration task permissions are registered');
 select is(
   (select count(*)::integer from public.permission_definitions where clinical and requires_aal2),
   5,
@@ -64,8 +65,8 @@ select results_eq(
   'AAL2 is required by the exact critical permission set'
 );
 
-select is((select count(*)::integer from public.role_permission_defaults), 138, 'every role has a default for every permission');
-select is((select count(*)::integer from public.role_permission_defaults where role = 'psychologist_owner' and allowed), 46, 'owner defaults allow the full catalog');
+select is((select count(*)::integer from public.role_permission_defaults), 150, 'every role has a default for every permission');
+select is((select count(*)::integer from public.role_permission_defaults where role = 'psychologist_owner' and allowed), 50, 'owner defaults allow the full catalog');
 select results_eq(
   $$ select permission_key from public.role_permission_defaults where role = 'secretary' and allowed order by permission_key $$,
   $$ values
@@ -76,7 +77,8 @@ select results_eq(
     ('finance.read'), ('finance.receive'), ('fiscal.issue'), ('fiscal.read'),
     ('forms.read'), ('forms.send'), ('messaging.read'), ('messaging.send'),
     ('patients.create'), ('patients.read'), ('patients.relationships.manage'),
-    ('patients.update'), ('reports.operational.read') $$,
+    ('patients.update'), ('reports.operational.read'),
+    ('tasks.assign'), ('tasks.create'), ('tasks.read'), ('tasks.update') $$,
   'secretary receives the exact operational defaults'
 );
 select results_eq(
@@ -136,7 +138,7 @@ select is((select count(*)::integer from public.list_current_permissions() where
 select is((select count(*)::integer from public.list_current_permissions() where permission_key = 'reports.financial.read'), 1, 'permission listing includes eligible explicit allows');
 select is((select count(*)::integer from public.list_current_permissions() where permission_key = 'clinical.read'), 0, 'permission listing excludes structural clinical denies');
 
-select is((select count(*)::integer from public.permission_definitions), 46, 'active staff can read definitions');
+select is((select count(*)::integer from public.permission_definitions), 50, 'active staff can read definitions');
 select is((select count(*)::integer from public.role_permission_defaults), 0, 'secretary cannot read role-default internals');
 select is((select count(*)::integer from public.user_permission_overrides), 0, 'secretary cannot read override internals');
 select throws_ok(
@@ -186,7 +188,7 @@ select is(public.has_permission('clinical.read'), true, 'eligible owner at AAL2 
 select is(public.has_permission('finance.refund'), true, 'owner at AAL2 receives critical finance default');
 select is(public.has_permission('users.manage'), true, 'owner at AAL2 receives critical administration default');
 select is((select count(*)::integer from public.list_current_permissions() where permission_key = 'clinical.read'), 1, 'owner permission listing includes clinical access at AAL2');
-select is((select count(*)::integer from public.role_permission_defaults), 138, 'owner at AAL2 can read role defaults');
+select is((select count(*)::integer from public.role_permission_defaults), 150, 'owner at AAL2 can read role defaults');
 select is((select count(*)::integer from public.user_permission_overrides), 3, 'owner at AAL2 can read overrides');
 select throws_ok(
   $$ insert into public.user_permission_overrides (user_id, permission_key, allowed, changed_by_user_id)

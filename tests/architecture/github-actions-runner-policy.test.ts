@@ -14,6 +14,7 @@ const runnerLine = `runs-on: [${runnerLabels.join(', ')}]`
 // not any runner that merely carries the shared `solange-ci` label.
 const runnerLineExceptions: Record<string, string> = {
   'staging-promote.yml': `runs-on: [${[...runnerLabels, 'solange-staging-host'].join(', ')}]`,
+  'diag-staging-host.yml': `runs-on: [${[...runnerLabels, 'solange-staging-host'].join(', ')}]`,
 }
 const sameRepoGuard = 'github.event.pull_request.head.repo.full_name == github.repository'
 type PullRequestEvent = 'pull_request' | 'pull_request_target'
