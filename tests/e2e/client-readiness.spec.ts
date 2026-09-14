@@ -36,8 +36,9 @@ test('local demo owner sees seeded operational surfaces', async ({ page }) => {
   await expect(page.getByText('Encontro Demonstração')).toBeVisible()
 
   await page.goto('/pessoas')
-  await expect(page.getByRole('heading', { name: 'Pessoas' })).toBeVisible()
-  await expect(page.getByText('Ana Demonstração', { exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Pacientes' })).toBeVisible()
+  await expect(page.getByText('Ana', { exact: true })).toBeVisible()
+  await expect(page.getByText('Nome civil: Ana Demonstração', { exact: true })).toBeVisible()
   await page.goto('/fiscal')
   await expect(page.getByRole('heading', { name: 'Fiscal' })).toBeVisible()
   await expect(page.getByText('Documento emitido')).toBeVisible()
