@@ -200,6 +200,7 @@ jobs:
           STAGING_DB_CONTAINER=supabase_db_solange-client-demo
           TRANSACTION="$ROOT/state/deploy-transaction-$PROMOTE_SHA"
           APP_SWAPPED=0
+          WEB_SWAPPED=0
           WORKERS_SWAPPED=0
           SHA_SWAPPED=0
           RECONCILER_SWAPPED=0
@@ -233,9 +234,13 @@ jobs:
                 fi
               fi
               if [ "$APP_SWAPPED" -eq 1 ] && [ -d "$PREVIOUS" ]; then
-                docker stop "$WEB" >/dev/null 2>&1 || true
+                docker rm -f "$WEB" >/dev/null 2>&1 || true
                 force_rm "$APP"
                 mv "$PREVIOUS" "$APP"
+              fi
+              if [ "$WEB_SWAPPED" -eq 1 ] && docker inspect "${WEB}-previous" >/dev/null 2>&1; then
+                docker rm -f "$WEB" >/dev/null 2>&1 || true
+                docker rename "${WEB}-previous" "$WEB" || true
                 docker start "$WEB" >/dev/null 2>&1 || true
               fi
               if [ "$SHA_SWAPPED" -eq 1 ] && [ -f "$ROOT/state/previous-deployed-sha.txt" ]; then
@@ -404,11 +409,17 @@ jobs:
             STATE_DIR="$CANDIDATE_STATE/messaging" bash ops/messaging-worker/run-demo-worker.sh
 
           docker stop "$WEB" >/dev/null
+          docker rm -f "${WEB}-previous" >/dev/null 2>&1 || true
+          docker rename "$WEB" "${WEB}-previous"
+          WEB_SWAPPED=1
           mv "$APP" "$PREVIOUS"
           APP_SWAPPED=1
           mv "$STAGE" "$APP"
-          docker update --restart unless-stopped "$WEB" >/dev/null
-          docker start "$WEB" >/dev/null
+          docker run -d --name "$WEB" --restart unless-stopped --network host \
+            --env-file "$RUNTIME_ENV" \
+            -v "$APP:/app" \
+            -w /app \
+            node:24-bookworm-slim npm run start -- --hostname 127.0.0.1 --port 3200 >/dev/null
           docker restart "$RECONCILER" >/dev/null
 
           docker rm -f "${DOC}-previous" "${MSG}-previous" >/dev/null 2>&1 || true
@@ -523,9 +534,13 @@ jobs:
             sudo -n rm -rf "$@"
           }
           if [ -d "$PREVIOUS" ]; then
-            docker stop "$WEB" >/dev/null 2>&1 || true
+            docker rm -f "$WEB" >/dev/null 2>&1 || true
             force_rm "$APP"
             mv "$PREVIOUS" "$APP"
+          fi
+          if docker inspect "${WEB}-previous" >/dev/null 2>&1; then
+            docker rm -f "$WEB" >/dev/null 2>&1 || true
+            docker rename "${WEB}-previous" "$WEB"
             docker start "$WEB" >/dev/null 2>&1 || true
           fi
           if [ -f "$RECONCILER_PREVIOUS" ]; then
@@ -554,7 +569,7 @@ jobs:
           set -Eeuo pipefail
           ROOT="$STAGING_DEPLOY_ROOT"
           TRANSACTION="$ROOT/state/deploy-transaction-$PROMOTE_SHA"
-          docker rm -f solange-document-worker-previous solange-messaging-worker-previous >/dev/null 2>&1 || true
+          docker rm -f solange-client-demo-web-previous solange-document-worker-previous solange-messaging-worker-previous >/dev/null 2>&1 || true
           rm -rf "$ROOT/app-previous" 2>/dev/null || sudo -n rm -rf "$ROOT/app-previous"
           rm -f "$ROOT/state/previous-deployed-sha.txt" "$TRANSACTION"
           rm -f "$ROOT/reconcile-previous.sh"

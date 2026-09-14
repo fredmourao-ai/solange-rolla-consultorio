@@ -54,7 +54,7 @@ describe('staging runtime URL and reconciler contract', () => {
   it('normalizes web restart policy and remounts the reconciler after the app swap', () => {
     const deploy = workflow.slice(workflow.indexOf('- name: Deploy exact SHA to homologation'))
     expect(deploy).toContain('RECONCILER=solange-demo-reconciler')
-    expect(deploy).toContain('docker update --restart unless-stopped "$WEB"')
+    expect(deploy).toContain('docker run -d --name "$WEB" --restart unless-stopped')
     expect(deploy).toContain('docker restart "$RECONCILER"')
   })
 
