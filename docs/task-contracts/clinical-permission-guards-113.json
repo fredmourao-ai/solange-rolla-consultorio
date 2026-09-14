@@ -2,7 +2,7 @@
   "version": 1,
   "status": "approved",
   "issue": 113,
-  "migration": "20260911022000_clinical_permission_guards.sql",
+  "migration": "20260914143000_clinical_permission_guards.sql",
   "owners": ["appointments", "audit", "clinical"],
   "objects": [
     { "name": "clinical.records", "owner": "clinical" },
