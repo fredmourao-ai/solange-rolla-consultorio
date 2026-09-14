@@ -74,3 +74,15 @@ describe('staging reconciler transactional rollback', () => {
     expect(deploy).toContain('rm -f "$ROOT/reconcile-previous.sh"')
   })
 })
+
+describe('staging cloud homologation data contract', () => {
+  it('seeds and verifies the same dedicated cloud staging project used by the browser', () => {
+    const deploy = workflow.slice(workflow.indexOf('- name: Deploy exact SHA to homologation'))
+    expect(workflow).toContain('Seed synthetic staging fixtures')
+    expect(workflow).toContain('node scripts/seed-staging-project.mjs')
+    expect(deploy).toContain("'E2E_DB_MODE': 'supabase-management-api'")
+    expect(deploy).toContain("'SUPABASE_STAGING_PROJECT_REF': os.environ['SUPABASE_STAGING_PROJECT_REF']")
+    expect(deploy).toContain("'SUPABASE_ACCESS_TOKEN': os.environ['SUPABASE_ACCESS_TOKEN']")
+    expect(deploy).not.toContain("'E2E_ALLOWED_DB_URL': values['DB_URL']")
+  })
+})
