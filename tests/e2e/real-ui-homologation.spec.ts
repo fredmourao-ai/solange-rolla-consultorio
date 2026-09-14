@@ -200,7 +200,8 @@ test('staff manages communication preferences and a distinct financial responsib
   const payerId = await createFiscalPerson(page, payerName, validCpf(String(seed + 1).slice(-9)))
 
   await page.goto(`/pessoas?q=${encodeURIComponent(patientName)}`, { waitUntil: 'domcontentloaded' })
-  await page.getByRole('link', { name: 'Gerenciar cadastro' }).click()
+  await page.getByRole('link', { name: 'Abrir ficha' }).click()
+  await page.getByRole('link', { name: 'Editar cadastro' }).click()
   await page.getByLabel('Canal preferido').selectOption('email')
   await page.getByLabel('Enviar mensagem de aniversário').check()
   await page.getByRole('button', { name: 'Salvar preferências' }).click()
