@@ -113,6 +113,10 @@
     "staff_permissions": [
       "identity"
     ],
+    "staff_permission_admin_rpcs": [
+      "audit",
+      "identity"
+    ],
     "appointments_default_cancellation_policy": [
       "appointments",
       "forms"
@@ -190,6 +194,11 @@
     "public.user_permission_overrides": "identity",
     "public.has_permission": "identity",
     "public.list_current_permissions": "identity",
+    "public.list_staff_users": "identity",
+    "public.list_user_access": "identity",
+    "public.set_user_permission_override": "identity",
+    "public.clear_user_permission_override": "identity",
+    "public.upsert_staff_profile": "identity",
     "public.signature_evidence": "signatures",
     "public.sign_form_submission": "signatures",
     "public.services": "appointments",
