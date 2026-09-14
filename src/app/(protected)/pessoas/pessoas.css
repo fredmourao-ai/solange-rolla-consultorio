@@ -1,0 +1,134 @@
+.person-form {
+  display: grid;
+  gap: var(--space-6);
+}
+
+.person-form fieldset {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3) var(--space-4);
+  margin: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  padding: var(--space-6);
+}
+
+.person-form legend {
+  grid-column: 1 / -1;
+  padding: 0 var(--space-2);
+  font-weight: 750;
+}
+
+.person-form label:not(.form-field--checkbox) {
+  align-self: end;
+  font-weight: 650;
+}
+
+.person-form input:not([type='checkbox']),
+.person-form select {
+  min-height: 2.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  padding: 0 var(--space-3);
+  color: var(--foreground);
+}
+
+.person-form__fiscal p {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--muted);
+}
+
+.person-search {
+  display: grid;
+  grid-template-columns: auto minmax(16rem, 1fr) auto;
+  gap: var(--space-3);
+  align-items: center;
+  margin-bottom: var(--space-6);
+}
+
+.person-search input {
+  min-height: 2.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 0 var(--space-3);
+}
+
+.pagination,
+.patient-hub__tabs,
+.page-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.pagination {
+  justify-content: space-between;
+  margin-top: var(--space-6);
+}
+
+.patient-hub__summary {
+  margin-bottom: var(--space-6);
+}
+
+.patient-hub__tabs {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  margin-bottom: var(--space-6);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--surface) 94%, transparent);
+  padding: var(--space-3);
+  backdrop-filter: blur(8px);
+}
+
+.patient-hub__tabs a {
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
+  color: var(--foreground);
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.patient-hub__tabs a:hover,
+.patient-hub__tabs a:focus-visible {
+  background: var(--surface-muted);
+}
+
+.patient-hub__list {
+  display: grid;
+  gap: 0;
+  margin: var(--space-4) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.patient-hub__list > li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid var(--border);
+  padding: var(--space-3) 0;
+}
+
+.patient-hub__list > li > div {
+  display: grid;
+  gap: var(--space-1);
+}
+
+@media (max-width: 720px) {
+  .person-form fieldset,
+  .person-search {
+    grid-template-columns: 1fr;
+  }
+
+  .patient-hub__tabs {
+    position: static;
+  }
+}

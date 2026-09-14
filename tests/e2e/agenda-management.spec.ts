@@ -14,7 +14,7 @@ async function createPersonThroughUi(page: Page, name: string): Promise<string> 
   await page.goto('/pessoas/nova', { waitUntil: 'domcontentloaded' })
   await page.getByLabel('Nome civil').fill(name)
   await page.getByLabel('Data de nascimento').fill('1990-01-01')
-  await page.getByRole('button', { name: 'Cadastrar pessoa' }).click()
+  await page.getByRole('button', { name: 'Cadastrar paciente' }).click()
   await expect(page).toHaveURL(/\/pessoas$/)
   await expect.poll(() => sql(`select id from public.people where civil_name=${quote(name)} order by created_at desc limit 1`)).not.toBe('')
   return sql(`select id from public.people where civil_name=${quote(name)} order by created_at desc limit 1`)
