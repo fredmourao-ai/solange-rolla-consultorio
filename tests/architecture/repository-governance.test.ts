@@ -199,4 +199,13 @@ describe('repository governance contract', () => {
     expect(script).toContain('npm run migrations:check')
     expect(script).toContain('--fileParallelism=false')
   })
+
+  it('never tracks dependency installation directories', () => {
+    const tracked = execFileSync('git', ['ls-files', '--', 'node_modules', 'node_modules/**'], {
+      cwd: root,
+      encoding: 'utf8',
+    }).trim()
+
+    expect(tracked).toBe('')
+  })
 })
