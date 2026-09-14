@@ -195,15 +195,16 @@ jobs:
           WEB=solange-client-demo-web
           DOC=solange-document-worker
           MSG=solange-messaging-worker
+          RECONCILER=solange-demo-reconciler
+          RECONCILER_PREVIOUS="$ROOT/reconcile-previous.sh"
+          STAGING_DB_CONTAINER=supabase_db_solange-client-demo
           TRANSACTION="$ROOT/state/deploy-transaction-$PROMOTE_SHA"
           APP_SWAPPED=0
           WEB_SWAPPED=0
           WORKERS_SWAPPED=0
           SHA_SWAPPED=0
+          RECONCILER_SWAPPED=0
 
-          # docker run without --user leaves root-owned files behind (see below); a plain
-          # `rm -rf` as the non-root runner user then can't remove them. Retry with sudo -n
-          # before giving up, instead of leaving unremovable debris for the next promotion.
           force_rm() {
             rm -rf "$@" 2>/dev/null && return 0
             sudo -n rm -rf "$@"
@@ -242,6 +243,12 @@ jobs:
               if [ "$SHA_SWAPPED" -eq 1 ] && [ -f "$ROOT/state/previous-deployed-sha.txt" ]; then
                 mv "$ROOT/state/previous-deployed-sha.txt" "$ROOT/state/deployed-sha.txt"
               fi
+              if [ "$RECONCILER_SWAPPED" -eq 1 ] && [ -f "$RECONCILER_PREVIOUS" ]; then
+                mv "$RECONCILER_PREVIOUS" "$ROOT/reconcile.sh"
+                docker restart "$RECONCILER" >/dev/null 2>&1 || true
+              else
+                rm -f "$RECONCILER_PREVIOUS"
+              fi
               rm -f "$TRANSACTION"
             fi
             cleanup_stage
@@ -252,7 +259,9 @@ jobs:
           test -d "$ROOT/state"
           test -f "$ROOT/demo.env"
           test "$(stat -c '%a' "$ROOT/demo.env")" = 600
-          rm -f "$TRANSACTION"
+          test -f "$ROOT/reconcile.sh"
+          rm -f "$TRANSACTION" "$RECONCILER_PREVIOUS"
+          cp -p "$ROOT/reconcile.sh" "$RECONCILER_PREVIOUS"
           mkdir -p "$ROOT/backups"
           chmod 700 "$ROOT/backups"
           SOLANGE_BACKUP_DEST="$ROOT/backups" scripts/backup-homologation.sh
@@ -266,11 +275,16 @@ jobs:
             --exclude '.env.production.local' \
             "$GITHUB_WORKSPACE/" "$STAGE/"
 
-          python3 - "$ROOT/demo.env" "$RUNTIME_ENV" "$PROMOTE_SHA" <<'PY'
+          python3 - "$ROOT/demo.env" "$RUNTIME_ENV" "$PROMOTE_SHA" "$ROOT/state/current-url.txt" <<'PY'
           import os, pathlib, sys
+          from urllib.parse import urlsplit
           source = pathlib.Path(sys.argv[1])
           target = pathlib.Path(sys.argv[2])
           sha = sys.argv[3]
+          app_url = pathlib.Path(sys.argv[4]).read_text().strip().rstrip('/')
+          parsed_app_url = urlsplit(app_url)
+          if parsed_app_url.scheme not in {'http', 'https'} or not parsed_app_url.netloc:
+              raise SystemExit('current staging URL is invalid')
           values = {}
           for raw in source.read_text().splitlines():
               line = raw.strip()
@@ -280,6 +294,7 @@ jobs:
               values[key] = value
           overrides = {
               'APP_ENV': 'staging',
+              'APP_URL': app_url,
               'APP_BUILD_SHA': sha,
               'STAGING_COMMIT_SHA': sha,
               'SUPABASE_PROJECT_REF': os.environ['SUPABASE_PROJECT_REF'],
@@ -307,6 +322,8 @@ jobs:
           target.chmod(0o600)
           PY
           install -m 600 "$RUNTIME_ENV" "$STAGE/.env.production.local"
+          install -m 755 "$GITHUB_WORKSPACE/ops/staging/reconcile-demo.sh" "$ROOT/reconcile.sh"
+          RECONCILER_SWAPPED=1
 
           python3 - "$STAGE/.env.production.local" "$GITHUB_WORKSPACE" <<'PY'
           import os, pathlib, subprocess, sys
@@ -318,6 +335,40 @@ jobs:
               env[key] = value
           subprocess.run(['npm', 'run', 'environment:check'], cwd=sys.argv[2], env=env, check=True)
           PY
+
+          read -r DB_HOST DB_PORT DB_USER < <(python3 - "$RUNTIME_ENV" <<'PY'
+          import pathlib, sys
+          from urllib.parse import urlsplit
+          values = {}
+          for raw in pathlib.Path(sys.argv[1]).read_text().splitlines():
+              if raw and not raw.startswith('#') and '=' in raw:
+                  key, value = raw.split('=', 1)
+                  values[key] = value
+          parsed = urlsplit(values.get('DB_URL', ''))
+          if not parsed.hostname:
+              raise SystemExit('DB_URL missing host for staging readiness check')
+          print(parsed.hostname, parsed.port or 5432, parsed.username or 'postgres')
+          PY
+          )
+          if [ "$DB_HOST" = 127.0.0.1 ] || [ "$DB_HOST" = localhost ]; then
+            if ! pg_isready -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" >/dev/null 2>&1; then
+              echo "staging database endpoint unavailable; repairing Docker publication" >&2
+              docker inspect "$STAGING_DB_CONTAINER" >/dev/null
+              docker restart -t 30 "$STAGING_DB_CONTAINER" >/dev/null
+              ready=0
+              for _ in $(seq 1 30); do
+                if pg_isready -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" >/dev/null 2>&1; then
+                  ready=1
+                  break
+                fi
+                sleep 1
+              done
+              if [ "$ready" -ne 1 ]; then
+                echo "staging database endpoint unavailable after repair" >&2
+                exit 1
+              fi
+            fi
+          fi
 
           python3 - "$RUNTIME_ENV" <<'PY'
           import pathlib, subprocess, sys
@@ -365,6 +416,7 @@ jobs:
             -v "$APP:/app" \
             -w /app \
             node:24-bookworm-slim npm run start -- --hostname 127.0.0.1 --port 3200 >/dev/null
+          docker restart "$RECONCILER" >/dev/null
 
           docker rm -f "${DOC}-previous" "${MSG}-previous" >/dev/null 2>&1 || true
           WORKERS_SWAPPED=1
@@ -400,9 +452,12 @@ jobs:
             sleep 2
           done
           test "$actual" = "$PROMOTE_SHA"
-          "$ROOT/preflight.sh"
-          # Previous release resources remain available until browser-driven
-          # staging homologation succeeds, so a failed acceptance run can roll back.
+          test "$(sed -n 's/^APP_URL=//p' "$ROOT/app/.env.production.local" | tail -1)" = "$URL"
+          test "$(docker inspect -f '{{.HostConfig.RestartPolicy.Name}}' solange-client-demo-web)" = unless-stopped
+          test "$(docker inspect -f '{{.State.Status}}' solange-demo-reconciler)" = running
+          case "$(sed -n 's/^NEXT_PUBLIC_SUPABASE_URL=//p' "$ROOT/app/.env.production.local" | tail -1)" in
+            *.trycloudflare.com*) echo 'Supabase URL must not point at the staging tunnel' >&2; exit 1 ;;
+          esac
 
       - name: Staging app smoke contract
         if: vars.STAGING_APP_URL != ''
@@ -440,6 +495,7 @@ jobs:
           child.update({
               'APP_ENV': 'staging',
               'E2E_TARGET_ENV': 'staging',
+              'APP_URL': app_url,
               'E2E_BASE_URL': app_url,
               'E2E_ALLOWED_BASE_URL': app_url,
               'E2E_ALLOWED_DB_URL': values['DB_URL'],
@@ -463,6 +519,8 @@ jobs:
           WEB=solange-client-demo-web
           DOC=solange-document-worker
           MSG=solange-messaging-worker
+          RECONCILER=solange-demo-reconciler
+          RECONCILER_PREVIOUS="$ROOT/reconcile-previous.sh"
           TRANSACTION="$ROOT/state/deploy-transaction-$PROMOTE_SHA"
           [ -f "$TRANSACTION" ] || exit 0
           force_rm() {
@@ -479,6 +537,10 @@ jobs:
             docker rename "${WEB}-previous" "$WEB"
             docker start "$WEB" >/dev/null 2>&1 || true
           fi
+          if [ -f "$RECONCILER_PREVIOUS" ]; then
+            mv "$RECONCILER_PREVIOUS" "$ROOT/reconcile.sh"
+          fi
+          docker restart "$RECONCILER" >/dev/null 2>&1 || true
           if docker inspect "${DOC}-previous" >/dev/null 2>&1; then
             docker rm -f "$DOC" >/dev/null 2>&1 || true
             docker rename "${DOC}-previous" "$DOC"
@@ -504,5 +566,4 @@ jobs:
           docker rm -f solange-client-demo-web-previous solange-document-worker-previous solange-messaging-worker-previous >/dev/null 2>&1 || true
           rm -rf "$ROOT/app-previous" 2>/dev/null || sudo -n rm -rf "$ROOT/app-previous"
           rm -f "$ROOT/state/previous-deployed-sha.txt" "$TRANSACTION"
-          # Keep the promoted release state directory: the canonical workers bind-mount it
-          # and need the same host path to exist after container restarts.
+          rm -f "$ROOT/reconcile-previous.sh"
