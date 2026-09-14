@@ -19,6 +19,12 @@ describe('workflow continuity under rapid PR updates', () => {
     expect(autoMerge).toContain('cancel-in-progress: true')
   })
 
+  it('skips auto-merge cleanly when a green PR is no longer mergeable', () => {
+    expect(autoMerge).toContain("mergeable_state=\"$(jq -r '.mergeable_state // \"unknown\"' <<<\"$current_pr\")\"")
+    expect(autoMerge).toContain('if [ "$mergeable_state" != "clean" ]; then')
+    expect(autoMerge).toContain('is not currently mergeable')
+  })
+
   it('does not globally serialize host-local Supabase jobs across independent runners', () => {
     expect(ci).not.toContain('group: solange-supabase-docker-stack')
     expect(database).not.toContain('group: solange-supabase-docker-stack')
