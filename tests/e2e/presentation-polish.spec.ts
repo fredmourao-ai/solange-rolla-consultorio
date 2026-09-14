@@ -21,13 +21,37 @@ test('key demo surfaces use product-grade card and list layouts', async ({ page 
   await expect(page.locator('.people-results__item').first()).not.toHaveCSS('border-top-width', '0px')
 })
 
-test('navigation highlights the current administrative route', async ({ page }) => {
+test('navigation is patient-centric and highlights the current administrative route', async ({ page }) => {
   await signInDemo(page)
+
+  const patientLink = page.locator('.sidebar-nav').getByRole('link', { name: 'Pacientes', exact: true })
+  await expect(patientLink).toHaveAttribute('href', '/pessoas')
+  await expect(page.locator('.sidebar-nav').getByRole('link', { name: 'Pessoas', exact: true })).toHaveCount(0)
+
   for (const [path, label] of [['/agenda', 'Agenda'], ['/financeiro', 'Financeiro'], ['/fiscal', 'Fiscal']] as const) {
     await page.goto(path)
     const active = page.locator('.sidebar-nav a[aria-current="page"]')
     await expect(active).toHaveCount(1)
     await expect(active).toHaveText(label)
-    await expect(page.getByRole('link', { name: 'Dashboard', exact: true })).not.toHaveAttribute('aria-current', 'page')
+    await expect(page.getByRole('link', { name: 'Início', exact: true }).first()).not.toHaveAttribute('aria-current', 'page')
   }
+})
+
+test('desktop sidebar keeps every routine reachable on a short viewport', async ({ page }) => {
+  await page.setViewportSize({ width: 1366, height: 768 })
+  await signInDemo(page)
+
+  const sidebar = page.locator('.app-shell__sidebar')
+  const scrollRegion = page.getByTestId('sidebar-scroll-region')
+  await expect(sidebar).toBeVisible()
+  await expect(sidebar).toHaveCSS('height', '768px')
+  await expect(scrollRegion).toHaveCSS('overflow-y', 'auto')
+
+  const metrics = await scrollRegion.evaluate((element) => ({
+    clientHeight: element.clientHeight,
+    scrollHeight: element.scrollHeight,
+  }))
+  expect(metrics.scrollHeight).toBeGreaterThanOrEqual(metrics.clientHeight)
+
+  await expect(page.locator('.sidebar-nav').getByRole('link', { name: 'Relatórios', exact: true })).toBeVisible()
 })

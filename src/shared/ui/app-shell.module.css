@@ -1,0 +1,26 @@
+.sidebar {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+}
+
+.sidebarScroll {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  padding-bottom: var(--space-2);
+}
+
+@media (max-width: 800px) {
+  .sidebar {
+    position: static;
+    height: auto;
+    max-height: none;
+  }
+}
