@@ -8,11 +8,15 @@ import {
 } from '@/modules/appointments/public'
 import { recordAuditEvent, type AuditEvent, type AuditEventRepository } from '@/modules/audit/public'
 import {
-  createClinicalRecord,
+  completeAppointmentWithHandoff,
   getClinicalRecord,
+  HANDOFF_TASK_TYPES,
   serializeSessionEvolution,
+  type AssigneeDirectory,
   type ClinicalRecord,
   type ClinicalRecordInsert,
+  type HandoffInput,
+  type HandoffTaskType,
 } from '@/modules/clinical/public'
 import { CareSessionEditor } from '@/modules/clinical/ui/care-session-editor'
 import { ClinicalHistory, type ReadableClinicalRecord } from '@/modules/clinical/ui/clinical-history'
@@ -20,7 +24,11 @@ import {
   AuthorizationError,
   authorizeStaffPermission,
   getStaffSession,
+  isActiveStaffWithRole,
+  listActiveStaffByRole,
+  type StaffDirectoryRepository,
 } from '@/modules/identity/public'
+import type { Task, TaskRepository } from '@/modules/tasks/public'
 import { createSensitiveDataCrypto } from '@/platform/crypto/aes-gcm'
 import { createServerSupabaseClient } from '@/platform/supabase/server'
 import type { Database } from '@/platform/supabase/types'
@@ -34,6 +42,10 @@ const dateTime = new Intl.DateTimeFormat('pt-BR', {
   timeStyle: 'short',
   timeZone: 'America/Sao_Paulo',
 })
+
+function isHandoffTaskType(value: string): value is HandoffTaskType {
+  return (HANDOFF_TASK_TYPES as readonly string[]).includes(value)
+}
 
 function ageFrom(date: string) {
   const birth = new Date(`${date}T12:00:00Z`)
@@ -151,6 +163,20 @@ async function finishCareAction(formData: FormData) {
   const session = await requireClinicalSession(`/atendimentos/${appointmentId}`, 'clinical.create')
   authorizeStaffPermission(session, 'appointments.complete')
 
+  const rawHandoffType = String(formData.get('handoff_type') ?? '')
+  let handoff: HandoffInput | undefined
+  if (rawHandoffType) {
+    if (!isHandoffTaskType(rawHandoffType)) throw new Error('HANDOFF_TYPE_INVALID')
+    authorizeStaffPermission(session, 'tasks.create', { aal2: true })
+    authorizeStaffPermission(session, 'tasks.assign', { aal2: true })
+    const rawDays = formData.get('handoff_follow_up_days')
+    handoff = {
+      type: rawHandoffType,
+      assignedToUserId: String(formData.get('handoff_assigned_to') ?? ''),
+      followUpInDays: rawDays ? Number(rawDays) : undefined,
+    }
+  }
+
   const client = await createServerSupabaseClient()
   const { data: row, error } = await client.from('appointments')
     .select('id,person_id,service_id,starts_at,ends_at,status,policy_version,cancellation_deadline_at,cancellation_policy_snapshot')
@@ -203,15 +229,48 @@ async function finishCareAction(formData: FormData) {
         }
       },
     }
-    await createClinicalRecord({
+    const staffDirectory: Pick<StaffDirectoryRepository, 'findByUserId'> = {
+      async findByUserId(userId) {
+        const { data } = await client.from('profiles')
+          .select('user_id,role,active')
+          .eq('user_id', userId)
+          .maybeSingle()
+        if (!data) return null
+        return { userId: data.user_id, role: data.role, active: data.active }
+      },
+    }
+    const assigneeDirectory: AssigneeDirectory = {
+      async isActiveSecretary(userId) {
+        return isActiveStaffWithRole(userId, 'secretary', staffDirectory)
+      },
+    }
+    const taskRepository: TaskRepository = {
+      async insert(task: Task): Promise<void> {
+        const { error: taskError } = await client.from('tasks').insert({
+          id: task.id,
+          type: task.type,
+          title: task.title,
+          created_by_user_id: task.createdByUserId,
+          assigned_to_user_id: task.assignedToUserId,
+          person_id: task.personId,
+          appointment_id: task.appointmentId,
+          due_at: task.dueAt,
+        })
+        if (taskError) throw new Error('HANDOFF_TASK_CREATE_FAILED')
+      },
+    }
+    await completeAppointmentWithHandoff({
       appointmentId,
       personId,
       authorUserId: session.userId,
       plaintext,
+      handoff,
     }, {
       crypto: createSensitiveDataCrypto(),
       repository,
       audit: auditRepository(client),
+      taskRepository,
+      assigneeDirectory,
     })
   }
 
@@ -330,6 +389,24 @@ export default async function CareWorkspacePage({
   const displayName = appointment.person.preferred_name || appointment.person.civil_name
   const canCreate = session.permissions.includes('clinical.create')
   const canComplete = session.permissions.includes('appointments.complete')
+  const canHandoff = session.permissions.includes('tasks.create') && session.permissions.includes('tasks.assign')
+  const secretaries = canHandoff ? await listActiveStaffByRole('secretary', {
+    async listActiveByRole(role) {
+      const { data } = await client.from('profiles')
+        .select('user_id,display_name')
+        .eq('role', role)
+        .eq('active', true)
+      return (data ?? []).map((profile) => ({ userId: profile.user_id, displayName: profile.display_name }))
+    },
+    async findByUserId(userId) {
+      const { data } = await client.from('profiles')
+        .select('user_id,role,active')
+        .eq('user_id', userId)
+        .maybeSingle()
+      if (!data) return null
+      return { userId: data.user_id, role: data.role, active: data.active }
+    },
+  }) : []
 
   return <>
     <PageHeader
@@ -370,7 +447,7 @@ export default async function CareWorkspacePage({
 
     {appointment.status === 'in_progress' && canCreate && canComplete ? <section className="ui-card" aria-labelledby="current-session-title">
       <h2 className="ui-card__title" id="current-session-title">Atendimento de hoje</h2>
-      <CareSessionEditor appointmentId={appointment.id} personId={appointment.person_id} action={finishCareAction} />
+      <CareSessionEditor appointmentId={appointment.id} personId={appointment.person_id} action={finishCareAction} secretaries={secretaries} />
     </section> : null}
 
     {appointment.status === 'completed' ? <section className="ui-card">
