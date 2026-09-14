@@ -42,3 +42,15 @@ export type {
   ClinicalAttachmentReadDependencies,
   ClinicalAttachmentUrlStorage,
 } from './application/get-clinical-attachment'
+export {
+  HANDOFF_TASK_TYPES,
+  completeAppointmentWithHandoff,
+} from './application/complete-appointment-with-handoff'
+export type {
+  AssigneeDirectory,
+  CompleteAppointmentWithHandoffDependencies,
+  CompleteAppointmentWithHandoffInput,
+  CompleteAppointmentWithHandoffResult,
+  HandoffInput,
+  HandoffTaskType,
+} from './application/complete-appointment-with-handoff'

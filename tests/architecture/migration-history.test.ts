@@ -590,6 +590,22 @@ describe('migration history', () => {
     expect(result.status, outputOf(result)).toBe(0)
   })
 
+  it('accepts alter column drop not null as a sub-clause of alter table, not a second DDL target', () => {
+    const repository = createRepository()
+    const migration = '20260824000340_appointments_optional_field.sql'
+    fs.writeFileSync(
+      path.join(repository, 'supabase/migrations', migration),
+      '-- owners: appointments\n-- task-contract: docs/task-contracts/appointments_optional_field.json\nalter table public.appointments alter column policy_version drop not null;\n',
+    )
+    writeTaskContract(repository, 'appointments_optional_field.json', {
+      issue: 124, migration, owners: ['appointments'],
+      objects: [{ name: 'public.appointments', owner: 'appointments' }],
+    })
+
+    const result = checkMigrations(repository, { baseRef: 'migration-base' })
+    expect(result.status, outputOf(result)).toBe(0)
+  })
+
   it('accepts PL/pgSQL SELECT INTO locals in explicitly static routines', () => {
     const repository = createRepository()
     const migration = '20260824000350_receivables_static_function.sql'

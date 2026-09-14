@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "status": "approved",
+  "issue": 135,
+  "migration": "20260913124311_identity_tasks_special_confirmation_type.sql",
+  "owners": ["identity"],
+  "objects": [
+    { "name": "public.tasks", "owner": "identity" }
+  ]
+}

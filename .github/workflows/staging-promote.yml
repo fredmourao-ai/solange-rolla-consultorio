@@ -195,31 +195,49 @@ jobs:
           WEB=solange-client-demo-web
           DOC=solange-document-worker
           MSG=solange-messaging-worker
+          TRANSACTION="$ROOT/state/deploy-transaction-$PROMOTE_SHA"
+          APP_SWAPPED=0
+          WORKERS_SWAPPED=0
+          SHA_SWAPPED=0
+
+          # docker run without --user leaves root-owned files behind (see below); a plain
+          # `rm -rf` as the non-root runner user then can't remove them. Retry with sudo -n
+          # before giving up, instead of leaving unremovable debris for the next promotion.
+          force_rm() {
+            rm -rf "$@" 2>/dev/null && return 0
+            sudo -n rm -rf "$@"
+          }
 
           cleanup_stage() {
-            rm -rf "$STAGE"
+            force_rm "$STAGE"
           }
           rollback() {
             rc=$?
             trap - EXIT
             if [ "$rc" -ne 0 ]; then
               docker rm -f "${DOC}-candidate" "${MSG}-candidate" >/dev/null 2>&1 || true
-              if docker inspect "${DOC}-previous" >/dev/null 2>&1; then
-                docker rm -f "$DOC" >/dev/null 2>&1 || true
-                docker rename "${DOC}-previous" "$DOC" || true
-                docker start "$DOC" >/dev/null 2>&1 || true
+              if [ "$WORKERS_SWAPPED" -eq 1 ]; then
+                if docker inspect "${DOC}-previous" >/dev/null 2>&1; then
+                  docker rm -f "$DOC" >/dev/null 2>&1 || true
+                  docker rename "${DOC}-previous" "$DOC" || true
+                  docker start "$DOC" >/dev/null 2>&1 || true
+                fi
+                if docker inspect "${MSG}-previous" >/dev/null 2>&1; then
+                  docker rm -f "$MSG" >/dev/null 2>&1 || true
+                  docker rename "${MSG}-previous" "$MSG" || true
+                  docker start "$MSG" >/dev/null 2>&1 || true
+                fi
               fi
-              if docker inspect "${MSG}-previous" >/dev/null 2>&1; then
-                docker rm -f "$MSG" >/dev/null 2>&1 || true
-                docker rename "${MSG}-previous" "$MSG" || true
-                docker start "$MSG" >/dev/null 2>&1 || true
-              fi
-              if [ -d "$PREVIOUS" ]; then
+              if [ "$APP_SWAPPED" -eq 1 ] && [ -d "$PREVIOUS" ]; then
                 docker stop "$WEB" >/dev/null 2>&1 || true
-                rm -rf "$APP"
+                force_rm "$APP"
                 mv "$PREVIOUS" "$APP"
                 docker start "$WEB" >/dev/null 2>&1 || true
               fi
+              if [ "$SHA_SWAPPED" -eq 1 ] && [ -f "$ROOT/state/previous-deployed-sha.txt" ]; then
+                mv "$ROOT/state/previous-deployed-sha.txt" "$ROOT/state/deployed-sha.txt"
+              fi
+              rm -f "$TRANSACTION"
             fi
             cleanup_stage
             exit "$rc"
@@ -229,9 +247,12 @@ jobs:
           test -d "$ROOT/state"
           test -f "$ROOT/demo.env"
           test "$(stat -c '%a' "$ROOT/demo.env")" = 600
-          /home/ubuntu/.local/bin/solange-backup.sh
+          rm -f "$TRANSACTION"
+          mkdir -p "$ROOT/backups"
+          chmod 700 "$ROOT/backups"
+          SOLANGE_BACKUP_DEST="$ROOT/backups" scripts/backup-homologation.sh
 
-          rm -rf "$STAGE" "$PREVIOUS" "$CANDIDATE_STATE"
+          force_rm "$STAGE" "$PREVIOUS" "$CANDIDATE_STATE"
           mkdir -p "$STAGE" "$CANDIDATE_STATE/document" "$CANDIDATE_STATE/messaging"
           rsync -a --delete \
             --exclude '.git' \
@@ -315,8 +336,11 @@ jobs:
               raise SystemExit(result.returncode)
           PY
 
-          docker run --rm --network host -v "$STAGE:/app" -w /app node:24-bookworm-slim npm ci
-          docker run --rm --network host -v "$STAGE:/app" -w /app node:24-bookworm-slim npm run build
+          docker run --rm --network host --user "$(id -u):$(id -g)" -e HOME=/tmp -e npm_config_cache=/tmp/.npm -v "$STAGE:/app" -w /app node:24-bookworm-slim npm ci
+          docker run --rm --network host --user "$(id -u):$(id -g)" -e HOME=/tmp -e npm_config_cache=/tmp/.npm -v "$STAGE:/app" -w /app node:24-bookworm-slim npm run build
+          test -f "$STAGE/package.json"
+          test -f "$STAGE/.env.production.local"
+          test -s "$STAGE/.next/BUILD_ID"
 
           ROOT="$GITHUB_WORKSPACE" DEMO="$STAGING_DEPLOY_ROOT" ENV_FILE="$RUNTIME_ENV" \
             IMAGE="solange-document-worker:$PROMOTE_SHA" CONTAINER="${DOC}-candidate" \
@@ -327,10 +351,12 @@ jobs:
 
           docker stop "$WEB" >/dev/null
           mv "$APP" "$PREVIOUS"
+          APP_SWAPPED=1
           mv "$STAGE" "$APP"
           docker start "$WEB" >/dev/null
 
           docker rm -f "${DOC}-previous" "${MSG}-previous" >/dev/null 2>&1 || true
+          WORKERS_SWAPPED=1
           if docker inspect "$DOC" >/dev/null 2>&1; then docker rename "$DOC" "${DOC}-previous"; fi
           if docker inspect "$MSG" >/dev/null 2>&1; then docker rename "$MSG" "${MSG}-previous"; fi
           docker rename "${DOC}-candidate" "$DOC"
@@ -345,43 +371,14 @@ jobs:
             rm -f "$ROOT/state/previous-deployed-sha.txt"
           fi
           printf '%s\n' "$PROMOTE_SHA" > "$ROOT/state/deployed-sha.txt"
+          SHA_SWAPPED=1
+          printf '%s\n' "$PROMOTE_SHA" > "$TRANSACTION"
 
       - name: Verify deployed SHA
         shell: bash
         run: |
           set -Eeuo pipefail
           ROOT="$STAGING_DEPLOY_ROOT"
-          APP="$ROOT/app"
-          PREVIOUS="$ROOT/app-previous"
-          WEB=solange-client-demo-web
-          DOC=solange-document-worker
-          MSG=solange-messaging-worker
-          rollback_verified_release() {
-            rc=$?
-            trap - ERR
-            if [ -d "$PREVIOUS" ]; then
-              docker stop "$WEB" >/dev/null 2>&1 || true
-              rm -rf "$APP"
-              mv "$PREVIOUS" "$APP"
-              docker start "$WEB" >/dev/null 2>&1 || true
-            fi
-            if docker inspect "${DOC}-previous" >/dev/null 2>&1; then
-              docker rm -f "$DOC" >/dev/null 2>&1 || true
-              docker rename "${DOC}-previous" "$DOC" || true
-              docker start "$DOC" >/dev/null 2>&1 || true
-            fi
-            if docker inspect "${MSG}-previous" >/dev/null 2>&1; then
-              docker rm -f "$MSG" >/dev/null 2>&1 || true
-              docker rename "${MSG}-previous" "$MSG" || true
-              docker start "$MSG" >/dev/null 2>&1 || true
-            fi
-            if [ -f "$ROOT/state/previous-deployed-sha.txt" ]; then
-              mv "$ROOT/state/previous-deployed-sha.txt" "$ROOT/state/deployed-sha.txt"
-            fi
-            exit "$rc"
-          }
-          trap rollback_verified_release ERR
-
           test "$(cat "$ROOT/state/deployed-sha.txt")" = "$PROMOTE_SHA"
           URL=$(cat "$ROOT/state/current-url.txt")
           actual=''
@@ -455,9 +452,15 @@ jobs:
           WEB=solange-client-demo-web
           DOC=solange-document-worker
           MSG=solange-messaging-worker
+          TRANSACTION="$ROOT/state/deploy-transaction-$PROMOTE_SHA"
+          [ -f "$TRANSACTION" ] || exit 0
+          force_rm() {
+            rm -rf "$@" 2>/dev/null && return 0
+            sudo -n rm -rf "$@"
+          }
           if [ -d "$PREVIOUS" ]; then
             docker stop "$WEB" >/dev/null 2>&1 || true
-            rm -rf "$APP"
+            force_rm "$APP"
             mv "$PREVIOUS" "$APP"
             docker start "$WEB" >/dev/null 2>&1 || true
           fi
@@ -474,15 +477,17 @@ jobs:
           if [ -f "$ROOT/state/previous-deployed-sha.txt" ]; then
             mv "$ROOT/state/previous-deployed-sha.txt" "$ROOT/state/deployed-sha.txt"
           fi
-          rm -rf "$ROOT/state/candidate-$PROMOTE_SHA"
+          force_rm "$ROOT/state/candidate-$PROMOTE_SHA"
+          rm -f "$TRANSACTION"
 
       - name: Finalize promoted release
         shell: bash
         run: |
           set -Eeuo pipefail
           ROOT="$STAGING_DEPLOY_ROOT"
+          TRANSACTION="$ROOT/state/deploy-transaction-$PROMOTE_SHA"
           docker rm -f solange-document-worker-previous solange-messaging-worker-previous >/dev/null 2>&1 || true
-          rm -rf "$ROOT/app-previous"
-          rm -f "$ROOT/state/previous-deployed-sha.txt"
+          rm -rf "$ROOT/app-previous" 2>/dev/null || sudo -n rm -rf "$ROOT/app-previous"
+          rm -f "$ROOT/state/previous-deployed-sha.txt" "$TRANSACTION"
           # Keep the promoted release state directory: the canonical workers bind-mount it
           # and need the same host path to exist after container restarts.
