@@ -16,9 +16,17 @@ export function resolveE2eRuntime(env: Env = process.env): E2eRuntime {
     if (appEnv !== target) throw new Error('E2E_EXTERNAL_APP_ENV_MISMATCH')
     const allowedBase = normalizedUrl(env.E2E_ALLOWED_BASE_URL)
     if (!allowedBase || external !== allowedBase) throw new Error('E2E_EXTERNAL_APP_NOT_ALLOWLISTED')
-    const dbUrl = env.DB_URL?.trim() ?? ''
-    const allowedDbUrl = env.E2E_ALLOWED_DB_URL?.trim() ?? ''
-    if (!dbUrl || !allowedDbUrl || dbUrl !== allowedDbUrl) throw new Error('E2E_EXTERNAL_DATABASE_NOT_ALLOWLISTED')
+    const dbMode = env.E2E_DB_MODE?.trim() ?? ''
+    if (dbMode === 'supabase-management-api') {
+      const projectRef = env.SUPABASE_PROJECT_REF?.trim() ?? ''
+      const stagingRef = env.SUPABASE_STAGING_PROJECT_REF?.trim() ?? ''
+      if (target !== 'staging' || !projectRef || projectRef !== stagingRef) throw new Error('E2E_EXTERNAL_DATABASE_NOT_ALLOWLISTED')
+      if (!env.SUPABASE_ACCESS_TOKEN?.trim()) throw new Error('E2E_STAGING_MANAGEMENT_TOKEN_REQUIRED')
+    } else {
+      const dbUrl = env.DB_URL?.trim() ?? ''
+      const allowedDbUrl = env.E2E_ALLOWED_DB_URL?.trim() ?? ''
+      if (!dbUrl || !allowedDbUrl || dbUrl !== allowedDbUrl) throw new Error('E2E_EXTERNAL_DATABASE_NOT_ALLOWLISTED')
+    }
     const expectedBuildSha = env.E2E_EXPECTED_BUILD_SHA?.trim() ?? ''
     if (!/^[0-9a-f]{40}$/i.test(expectedBuildSha)) throw new Error('E2E_EXPECTED_BUILD_SHA_REQUIRED')
     return { baseURL: external, webServer: undefined, projectTestMatch: '**/real-ui-homologation.spec.ts', expectedBuildSha }

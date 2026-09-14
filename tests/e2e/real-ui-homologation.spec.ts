@@ -5,7 +5,7 @@ import { signInDemo } from './demo-auth'
 import { runSql } from './db-command'
 
 const dbUrl = process.env.DB_URL ?? ''
-if (!dbUrl) throw new Error('DB_URL is required for read-only verification and fiscal bootstrap')
+if (!dbUrl && process.env.E2E_DB_MODE !== 'supabase-management-api') throw new Error('DB_URL is required for read-only verification and fiscal bootstrap')
 function sql(statement: string) { return runSql(statement, dbUrl) }
 function q(value: string) { return `'${value.replaceAll("'", "''")}'` }
 function validCpf(seed: string) {

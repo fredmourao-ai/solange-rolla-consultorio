@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process'
 
-type ExecOptions = { encoding: 'utf8'; env: NodeJS.ProcessEnv; timeout: number; killSignal: NodeJS.Signals }
+type ExecOptions = { encoding: 'utf8'; env: NodeJS.ProcessEnv; timeout: number; killSignal: NodeJS.Signals; input?: string }
 type SqlExecutor = (file: string, args: string[], options: ExecOptions) => string
 
 function connectionEnv(dbUrl: string): NodeJS.ProcessEnv {
@@ -25,6 +25,14 @@ function connectionEnv(dbUrl: string): NodeJS.ProcessEnv {
 
 export function runSql(statement: string, dbUrl: string, executor: SqlExecutor = (file, args, options) => execFileSync(file, args, options)) {
   try {
+    if (process.env.E2E_DB_MODE === 'supabase-management-api') {
+      const projectRef = process.env.SUPABASE_STAGING_PROJECT_REF?.trim()
+      const accessToken = process.env.SUPABASE_ACCESS_TOKEN?.trim()
+      if (!projectRef || !accessToken) throw new Error('STAGING_MANAGEMENT_API_ENV_REQUIRED')
+      return executor(process.execPath, ['scripts/query-staging-project-cli.mjs'], {
+        encoding: 'utf8', env: process.env, timeout: 15_000, killSignal: 'SIGKILL', input: statement,
+      }).trim()
+    }
     return executor('psql', ['-At', '-v', 'ON_ERROR_STOP=1', '-c', statement], { encoding: 'utf8', env: connectionEnv(dbUrl), timeout: 15_000, killSignal: 'SIGKILL' }).trim()
   } catch {
     throw new Error('PSQL_COMMAND_FAILED')

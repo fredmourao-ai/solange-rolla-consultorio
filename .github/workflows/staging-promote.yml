@@ -172,6 +172,13 @@ jobs:
           SUPABASE_STAGING_PROJECT_REF: ${{ secrets.SUPABASE_STAGING_PROJECT_REF }}
         run: node scripts/verify-staging-accounting-rls.mjs
 
+      - name: Seed synthetic staging fixtures
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_STAGING_PROJECT_REF: ${{ secrets.SUPABASE_STAGING_PROJECT_REF }}
+          SUPABASE_PRODUCTION_PROJECT_REF: ${{ secrets.SUPABASE_PRODUCTION_PROJECT_REF }}
+        run: node scripts/seed-staging-project.mjs
+
       - name: Deploy exact SHA to homologation
         shell: bash
         env:
@@ -478,6 +485,9 @@ jobs:
 
       - name: Real UI staging homologation
         shell: bash
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_STAGING_PROJECT_REF: ${{ secrets.SUPABASE_STAGING_PROJECT_REF }}
         run: |
           set -Eeuo pipefail
           python3 - "$STAGING_DEPLOY_ROOT/staging.env" "$STAGING_DEPLOY_ROOT/state/current-url.txt" "$PROMOTE_SHA" <<'PY'
@@ -490,7 +500,7 @@ jobs:
               if raw and not raw.startswith('#') and '=' in raw:
                   key, value = raw.split('=', 1)
                   values[key] = value
-          required = ['DB_URL', 'DEMO_LOCAL_EMAIL', 'DEMO_LOCAL_PASSWORD', 'NEXT_PUBLIC_SUPABASE_URL', 'SUPABASE_SECRET_KEY']
+          required = ['DEMO_LOCAL_EMAIL', 'DEMO_LOCAL_PASSWORD', 'NEXT_PUBLIC_SUPABASE_URL', 'SUPABASE_SECRET_KEY', 'SUPABASE_PROJECT_REF']
           missing = [key for key in required if not values.get(key)]
           if missing:
               raise SystemExit(f'missing staging E2E values: {", ".join(missing)}')
@@ -504,7 +514,9 @@ jobs:
               'APP_URL': app_url,
               'E2E_BASE_URL': app_url,
               'E2E_ALLOWED_BASE_URL': app_url,
-              'E2E_ALLOWED_DB_URL': values['DB_URL'],
+              'E2E_DB_MODE': 'supabase-management-api',
+              'SUPABASE_STAGING_PROJECT_REF': os.environ['SUPABASE_STAGING_PROJECT_REF'],
+              'SUPABASE_ACCESS_TOKEN': os.environ['SUPABASE_ACCESS_TOKEN'],
               'E2E_EXPECTED_BUILD_SHA': sha,
           })
           subprocess.run(
