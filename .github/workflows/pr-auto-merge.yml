@@ -115,6 +115,11 @@ jobs:
             .head.sha == $sha and
             .head.repo.full_name == .base.repo.full_name
           ' <<<"$current_pr" >/dev/null
+          mergeable_state="$(jq -r '.mergeable_state // "unknown"' <<<"$current_pr")"
+          if [ "$mergeable_state" != "clean" ]; then
+            echo "PR #$pr_number is not currently mergeable (mergeable_state=$mergeable_state)."
+            exit 0
+          fi
 
           echo "pr_number=$pr_number" >> "$GITHUB_OUTPUT"
 
