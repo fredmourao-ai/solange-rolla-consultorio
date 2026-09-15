@@ -28,7 +28,7 @@
 | R015 | Responsável legal | Secretaria | 1 | S10 | implemented (#121) |
 | R016 | Responsável financeiro | Secretaria | 1 | S10 | implemented (#121) |
 | R017 | Tomador fiscal | Secretaria | 1 | S10 | implemented (#121) |
-| R018 | Contato de emergência | Secretaria/Profissional | 1 | S03/S07 | planned |
+| R018 | Contato de emergência | Secretaria/Profissional | 1 | S03/S07 | implemented (este PR; `person-form.test.tsx`, `create-person.test.ts`, `020_people_rls.sql`) |
 | R019 | Última e próxima consulta na ficha | Todos | 1/2 | S11 | implemented (#121) |
 | R020 | Processo/acompanhamento terapêutico | Profissional | 1/3 | P03–P05 | planned |
 | R021 | Agenda Hoje/Dia/Semana/Mês | Todos | 2 | G01 | implemented (#122) |
@@ -43,21 +43,21 @@
 | R030 | Check-in `Paciente chegou` | Secretaria | 2 | G10/H01 | implemented (#122, status `checked_in`) |
 | R031 | Estados da agenda em linguagem humana | Todos | 2 | G12 | implemented (#122 na visão principal; revisar telas auxiliares na homologação) |
 | R032 | Nenhum UUID exigido em rotina de agenda | Todos | 2 | G13 | implemented (#122, seleção por nome em `<select>`) |
-| R033 | Iniciar atendimento diretamente da consulta | Profissional | 3 | P06/P07 | planned (PR #123 em validação) |
-| R034 | Profissional vê histórico necessário durante consulta | Profissional | 3 | P04/P05 | planned (PR #123 em validação) |
-| R035 | Prontuário longitudinal legível | Profissional | 3 | P04/P05/P10 | planned (PR #123 em validação) |
+| R033 | Iniciar atendimento diretamente da consulta | Profissional | 3 | P06/P07 | implemented (#123, `e6c92ac`) |
+| R034 | Profissional vê histórico necessário durante consulta | Profissional | 3 | P04/P05 | implemented (#123, `e6c92ac`) |
+| R035 | Prontuário longitudinal legível | Profissional | 3 | P04/P05/P10 | implemented (#123, `e6c92ac`) |
 | R036 | Anamnese/avaliação inicial | Profissional | 3 | P05 | planned |
 | R037 | Demanda e objetivos do acompanhamento | Profissional | 3 | P05 | planned |
-| R038 | Evoluções por sessão | Profissional | 3 | P08/P10 | planned (PR #123 em validação) |
-| R039 | Encaminhamentos/próximos passos | Profissional | 3/4 | P08/H05 | planned (PR #123 em validação) |
-| R040 | Correção por nova versão, sem edição destrutiva | Profissional | 3 | P11 | planned (PR #123 em validação) |
-| R041 | Clinical plaintext somente server-side | Segurança | 3 | Q03 | planned (PR #123 em validação) |
-| R042 | Secretaria vê estado operacional, nunca conteúdo clínico | Secretaria | 3/4 | P12/H03/H04 | planned (PR #123 em validação) |
-| R043 | AAL1 não lê clínica | Segurança | 3 | P13 | planned (PR #123 em validação) |
-| R044 | AAL2 com permissão negada não lê clínica | Segurança | 3 | P14 | planned (PR #123 em validação) |
+| R038 | Evoluções por sessão | Profissional | 3 | P08/P10 | implemented (#123, `e6c92ac`) |
+| R039 | Encaminhamentos/próximos passos | Profissional | 3/4 | P08/H05 | implemented (#123, `e6c92ac`) |
+| R040 | Correção por nova versão, sem edição destrutiva | Profissional | 3 | P11 | implemented (#123, `e6c92ac`) |
+| R041 | Clinical plaintext somente server-side | Segurança | 3 | Q03 | implemented (#123, `e6c92ac`; homologação de vazamento/logs ainda pendente) |
+| R042 | Secretaria vê estado operacional, nunca conteúdo clínico | Secretaria | 3/4 | P12/H03/H04 | implemented (#123, `e6c92ac`) |
+| R043 | AAL1 não lê clínica | Segurança | 3 | P13 | implemented (#123, `e6c92ac`) |
+| R044 | AAL2 com permissão negada não lê clínica | Segurança | 3 | P14 | implemented (#123, `e6c92ac`) |
 | R045 | Tarefa Profissional→Secretaria | Ambos | 4 | H05/H06 | implemented (#129, #131) |
 | R046 | Tarefa não copia evolução clínica | Segurança | 4 | H07 | implemented (#131, #135) |
-| R047 | Handoff chegada→atendimento→conclusão | Ambos | 2–4 | H01–H04 | planned (conclusão integrada depende do PR #123) |
+| R047 | Handoff chegada→atendimento→conclusão | Ambos | 2–4 | H01–H04 | implemented (#122, #123, #129, #131, #135) |
 | R048 | Dashboard específico da Secretaria | Secretaria | 4 | D01 | implemented (#136) |
 | R049 | Dashboard específico da Profissional | Profissional | 4 | D02 | planned |
 | R050 | Dashboard específico da Administradora | Admin | 4 | D03 | planned |
@@ -85,11 +85,11 @@
 | R072 | Codex por task/worktree/sessão isolada | Engenharia | todas | ledger/PRs | implemented (#112) |
 | R073 | Codex usage-limit reset oficial deve ser resgatado quando disponível antes de bloqueio | Engenharia | todas | ledger de dispatch | planned |
 
-## Nota de verificação — 2026-09-14
+## Nota de verificação — 2026-09-15
 
-Rastreabilidade reconciliada novamente contra o estado efetivamente mesclado em `main`, sem promover itens a `validated` antes da homologação real. Desde a nota anterior, #119 (administração de usuários), #120 (menu por permissão), #121 (Paciente 360), #127/#128 e demais correções de staging, #129/#131/#135 (handoffs) e #136 (dashboard da Secretaria) foram mesclados.
+Rastreabilidade reconciliada novamente contra o estado efetivamente mesclado em `main`, sem promover itens a `validated` antes da homologação real. Desde a nota anterior, #119 (administração de usuários), #120 (menu por permissão), #121 (Paciente 360), #127/#128 e demais correções de staging, #129/#131/#135 (handoffs), #136 (dashboard da Secretaria) e #123 (atendimento/prontuário longitudinal) foram mesclados.
 
-O PR #123 permanece em validação para o workspace de atendimento/prontuário longitudinal e, portanto, R033–R044/R047 continuam sem promoção prematura. A validação final de UI continua obrigatória para R062 e para qualquer requisito operacional que dependa de experiência visível.
+R033–R035, R038–R044 e R047 estão marcados como `implemented` pela integração do PR #123, mas continuam sem promoção para `validated` até homologação real de UI, segurança operacional visível e staging no SHA correto. R018 está implementado neste PR com migration forward-only, constraints/RLS em pgTAP, formulário de criação/edição e exibição no Paciente 360.
 
 ## Itens posteriores ao núcleo operacional
 
