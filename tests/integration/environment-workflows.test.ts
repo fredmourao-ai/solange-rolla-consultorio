@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest'
 const previewScript = path.join(process.cwd(), 'scripts/preview-env.mjs')
 const stagingScript = path.join(process.cwd(), 'scripts/staging-lock.mjs')
 const stagingWorkflow = path.join(process.cwd(), '.github/workflows/staging-promote.yml')
+const autoMergeWorkflow = path.join(process.cwd(), '.github/workflows/pr-auto-merge.yml')
 const backupScript = path.join(process.cwd(), 'scripts/backup-homologation.sh')
 const base = {
   SUPABASE_BRANCHING_ENABLED: 'true',
@@ -91,6 +92,29 @@ describe('environment workflow contracts', () => {
     expect(workflow).toContain("github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'workflow_dispatch'")
     expect(workflow).toContain("acceptedEvents = ['push', 'workflow_dispatch']")
     expect(workflow).toContain("new URLSearchParams({ head_sha: sha, event, per_page: '100' })")
+  })
+
+  it('hands post-merge validation off to staging promotion when automatic promotion is enabled', () => {
+    const autoMerge = readFileSync(autoMergeWorkflow, 'utf8')
+    expect(autoMerge).toContain("vars.STAGING_AUTO_PROMOTE_ENABLED == 'true'")
+    expect(autoMerge).toContain('actions/workflows/staging-promote.yml/dispatches')
+    expect(autoMerge).toContain('-f commit_sha="$sha"')
+  })
+
+  it('waits for exact-SHA canonical validation before dispatching staging promotion', () => {
+    const autoMerge = readFileSync(autoMergeWorkflow, 'utf8')
+    expect(autoMerge).toContain('STAGING_HANDOFF_MAX_ATTEMPTS')
+    expect(autoMerge).toContain('canonical post-merge checks still pending')
+    expect(autoMerge).toContain('sleep 15')
+    expect(autoMerge.indexOf('canonical post-merge checks are green')).toBeLessThan(
+      autoMerge.indexOf('actions/workflows/staging-promote.yml/dispatches'),
+    )
+  })
+
+  it('builds both workers with the same promoted immutable SHA', () => {
+    const workflow = readFileSync(stagingWorkflow, 'utf8')
+    expect(workflow).toContain("IMAGE=\"solange-document-worker:$PROMOTE_SHA\"")
+    expect(workflow).toContain("IMAGE=\"solange-messaging-worker:$PROMOTE_SHA\"")
   })
 
   it('runs browser-driven operational homologation against the exact staged SHA before finalizing the release', () => {

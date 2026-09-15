@@ -28,7 +28,7 @@ jobs:
       (github.event.workflow_run.conclusion == 'success' ||
        github.event.workflow_run.conclusion == 'skipped')
     runs-on: [self-hosted, Linux, ARM64, solange-ci]
-    timeout-minutes: 10
+    timeout-minutes: 30
     steps:
       - name: Bootstrap verified GitHub CLI
         env:
@@ -168,3 +168,49 @@ jobs:
             fi
             gh api --method POST "repos/$REPO/actions/workflows/$workflow/dispatches" -f ref=main
           done
+
+      - name: Hand validated main to automatic staging promotion
+        if: >-
+          (steps.pr.outputs.pr_number != '' || steps.pr.outputs.merged_main_sha != '') &&
+          vars.STAGING_AUTO_PROMOTE_ENABLED == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          STAGING_HANDOFF_MAX_ATTEMPTS: 60
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          sha="${{ steps.pr.outputs.merged_main_sha }}"
+          [ -n "$sha" ] || sha="$(gh api "repos/$REPO/git/ref/heads/main" --jq .object.sha)"
+          current_main="$(gh api "repos/$REPO/git/ref/heads/main" --jq .object.sha)"
+          [ "$current_main" = "$sha" ] || { echo "Main advanced to $current_main; refusing stale staging handoff $sha."; exit 0; }
+          required=('CI' 'Database' 'Repository Governance Gate')
+          required_json="$(printf '%s\n' "${required[@]}" | jq -R . | jq -s .)"
+          for attempt in $(seq 1 "$STAGING_HANDOFF_MAX_ATTEMPTS"); do
+            runs="$(gh api "repos/$REPO/actions/runs?head_sha=$sha&event=workflow_dispatch&per_page=100")"
+            if jq -e --argjson required "$required_json" '
+              . as $root |
+              all($required[];
+                . as $name |
+                ($root.workflow_runs | map(select(.name == $name and .head_branch == "main")) | sort_by(.created_at) | last) as $run |
+                ($run != null and $run.status == "completed" and $run.conclusion == "success")
+              )
+            ' <<<"$runs" >/dev/null; then
+              echo "canonical post-merge checks are green for main@$sha"
+              break
+            fi
+            if [ "$attempt" -eq "$STAGING_HANDOFF_MAX_ATTEMPTS" ]; then
+              echo "canonical post-merge checks did not become green for main@$sha" >&2
+              exit 1
+            fi
+            echo "canonical post-merge checks still pending ($attempt/$STAGING_HANDOFF_MAX_ATTEMPTS) for main@$sha"
+            sleep 15
+          done
+          existing="$(gh api "repos/$REPO/actions/runs?head_sha=$sha&event=workflow_dispatch&per_page=100")"
+          if jq -e '.workflow_runs[] | select(.path == ".github/workflows/staging-promote.yml")' <<<"$existing" >/dev/null; then
+            echo "Staging Promote already dispatched for main@$sha"
+            exit 0
+          fi
+          echo "Handing validated main@$sha to Staging Promote."
+          gh api --method POST "repos/$REPO/actions/workflows/staging-promote.yml/dispatches" \
+            -f ref=main -f commit_sha="$sha"
