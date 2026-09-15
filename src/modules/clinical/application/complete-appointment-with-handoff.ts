@@ -68,9 +68,8 @@ export async function completeAppointmentWithHandoff(
   input: CompleteAppointmentWithHandoffInput,
   dependencies: CompleteAppointmentWithHandoffDependencies,
 ): Promise<CompleteAppointmentWithHandoffResult> {
-  const clinicalRecord = await createClinicalRecord(input, dependencies)
-
   if (!input.handoff) {
+    const clinicalRecord = await createClinicalRecord(input, dependencies)
     return { clinicalRecord, task: null }
   }
 
@@ -84,6 +83,7 @@ export async function completeAppointmentWithHandoff(
     throw new Error('HANDOFF_FOLLOW_UP_DAYS_REQUIRED')
   }
 
+  const clinicalRecord = await createClinicalRecord(input, dependencies)
   const task = await createTaskAndPersist(
     {
       id: dependencies.taskIdFactory?.() ?? randomUUID(),

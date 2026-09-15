@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "status": "approved",
+  "issue": 113,
+  "migration": "20260914143000_clinical_permission_guards.sql",
+  "owners": ["appointments", "audit", "clinical"],
+  "objects": [
+    { "name": "clinical.records", "owner": "clinical" },
+    { "name": "public.create_clinical_record", "owner": "clinical" },
+    { "name": "public.list_clinical_record_metadata", "owner": "clinical" },
+    { "name": "public.get_clinical_record_envelope", "owner": "clinical" },
+    { "name": "public.audit_events", "owner": "audit" },
+    { "name": "public.appointments", "owner": "appointments" },
+    { "name": "clinical.reject_clinical_record_mutation", "owner": "clinical" }
+  ]
+}

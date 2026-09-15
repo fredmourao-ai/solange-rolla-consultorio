@@ -1,0 +1,78 @@
+.care-workspace__start {
+  border-color: color-mix(in srgb, var(--primary) 30%, var(--border));
+}
+
+.care-session-editor {
+  display: grid;
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+}
+
+.care-session-editor__main {
+  min-height: 12rem;
+  resize: vertical;
+}
+
+.care-session-editor__optional {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+}
+
+.care-session-editor__optional summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.care-session-editor__fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+}
+
+.clinical-history {
+  display: grid;
+  gap: var(--space-3);
+  margin: var(--space-5) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.clinical-history > li {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.clinical-history details > summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  align-items: center;
+  cursor: pointer;
+  padding: var(--space-4);
+}
+
+.clinical-history__content {
+  display: grid;
+  gap: var(--space-4);
+  border-top: 1px solid var(--border);
+  padding: var(--space-4);
+}
+
+.clinical-history__content h4,
+.clinical-history__text {
+  margin: 0;
+}
+
+.clinical-history__text {
+  white-space: pre-wrap;
+  line-height: 1.6;
+}
+
+@media (max-width: 760px) {
+  .care-session-editor__fields {
+    grid-template-columns: 1fr;
+  }
+}

@@ -89,7 +89,7 @@ describe('completeAppointmentWithHandoff', () => {
     expect(new Date(task.dueAt as string).getTime()).toBeGreaterThan(Date.now())
   })
 
-  it('rejects the handoff when the assignee is not an active secretary', async () => {
+  it('rejects the handoff before persisting clinical data when the assignee is not an active secretary', async () => {
     const isActiveSecretary = vi.fn().mockResolvedValue(false)
     const { dependencies, insertedTasks } = buildDependencies({
       assigneeDirectory: { isActiveSecretary } satisfies AssigneeDirectory,
@@ -103,10 +103,11 @@ describe('completeAppointmentWithHandoff', () => {
     ).rejects.toThrow('HANDOFF_ASSIGNEE_INVALID')
 
     expect(isActiveSecretary).toHaveBeenCalledWith('psychologist-2')
+    expect(dependencies.repository.insert).not.toHaveBeenCalled()
     expect(insertedTasks).toHaveLength(0)
   })
 
-  it('requires followUpInDays for schedule_follow_up', async () => {
+  it('requires followUpInDays before persisting clinical data for schedule_follow_up', async () => {
     const { dependencies, insertedTasks } = buildDependencies()
 
     await expect(
@@ -116,6 +117,7 @@ describe('completeAppointmentWithHandoff', () => {
       ),
     ).rejects.toThrow('HANDOFF_FOLLOW_UP_DAYS_REQUIRED')
 
+    expect(dependencies.repository.insert).not.toHaveBeenCalled()
     expect(insertedTasks).toHaveLength(0)
   })
 
@@ -158,7 +160,7 @@ describe('completeAppointmentWithHandoff', () => {
     }
   })
 
-  it('rejects an unknown handoff type', async () => {
+  it('rejects an unknown handoff type before persisting clinical data', async () => {
     const { dependencies } = buildDependencies()
 
     await expect(
@@ -168,5 +170,7 @@ describe('completeAppointmentWithHandoff', () => {
         dependencies,
       ),
     ).rejects.toThrow('HANDOFF_TYPE_INVALID')
+
+    expect(dependencies.repository.insert).not.toHaveBeenCalled()
   })
 })
