@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "status": "approved",
+  "issue": 18,
+  "migration": "20260915012000_people_emergency_contact.sql",
+  "owners": ["people"],
+  "objects": [
+    {"name": "public.people", "owner": "people"}
+  ]
+}
