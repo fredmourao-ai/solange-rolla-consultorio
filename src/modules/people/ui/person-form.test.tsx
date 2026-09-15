@@ -18,6 +18,10 @@ describe('PersonForm', () => {
     expect(markup).toContain('name="phone"')
     expect(markup).toContain('name="preferred_channel"')
     expect(markup).toContain('name="birthday_messages_enabled"')
+    expect(markup).toContain('Contato de emergência')
+    expect(markup).toContain('name="emergency_contact_name"')
+    expect(markup).toContain('name="emergency_contact_phone"')
+    expect(markup).toContain('name="emergency_contact_relationship"')
     expect(markup).toContain('name="fiscal_complement"')
     expect(markup).toContain('Dados fiscais para NFS-e')
   })
@@ -33,12 +37,18 @@ describe('PersonForm', () => {
         email: 'ana@example.test',
         preferred_channel: 'whatsapp',
         birthday_messages_enabled: true,
+        emergency_contact_name: 'Maria Souza',
+        emergency_contact_phone: '+5531987654321',
+        emergency_contact_relationship: 'Irmã',
         fiscal_complement: 'Sala 2',
       }}
     />)
 
     expect(markup).toContain('value="Ana Souza"')
     expect(markup).toContain('value="ana@example.test"')
+    expect(markup).toContain('value="Maria Souza"')
+    expect(markup).toContain('value="+5531987654321"')
+    expect(markup).toContain('value="Irmã"')
     expect(markup).toContain('value="Sala 2"')
     expect(markup).toContain('<option value="whatsapp" selected="">WhatsApp</option>')
     expect(markup).toContain('checked=""')
