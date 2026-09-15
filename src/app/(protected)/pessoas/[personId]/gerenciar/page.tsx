@@ -42,6 +42,34 @@ type FiscalAddress = {
   state?: string
   postalCode?: string
 }
+type DatabaseError = { code?: string; message?: string }
+type PersonRowWithEmergency = {
+  id: string
+  civil_name: string
+  preferred_name: string | null
+  birth_date: string
+  cpf_normalized: string | null
+  email_normalized: string | null
+  phone_e164: string | null
+  preferred_channel: string
+  birthday_messages_enabled: boolean
+  emergency_contact_name: string | null
+  emergency_contact_phone_e164: string | null
+  emergency_contact_relationship: string | null
+  fiscal_address: unknown
+}
+type PeopleUpdateWithEmergency = {
+  update(values: Record<string, unknown>): {
+    eq(column: string, value: string): Promise<{ error: DatabaseError | null }>
+  }
+}
+type PeopleSelectWithEmergency = {
+  select(columns: string): {
+    eq(column: string, value: string): {
+      maybeSingle(): Promise<{ data: PersonRowWithEmergency | null; error: DatabaseError | null }>
+    }
+  }
+}
 
 function isRelationshipKind(value: string): value is RelationshipKind {
   return relationshipKinds.includes(value as RelationshipKind)
@@ -60,6 +88,9 @@ function formValues(formData: FormData): PersonFormValues {
       ? preferredChannel as PersonFormValues['preferred_channel']
       : 'none',
     birthday_messages_enabled: formData.get('birthday_messages_enabled') === 'on',
+    emergency_contact_name: String(formData.get('emergency_contact_name') ?? ''),
+    emergency_contact_phone: String(formData.get('emergency_contact_phone') ?? ''),
+    emergency_contact_relationship: String(formData.get('emergency_contact_relationship') ?? ''),
     fiscal_street: String(formData.get('fiscal_street') ?? ''),
     fiscal_number: String(formData.get('fiscal_number') ?? ''),
     fiscal_complement: String(formData.get('fiscal_complement') ?? ''),
@@ -88,6 +119,26 @@ function fiscalAddress(values: PersonFormValues) {
   return { ok: true as const, value: address }
 }
 
+function emergencyContact(values: PersonFormValues) {
+  const name = values.emergency_contact_name.trim()
+  const phone = values.emergency_contact_phone.trim()
+  const relationship = values.emergency_contact_relationship.trim()
+  if (!name && !phone && !relationship) return { ok: true as const, value: { name: null, phone: null, relationship: null } }
+  if (!name || !phone) return { ok: false as const, error: 'Informe nome e telefone válidos para o contato de emergência, ou deixe todos os campos em branco.' }
+  try {
+    return {
+      ok: true as const,
+      value: {
+        name,
+        phone: normalizePhoneE164BR(phone),
+        relationship: relationship || null,
+      },
+    }
+  } catch {
+    return { ok: false as const, error: 'Informe nome e telefone válidos para o contato de emergência, ou deixe todos os campos em branco.' }
+  }
+}
+
 async function requirePatientPermission(permission: 'patients.read' | 'patients.update' | 'patients.relationships.manage') {
   const session = await getStaffSession()
   if (!session) redirect('/login')
@@ -102,6 +153,8 @@ async function savePatientAction(personId: string, previous: PersonFormState, fo
   const invalid = (error: string): PersonFormState => ({ revision: previous.revision + 1, error, values })
   const fiscal = fiscalAddress(values)
   if (!fiscal.ok) return invalid(fiscal.error)
+  const emergency = emergencyContact(values)
+  if (!emergency.ok) return invalid(emergency.error)
 
   let cpf: string | null = null
   let email: string | null = null
@@ -116,7 +169,7 @@ async function savePatientAction(personId: string, previous: PersonFormState, fo
   }
 
   const client = await createServerSupabaseClient()
-  const { error } = await client.from('people').update({
+  const { error } = await (client.from('people') as unknown as PeopleUpdateWithEmergency).update({
     civil_name: values.civil_name.trim(),
     preferred_name: values.preferred_name.trim() || null,
     birth_date: values.birth_date,
@@ -125,6 +178,9 @@ async function savePatientAction(personId: string, previous: PersonFormState, fo
     phone_e164: phone,
     preferred_channel: values.preferred_channel,
     birthday_messages_enabled: values.birthday_messages_enabled,
+    emergency_contact_name: emergency.value.name,
+    emergency_contact_phone_e164: emergency.value.phone,
+    emergency_contact_relationship: emergency.value.relationship,
     fiscal_address: fiscal.value,
   }).eq('id', personId)
 
@@ -249,7 +305,7 @@ export default async function ManagePersonPage({
   const session = await requirePatientPermission('patients.update')
   const client = await createServerSupabaseClient()
   const [{ data: person, error: personError }, { data: people, error: peopleError }, { data: relationships, error: relationshipsError }] = await Promise.all([
-    client.from('people').select('id,civil_name,preferred_name,birth_date,cpf_normalized,email_normalized,phone_e164,preferred_channel,birthday_messages_enabled,fiscal_address').eq('id', personId).maybeSingle(),
+    (client.from('people') as unknown as PeopleSelectWithEmergency).select('id,civil_name,preferred_name,birth_date,cpf_normalized,email_normalized,phone_e164,preferred_channel,birthday_messages_enabled,emergency_contact_name,emergency_contact_phone_e164,emergency_contact_relationship,fiscal_address').eq('id', personId).maybeSingle(),
     client.from('people').select('id,civil_name,preferred_name').neq('id', personId).order('civil_name', { ascending: true }).limit(500),
     client.from('person_relationships').select('id,related_person_id,relationship_kind').eq('person_id', personId).order('created_at', { ascending: true }),
   ])
@@ -267,6 +323,9 @@ export default async function ManagePersonPage({
     phone: person.phone_e164 ?? '',
     preferred_channel: person.preferred_channel as PersonFormValues['preferred_channel'],
     birthday_messages_enabled: person.birthday_messages_enabled,
+    emergency_contact_name: person.emergency_contact_name ?? '',
+    emergency_contact_phone: person.emergency_contact_phone_e164 ?? '',
+    emergency_contact_relationship: person.emergency_contact_relationship ?? '',
     fiscal_street: address.street ?? '',
     fiscal_number: address.number ?? '',
     fiscal_complement: address.complement ?? '',

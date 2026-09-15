@@ -25,6 +25,29 @@ const relationshipLabels: Record<string, string> = {
   financial_responsible: 'Responsável financeiro',
   fiscal_taker: 'Tomador fiscal',
 }
+type DatabaseError = { code?: string; message?: string }
+type PersonRowWithEmergency = {
+  id: string
+  civil_name: string
+  preferred_name: string | null
+  birth_date: string
+  cpf_normalized: string | null
+  email_normalized: string | null
+  phone_e164: string | null
+  preferred_channel: string
+  birthday_messages_enabled: boolean
+  emergency_contact_name: string | null
+  emergency_contact_phone_e164: string | null
+  emergency_contact_relationship: string | null
+  fiscal_address: unknown
+}
+type PeopleSelectWithEmergency = {
+  select(columns: string): {
+    eq(column: string, value: string): {
+      maybeSingle(): Promise<{ data: PersonRowWithEmergency | null; error: DatabaseError | null }>
+    }
+  }
+}
 
 function dateTime(value: string) {
   return new Intl.DateTimeFormat('pt-BR', {
@@ -67,8 +90,8 @@ export default async function PatientHubPage({
   authorizeStaffPermission(session, 'patients.read')
 
   const client = await createServerSupabaseClient()
-  const { data: person, error: personError } = await client.from('people')
-    .select('id,civil_name,preferred_name,birth_date,cpf_normalized,email_normalized,phone_e164,preferred_channel,birthday_messages_enabled,fiscal_address')
+  const { data: person, error: personError } = await (client.from('people') as unknown as PeopleSelectWithEmergency)
+    .select('id,civil_name,preferred_name,birth_date,cpf_normalized,email_normalized,phone_e164,preferred_channel,birthday_messages_enabled,emergency_contact_name,emergency_contact_phone_e164,emergency_contact_relationship,fiscal_address')
     .eq('id', personId)
     .maybeSingle()
   if (personError || !person) notFound()
@@ -150,6 +173,9 @@ export default async function PatientHubPage({
         <p>{person.phone_e164 ?? 'Telefone não informado'}</p>
         <p>{person.email_normalized ?? 'E-mail não informado'}</p>
         <p>Canal preferido: {person.preferred_channel === 'none' ? 'não definido' : person.preferred_channel}</p>
+        <p><strong>Emergência:</strong> {person.emergency_contact_name && person.emergency_contact_phone_e164
+          ? `${person.emergency_contact_name} · ${person.emergency_contact_phone_e164}${person.emergency_contact_relationship ? ` · ${person.emergency_contact_relationship}` : ''}`
+          : 'Contato não informado'}</p>
       </section>
       <section className="ui-card">
         <h2 className="ui-card__title">Agenda</h2>

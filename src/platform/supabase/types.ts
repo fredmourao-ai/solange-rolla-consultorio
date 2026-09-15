@@ -1398,6 +1398,9 @@ export type Database = {
           cpf_normalized: string | null
           created_at: string
           email_normalized: string | null
+          emergency_contact_name: string | null
+          emergency_contact_phone_e164: string | null
+          emergency_contact_relationship: string | null
           fiscal_address: Json
           id: string
           phone_e164: string | null
@@ -1412,6 +1415,9 @@ export type Database = {
           cpf_normalized?: string | null
           created_at?: string
           email_normalized?: string | null
+          emergency_contact_name?: string | null
+          emergency_contact_phone_e164?: string | null
+          emergency_contact_relationship?: string | null
           fiscal_address?: Json
           id?: string
           phone_e164?: string | null
@@ -1426,6 +1432,9 @@ export type Database = {
           cpf_normalized?: string | null
           created_at?: string
           email_normalized?: string | null
+          emergency_contact_name?: string | null
+          emergency_contact_phone_e164?: string | null
+          emergency_contact_relationship?: string | null
           fiscal_address?: Json
           id?: string
           phone_e164?: string | null

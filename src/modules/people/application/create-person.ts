@@ -1,6 +1,6 @@
 import { normalizeCpf } from '../domain/cpf'
 import { normalizeEmail, normalizePhoneE164BR } from '../domain/normalize'
-import type { Person, PersonId } from '../domain/person'
+import type { EmergencyContact, Person, PersonId } from '../domain/person'
 import { matchDuplicate, type DuplicateInput } from './find-duplicates'
 
 export type CreatePersonInput = {
@@ -12,6 +12,11 @@ export type CreatePersonInput = {
   phone?: string
   preferredChannel?: Person['preferredChannel']
   birthdayMessagesEnabled?: boolean
+  emergencyContact?: {
+    name?: string
+    phone?: string
+    relationship?: string
+  }
 }
 
 export type PersonRepository = {
@@ -24,6 +29,7 @@ export async function createPerson(
   input: CreatePersonInput,
   options: { allowContactWarning?: boolean } = {},
 ): Promise<{ ok: true; person: Person } | { ok: false; code: 'DUPLICATE_CPF' | 'DUPLICATE_CONTACT' }> {
+  const emergencyContact = normalizeEmergencyContact(input.emergencyContact)
   const normalized: Omit<Person, 'id'> = {
     civilName: input.civilName.trim(),
     preferredName: input.preferredName?.trim() || null,
@@ -33,6 +39,7 @@ export async function createPerson(
     phoneE164: input.phone ? normalizePhoneE164BR(input.phone) : null,
     preferredChannel: input.preferredChannel ?? 'none',
     birthdayMessagesEnabled: input.birthdayMessagesEnabled ?? false,
+    emergencyContact,
   }
   const existing = await repository.findByUniqueFields(normalized)
   const duplicate = existing ? matchDuplicate(existing, normalized) : null
@@ -42,3 +49,22 @@ export async function createPerson(
 }
 
 export type { PersonId }
+
+function normalizeEmergencyContact(input: CreatePersonInput['emergencyContact']): EmergencyContact | null {
+  const name = input?.name?.trim() ?? ''
+  const phone = input?.phone?.trim() ?? ''
+  const relationship = input?.relationship?.trim() ?? ''
+  if (!name && !phone && !relationship) return null
+  if (!name || !phone) throw new Error('INVALID_EMERGENCY_CONTACT')
+  let phoneE164: string
+  try {
+    phoneE164 = normalizePhoneE164BR(phone)
+  } catch {
+    throw new Error('INVALID_EMERGENCY_CONTACT')
+  }
+  return {
+    name,
+    phoneE164,
+    relationship: relationship || null,
+  }
+}

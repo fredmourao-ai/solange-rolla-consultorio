@@ -11,6 +11,9 @@ export type PersonFormValues = {
   phone: string
   preferred_channel: 'whatsapp' | 'email' | 'phone' | 'none'
   birthday_messages_enabled: boolean
+  emergency_contact_name: string
+  emergency_contact_phone: string
+  emergency_contact_relationship: string
   fiscal_street: string
   fiscal_number: string
   fiscal_complement: string
@@ -31,6 +34,9 @@ export const EMPTY_PERSON_FORM_VALUES: PersonFormValues = {
   phone: '',
   preferred_channel: 'none',
   birthday_messages_enabled: false,
+  emergency_contact_name: '',
+  emergency_contact_phone: '',
+  emergency_contact_relationship: '',
   fiscal_street: '',
   fiscal_number: '',
   fiscal_complement: '',
@@ -91,6 +97,16 @@ export function PersonForm({
         <input type="checkbox" name="birthday_messages_enabled" defaultChecked={values.birthday_messages_enabled} />
         <span>Enviar mensagem de aniversário</span>
       </label>
+    </fieldset>
+
+    <fieldset>
+      <legend>Contato de emergência</legend>
+      <label htmlFor="emergency-contact-name">Nome</label>
+      <input id="emergency-contact-name" name="emergency_contact_name" maxLength={200} defaultValue={values.emergency_contact_name} />
+      <label htmlFor="emergency-contact-phone">Telefone</label>
+      <input id="emergency-contact-phone" name="emergency_contact_phone" inputMode="tel" autoComplete="tel" defaultValue={values.emergency_contact_phone} />
+      <label htmlFor="emergency-contact-relationship">Vínculo</label>
+      <input id="emergency-contact-relationship" name="emergency_contact_relationship" maxLength={80} defaultValue={values.emergency_contact_relationship} />
     </fieldset>
 
     <fieldset className="person-form__fiscal" aria-describedby="fiscal-address-help">
