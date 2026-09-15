@@ -1,7 +1,7 @@
 # Solange Rolla Repository Unification Design
 
 ## Status
-Approved architectural direction; implementation pending final spec review.
+Approved by the project owner on 2026-09-14; implementation in progress under issue #147.
 
 ## Context
 Two GitHub repositories currently represent the same product lineage:
