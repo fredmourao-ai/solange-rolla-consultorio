@@ -33,5 +33,6 @@
 **Files:** all changed files
 - [x] Run YAML parse, lint, typecheck, focused integration tests and `git diff --check`.
 - [x] Review the diff for secrets/destructive behavior.
-- [ ] Publish PR, enable auto-merge and verify post-merge promotion on the exact SHA.
+- [x] Publish PR #155, enable auto-merge and merge the workflow correction after the required PR gates.
+- [ ] Exercise the corrected post-merge handoff on a subsequent exact `main` SHA; PR #155 itself was merged before a run containing the new handoff step could execute it.
 - [ ] Verify external health and both running worker images after promotion.
