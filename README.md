@@ -1,5 +1,7 @@
 # Solange Rolla Consultório
 
+> **Repositório canônico do projeto Solange Rolla.** Este é o único repositório ativo para código, documentação, issues, auditorias, releases e operação do sistema. O antigo `fredmourao-ai/solange-rolla` foi o MVP local inicial e está supersedido como referência histórica. Consulte [`docs/legacy/solange-rolla-mvp-lineage.md`](docs/legacy/solange-rolla-mvp-lineage.md) para a reconciliação de requisitos e proveniência.
+
 Sistema privado para gestão de consultório, psicoterapia, eventos, formulários pré-atendimento, assinatura eletrônica simples, comunicação, financeiro e NFS-e.
 
 > Status: **foundation, architecture enforcement, provisioning, UI, módulos de negócio, fiscal, clinical, reports, observabilidade e runbooks implementados na linha de entrega**. O release permanece **NO-GO** até CI/E2E/restore, revisão jurídica, formulário real e credenciais externas serem validados. Não usar com dados reais de pacientes.
@@ -46,6 +48,7 @@ Arquitetura: **monólito modular orientado a domínio**, PostgreSQL/Supabase com
 - [Homologação — índice, auditoria, manual e matriz](docs/homologacao/README.md)
 - [Ambientes isolados](docs/ENVIRONMENTS.md)
 - [Referências pesquisadas](docs/REFERENCES.md)
+- [Linhagem do MVP Solange Rolla](docs/legacy/solange-rolla-mvp-lineage.md)
 - [Spec arquitetura multiagente v2](docs/superpowers/specs/2026-08-24-multiagent-architecture-design.md)
 - [Spec funcional inicial](docs/superpowers/specs/2026-08-24-solange-rolla-consultorio-design.md)
 - [Planos de implementação](docs/superpowers/plans/README.md)
