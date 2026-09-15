@@ -1,10 +1,13 @@
 begin;
 
-select plan(12);
+select plan(18);
 
 select has_table('public', 'people', 'people table exists');
 select has_table('public', 'person_relationships', 'person relationships table exists');
 select has_view('public', 'accounting_people_view', 'accounting view exists');
+select has_column('public', 'people', 'emergency_contact_name', 'people stores emergency contact name');
+select has_column('public', 'people', 'emergency_contact_phone_e164', 'people stores emergency contact phone');
+select has_column('public', 'people', 'emergency_contact_relationship', 'people stores emergency contact relationship');
 select ok((select relrowsecurity from pg_class where oid = 'public.people'::regclass), 'people has RLS enabled');
 select ok((select relrowsecurity from pg_class where oid = 'public.person_relationships'::regclass), 'relationships have RLS enabled');
 
@@ -36,6 +39,28 @@ select is((select count(*)::int from public.accounting_people_view where id = '1
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-000000000002","aal":"aal2","role":"authenticated"}', true);
 select is((select count(*)::int from public.people where id = '10000000-0000-0000-0000-000000000001'), 1, 'secretary can read the test administrative person');
 select is((select count(*)::int from public.accounting_people_view), 0, 'secretary cannot read accounting-only view');
+update public.people
+set emergency_contact_name = 'Contato Teste',
+    emergency_contact_phone_e164 = '+5531987654321',
+    emergency_contact_relationship = 'Irmã'
+where id = '10000000-0000-0000-0000-000000000001';
+select is(
+  (select emergency_contact_name || '|' || emergency_contact_phone_e164 || '|' || emergency_contact_relationship from public.people where id = '10000000-0000-0000-0000-000000000001'),
+  'Contato Teste|+5531987654321|Irmã',
+  'secretary can persist complete emergency contact details'
+);
+select throws_ok(
+  $$ update public.people set emergency_contact_name = 'Sem telefone', emergency_contact_phone_e164 = null where id = '10000000-0000-0000-0000-000000000001' $$,
+  '23514',
+  null,
+  'emergency contact name requires phone'
+);
+select throws_ok(
+  $$ update public.people set emergency_contact_name = null, emergency_contact_phone_e164 = '+5531987654321' where id = '10000000-0000-0000-0000-000000000001' $$,
+  '23514',
+  null,
+  'emergency contact phone requires name'
+);
 
 select * from finish();
 rollback;
