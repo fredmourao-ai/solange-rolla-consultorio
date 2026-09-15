@@ -7,10 +7,10 @@ Auditoria formal executada segundo `EXTREME_AUDIT_PROTOCOL.md` e `AUDIT_OVERLAY.
 ## Última auditoria válida
 - Data: 2026-09-15
 - Commit/SHA auditado: `646090382455d15a52f1875afeb974d336b7bd42`
-- Release/ambiente comprovado: código, testes, build e contratos locais/CI; homologação do SHA exato ainda não comprovada
+- Release/ambiente comprovado: código, testes, build e contratos locais; homologação do SHA exato ainda não comprovada
 - Veredito: **NÃO APTO PARA PRODUÇÃO**
 - Confiança do veredito: alta
-- Motivo de stop-the-line: existe bloqueador P0 operacional aberto e falta evidência de homologação do SHA/release exato
+- Motivo de stop-the-line: bloqueador P0 operacional, homologação incompleta e gate de banco reproduzido vermelho durante o registro da auditoria
 
 ## Evidência executada
 - `npm ci`: concluído, 0 vulnerabilidades reportadas pelo npm.
@@ -20,10 +20,14 @@ Auditoria formal executada segundo `EXTREME_AUDIT_PROTOCOL.md` e `AUDIT_OVERLAY.
 - `npm run arch:check`: passou, 478 módulos/1071 dependências sem violação.
 - `npm run modules:check`: passou.
 - `npm run build`: build de produção Next.js passou.
+- No PR documental desta auditoria, o job `db` falhou em `Rebuild database from migrations and seed`: `npx supabase@2.115.0 db reset` chegou a recriar banco/inicializar schema e terminou `error running container: exit 1`.
 
 ## Achados materiais
 ### P0 — fluxo operacional crítico ainda não certificado
 A issue `#113` permanece como bloqueador P0 de recuperação operacional de Pacientes, Agenda e Atendimento/Prontuário integrados. Enquanto esse caminho crítico não estiver encerrado com evidência E2E, o produto não pode receber certificação de produção.
+
+### P1 — gate de banco não está deterministicamente verde
+O branch da auditoria altera somente `docs/quality/AUDIT_STATUS.md`, porém o gate de banco falhou durante `supabase db reset`. Portanto a falha não pode ser atribuída a mudança de schema introduzida pela auditoria. É necessário distinguir instabilidade/contaminação do runner de defeito reproduzível da cadeia migrations+seed antes de certificação.
 
 ### P1 — proveniência/homologação insuficiente
 O sistema ainda não possui evidência final de homologação do **SHA exato** auditado/release atual cobrindo o gate completo de produção. Testes locais verdes não substituem observação do comportamento implantado.
@@ -34,15 +38,17 @@ O sistema ainda não possui evidência final de homologação do **SHA exato** a
 | Build/lint/typecheck | PASS | execução completa no SHA auditado |
 | Testes unitários/integração | PASS | 623 pass / 1 skip |
 | Arquitetura/módulos | PASS | dependency + module contracts verdes |
+| Database reset/migrations/seed CI | **FAIL nesta execução** | `supabase db reset`: container exit 1 |
 | Fluxo operacional P0 | FAIL/BLOCKED | issue #113 aberta |
 | Homologação do SHA exato | NÃO COMPROVADO | gate operacional pendente |
 | Produção com dados reais | NÃO AUTORIZADO | release permanece NO-GO |
 | Backup/restore/rollback | NÃO SUFICIENTE PARA CERTIFICAÇÃO | deve integrar a homologação final |
 
 ## Risco residual
-Alto enquanto o fluxo P0 e a homologação exata permanecerem abertos. O código estar saudável reduz risco de regressão técnica, mas não prova operação clínica/administrativa ponta a ponta em produção.
+Alto enquanto o fluxo P0, o gate de banco e a homologação exata permanecerem abertos. O código estar saudável reduz risco de regressão técnica, mas não prova operação clínica/administrativa ponta a ponta em produção.
 
 ## Dívida de evidência
+- investigar/reproduzir o `supabase db reset` em runner limpo e obter gate DB verde;
 - encerrar o P0 #113 com prova E2E;
 - homologar o SHA/release exato;
 - executar gates operacionais, restore/rollback e integrações aplicáveis no ambiente alvo;
