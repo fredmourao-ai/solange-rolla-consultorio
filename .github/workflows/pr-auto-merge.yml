@@ -213,4 +213,4 @@ jobs:
           fi
           echo "Handing validated main@$sha to Staging Promote."
           gh api --method POST "repos/$REPO/actions/workflows/staging-promote.yml/dispatches" \
-            -f ref=main -f commit_sha="$sha"
+            -f ref=main -f "inputs[commit_sha]=$sha"
