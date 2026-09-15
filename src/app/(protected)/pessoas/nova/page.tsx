@@ -7,6 +7,29 @@ import type { Person, PersonId } from '@/modules/people/public'
 import { PageHeader } from '@/shared/ui/page-header'
 import { PersonForm, type PersonFormState, type PersonFormValues } from '@/modules/people/ui/person-form'
 
+type DatabaseError = { code?: string; message?: string }
+type PersonRowWithEmergency = {
+  id: string
+  civil_name: string
+  preferred_name: string | null
+  cpf_normalized: string | null
+  birth_date: string
+  email_normalized: string | null
+  phone_e164: string | null
+  preferred_channel: string
+  birthday_messages_enabled: boolean
+  emergency_contact_name: string | null
+  emergency_contact_phone_e164: string | null
+  emergency_contact_relationship: string | null
+}
+type PeopleInsertWithEmergency = {
+  insert(values: Record<string, unknown>): {
+    select(columns: string): {
+      single(): Promise<{ data: PersonRowWithEmergency | null; error: DatabaseError | null }>
+    }
+  }
+}
+
 function valuesFrom(formData: FormData): PersonFormValues {
   const channel = String(formData.get('preferred_channel') ?? 'none')
   return {
@@ -20,6 +43,9 @@ function valuesFrom(formData: FormData): PersonFormValues {
       ? channel as PersonFormValues['preferred_channel']
       : 'none',
     birthday_messages_enabled: formData.get('birthday_messages_enabled') === 'on',
+    emergency_contact_name: String(formData.get('emergency_contact_name') ?? ''),
+    emergency_contact_phone: String(formData.get('emergency_contact_phone') ?? ''),
+    emergency_contact_relationship: String(formData.get('emergency_contact_relationship') ?? ''),
     fiscal_street: String(formData.get('fiscal_street') ?? ''),
     fiscal_number: String(formData.get('fiscal_number') ?? ''),
     fiscal_complement: String(formData.get('fiscal_complement') ?? ''),
@@ -73,7 +99,7 @@ async function createPersonAction(previous: PersonFormState, formData: FormData)
       return null
     },
     async insert(input: Omit<Person, 'id'>): Promise<Person> {
-      const { data, error } = await client.from('people').insert({
+      const { data, error } = await (client.from('people') as unknown as PeopleInsertWithEmergency).insert({
         civil_name: input.civilName,
         preferred_name: input.preferredName,
         cpf_normalized: input.cpfNormalized,
@@ -82,8 +108,11 @@ async function createPersonAction(previous: PersonFormState, formData: FormData)
         phone_e164: input.phoneE164,
         preferred_channel: values.preferred_channel,
         birthday_messages_enabled: values.birthday_messages_enabled,
+        emergency_contact_name: input.emergencyContact?.name ?? null,
+        emergency_contact_phone_e164: input.emergencyContact?.phoneE164 ?? null,
+        emergency_contact_relationship: input.emergencyContact?.relationship ?? null,
         fiscal_address: fiscal.address,
-      }).select('id,civil_name,preferred_name,cpf_normalized,birth_date,email_normalized,phone_e164,preferred_channel,birthday_messages_enabled').single()
+      }).select('id,civil_name,preferred_name,cpf_normalized,birth_date,email_normalized,phone_e164,preferred_channel,birthday_messages_enabled,emergency_contact_name,emergency_contact_phone_e164,emergency_contact_relationship').single()
       if (error || !data) throw new Error('PERSON_CREATE_FAILED')
       return {
         id: data.id as PersonId,
@@ -95,6 +124,13 @@ async function createPersonAction(previous: PersonFormState, formData: FormData)
         phoneE164: data.phone_e164,
         preferredChannel: data.preferred_channel as Person['preferredChannel'],
         birthdayMessagesEnabled: data.birthday_messages_enabled,
+        emergencyContact: data.emergency_contact_name && data.emergency_contact_phone_e164
+          ? {
+              name: data.emergency_contact_name,
+              phoneE164: data.emergency_contact_phone_e164,
+              relationship: data.emergency_contact_relationship,
+            }
+          : null,
       }
     },
   }
@@ -109,12 +145,21 @@ async function createPersonAction(previous: PersonFormState, formData: FormData)
       phone: values.phone,
       preferredChannel: values.preferred_channel,
       birthdayMessagesEnabled: values.birthday_messages_enabled,
+      emergencyContact: {
+        name: values.emergency_contact_name,
+        phone: values.emergency_contact_phone,
+        relationship: values.emergency_contact_relationship,
+      },
     })
     if (!result.ok) return invalid(result.code === 'DUPLICATE_CPF'
       ? 'Já existe um paciente com este CPF.'
       : 'Já existe um cadastro com este e-mail ou telefone.')
   } catch (error) {
     if (error instanceof Error && error.message === 'INVALID_CPF') return invalid('Informe um CPF válido.')
+    if (error instanceof Error && error.message === 'INVALID_PHONE') return invalid('Confira o telefone informado.')
+    if (error instanceof Error && error.message === 'INVALID_EMERGENCY_CONTACT') {
+      return invalid('Informe nome e telefone válidos para o contato de emergência, ou deixe todos os campos em branco.')
+    }
     throw error
   }
 
