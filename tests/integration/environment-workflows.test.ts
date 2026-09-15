@@ -112,6 +112,21 @@ describe('environment workflow contracts', () => {
     )
   })
 
+
+  it('does not occupy the self-hosted runner while waiting for post-merge canonical checks', () => {
+    const autoMerge = readFileSync(autoMergeWorkflow, 'utf8')
+    const [mergeJob, stagingHandoff] = autoMerge.split('\n  staging-handoff:')
+
+    expect(stagingHandoff).toBeDefined()
+    expect(mergeJob).not.toContain('canonical post-merge checks still pending')
+    expect(stagingHandoff).toContain('runs-on: ubuntu-latest')
+    expect(stagingHandoff).toContain('canonical post-merge checks still pending')
+  })
+
+  it('retries staging handoff after a cancelled or failed prior promotion', () => {
+    const autoMerge = readFileSync(autoMergeWorkflow, 'utf8')
+    expect(autoMerge).toContain('select(.status != \"completed\" or .conclusion == \"success\")')
+  })
   it('builds both workers with the same promoted immutable SHA', () => {
     const workflow = readFileSync(stagingWorkflow, 'utf8')
     expect(workflow).toContain("IMAGE=\"solange-document-worker:$PROMOTE_SHA\"")

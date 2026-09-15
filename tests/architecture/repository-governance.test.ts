@@ -8,6 +8,7 @@ const requiredRunnerLabels = ['self-hosted', 'Linux', 'ARM64', 'solange-ci']
 // staging-promote.yml declares two jobs in order: canonical-gate (shared runner) then
 // promote (pinned to the dedicated homologation host, which persists release state).
 const runnerLabelExceptionsByFile: Record<string, string[][]> = {
+  'pr-auto-merge.yml': [requiredRunnerLabels, ['ubuntu-latest']],
   'staging-promote.yml': [requiredRunnerLabels, [...requiredRunnerLabels, 'solange-staging-host']],
   'diag-staging-host.yml': [[...requiredRunnerLabels, 'solange-staging-host']],
 }
@@ -88,7 +89,7 @@ describe('repository governance contract', () => {
     ])
   })
 
-  it('routes every GitHub Actions job through the dedicated self-hosted ARM runner', () => {
+  it('routes workflow jobs through the dedicated ARM runner except explicit control-plane jobs', () => {
     const workflowsDir = fileURLToPath(new URL('../../.github/workflows/', import.meta.url))
     const workflows = readdirSync(workflowsDir).filter((name) => name.endsWith('.yml'))
 
