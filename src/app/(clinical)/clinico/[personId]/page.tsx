@@ -1,209 +1,123 @@
+import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import {
-  authorizeStaffPermission,
-  authorizeStaffSession,
-  AuthorizationError,
-  getStaffSession,
-  isActiveStaffWithRole,
-  listActiveStaffByRole,
-  type StaffDirectoryRepository,
-} from '@/modules/identity/public'
-import {
-  completeAppointmentWithHandoff,
-  HANDOFF_TASK_TYPES,
-  listClinicalRecords,
-  type AssigneeDirectory,
-  type ClinicalRecord,
-  type ClinicalRecordInsert,
-  type HandoffInput,
-  type HandoffTaskType,
+  getClinicalRecord,
+  type ClinicalRecordEnvelope,
 } from '@/modules/clinical/public'
-import type { Task, TaskRepository } from '@/modules/tasks/public'
-import { ClinicalRecordEditor } from '@/modules/clinical/ui/clinical-record-editor'
-import { ClinicalTimeline } from '@/modules/clinical/ui/clinical-timeline'
+import { ClinicalHistory, type ReadableClinicalRecord } from '@/modules/clinical/ui/clinical-history'
+import {
+  AuthorizationError,
+  authorizeStaffPermission,
+  getStaffSession,
+} from '@/modules/identity/public'
 import { createSensitiveDataCrypto } from '@/platform/crypto/aes-gcm'
 import { createServerSupabaseClient } from '@/platform/supabase/server'
-import type { AuditEvent } from '@/modules/audit/public'
-import type { Database } from '@/platform/supabase/types'
+import { PageHeader } from '@/shared/ui/page-header'
 
 export const dynamic = 'force-dynamic'
+export const revalidate = 0
 
-function isHandoffTaskType(value: string): value is HandoffTaskType {
-  return (HANDOFF_TASK_TYPES as readonly string[]).includes(value)
-}
+const dateTime = new Intl.DateTimeFormat('pt-BR', {
+  dateStyle: 'short',
+  timeStyle: 'short',
+  timeZone: 'America/Sao_Paulo',
+})
 
-async function completeAppointmentAction(formData: FormData) {
-  'use server'
-
+async function requireClinicalRead(personId: string) {
   const session = await getStaffSession()
-  const authorizedSession = authorizeStaffSession(session, ['psychologist_owner'], { aal2: true })
-  authorizeStaffPermission(session, 'appointments.complete', { aal2: true })
-  const client = await createServerSupabaseClient()
-  const personId = String(formData.get('person_id') ?? '')
-  const appointmentId = String(formData.get('appointment_id') ?? '')
-  const plaintext = String(formData.get('plaintext') ?? '')
-
-  const rawHandoffType = String(formData.get('handoff_type') ?? '')
-  let handoff: HandoffInput | undefined
-  if (rawHandoffType) {
-    if (!isHandoffTaskType(rawHandoffType)) throw new Error('HANDOFF_TYPE_INVALID')
-    authorizeStaffPermission(session, 'tasks.create', { aal2: true })
-    authorizeStaffPermission(session, 'tasks.assign', { aal2: true })
-
-    const assignedToUserId = String(formData.get('handoff_assigned_to') ?? '')
-    const rawDays = formData.get('handoff_follow_up_days')
-    handoff = {
-      type: rawHandoffType,
-      assignedToUserId,
-      followUpInDays: rawDays ? Number(rawDays) : undefined,
+  if (!session) notFound()
+  try {
+    return authorizeStaffPermission(session, 'clinical.read', { aal2: true })
+  } catch (error) {
+    if (error instanceof AuthorizationError && error.code === 'MFA_REQUIRED') {
+      redirect(`/seguranca?reason=mfa_required&returnTo=${encodeURIComponent(`/clinico/${personId}`)}`)
     }
+    notFound()
   }
-
-  const staffDirectory: Pick<StaffDirectoryRepository, 'findByUserId'> = {
-    async findByUserId(userId) {
-      const { data } = await client
-        .from('profiles')
-        .select('user_id, role, active')
-        .eq('user_id', userId)
-        .maybeSingle()
-      if (!data) return null
-      return { userId: data.user_id, role: data.role, active: data.active }
-    },
-  }
-
-  const assigneeDirectory: AssigneeDirectory = {
-    async isActiveSecretary(userId: string) {
-      return isActiveStaffWithRole(userId, 'secretary', staffDirectory)
-    },
-  }
-
-  const taskRepository: TaskRepository = {
-    async insert(task: Task): Promise<void> {
-      const { error } = await client.from('tasks').insert({
-        id: task.id,
-        type: task.type,
-        title: task.title,
-        created_by_user_id: task.createdByUserId,
-        assigned_to_user_id: task.assignedToUserId,
-        person_id: task.personId,
-        appointment_id: task.appointmentId,
-        due_at: task.dueAt,
-      })
-      if (error) throw new Error('HANDOFF_TASK_CREATE_FAILED')
-    },
-  }
-
-  const repository = {
-    async insert(input: ClinicalRecordInsert): Promise<ClinicalRecord> {
-      const { data, error } = await client.rpc('create_clinical_record', {
-        p_record_id: input.id,
-        p_appointment_id: input.appointmentId,
-        p_person_id: input.personId,
-        p_author_user_id: input.authorUserId,
-        p_ciphertext: input.ciphertext,
-        p_iv: input.iv,
-        p_auth_tag: input.authTag,
-        p_key_version: input.keyVersion,
-        ...(input.supersedesId ? { p_supersedes_id: input.supersedesId } : {}),
-      })
-      const record = data?.[0]
-      if (error || !record) throw new Error('CLINICAL_RECORD_CREATE_FAILED')
-      return {
-        id: record.id,
-        appointmentId: record.appointment_id,
-        personId: record.person_id,
-        authorUserId: record.author_user_id,
-        ciphertext: record.ciphertext,
-        iv: record.iv,
-        authTag: record.auth_tag,
-        keyVersion: record.key_version,
-        supersedesId: record.supersedes_id ?? undefined,
-        createdAt: record.created_at,
-      }
-    },
-  }
-  const audit = {
-    async insert(event: AuditEvent): Promise<void> {
-      const { error } = await client.from('audit_events').insert({
-        actor_user_id: event.actorId,
-        action: event.action,
-        entity_type: event.entityType,
-        entity_id: event.entityId,
-        correlation_id: event.correlationId,
-        metadata: event.metadata as Database['public']['Tables']['audit_events']['Insert']['metadata'],
-        created_at: event.createdAt,
-      })
-      if (error) throw new Error('CLINICAL_AUDIT_FAILED')
-    },
-  }
-
-  await completeAppointmentWithHandoff(
-    { appointmentId, personId, authorUserId: authorizedSession.userId, plaintext, handoff },
-    {
-      crypto: createSensitiveDataCrypto(),
-      repository,
-      audit,
-      taskRepository,
-      assigneeDirectory,
-    },
-  )
-  redirect(`/clinico/${personId}`)
 }
 
 export default async function ClinicalPersonPage({ params }: { params: Promise<{ personId: string }> }) {
   const { personId } = await params
-  const session = await getStaffSession()
-  if (!session) notFound()
-
-  try {
-    authorizeStaffSession(session, ['psychologist_owner'], { aal2: true })
-  } catch (error) {
-    if (error instanceof AuthorizationError && error.code === 'MFA_REQUIRED') {
-      const returnTo = encodeURIComponent(`/clinico/${personId}`)
-      redirect(`/seguranca?reason=mfa_required&returnTo=${returnTo}`)
-    }
-    notFound()
-  }
-
+  await requireClinicalRead(personId)
   const client = await createServerSupabaseClient()
-  const { data } = await client.rpc('list_clinical_record_metadata', { p_person_id: personId })
-  const records = await listClinicalRecords(personId, {
-    listMetadata: async () => (data ?? []).map((record) => ({
-      id: record.id,
-      appointmentId: record.appointment_id,
-      personId: record.person_id,
-      createdAt: record.created_at,
-      supersedesId: record.supersedes_id ?? undefined,
-    })),
-  })
 
-  const secretaries = await listActiveStaffByRole('secretary', {
-    async listActiveByRole(role) {
-      const { data: profiles } = await client
-        .from('profiles')
-        .select('user_id, display_name, active')
-        .eq('role', role)
-        .eq('active', true)
-      return (profiles ?? []).map((profile) => ({ userId: profile.user_id, displayName: profile.display_name }))
-    },
-    async findByUserId() {
-      return null
-    },
-  })
+  const [{ data: person, error: personError }, { data: metadata, error: metadataError }] = await Promise.all([
+    client.from('people').select('id,civil_name,preferred_name,birth_date').eq('id', personId).maybeSingle(),
+    client.rpc('list_clinical_record_metadata', { p_person_id: personId }),
+  ])
+  if (personError || !person) notFound()
+  if (metadataError) throw new Error('CLINICAL_HISTORY_METADATA_FAILED')
 
-  return (
-    <>
-      <header className="page-header">
-        <div>
-          <h1>Clínico</h1>
-          <p>Registro psicológico protegido e versionado.</p>
-        </div>
-      </header>
-      <section className="ui-card" aria-labelledby="clinical-timeline-title">
-        <h2 id="clinical-timeline-title" className="ui-card__title">Linha do tempo</h2>
-        <ClinicalTimeline records={records} />
-      </section>
-      <ClinicalRecordEditor personId={personId} action={completeAppointmentAction} secretaries={secretaries} />
-    </>
-  )
+  const crypto = createSensitiveDataCrypto()
+  const records = await Promise.all((metadata ?? []).map(async (record): Promise<ReadableClinicalRecord> => {
+    const decrypted = await getClinicalRecord(record.id, {
+      crypto,
+      reader: {
+        async getEnvelope(id): Promise<ClinicalRecordEnvelope | null> {
+          const { data, error } = await client.rpc('get_clinical_record_envelope', { record_id: id })
+          const envelope = data?.[0]
+          if (error || !envelope) return null
+          return {
+            id: envelope.id,
+            appointmentId: envelope.appointment_id,
+            personId: envelope.person_id,
+            createdAt: envelope.created_at,
+            supersedesId: envelope.supersedes_id ?? undefined,
+            envelope: {
+              alg: 'A256GCM',
+              keyVersion: envelope.key_version,
+              iv: envelope.iv,
+              ciphertext: envelope.ciphertext,
+              authTag: envelope.auth_tag,
+            },
+          }
+        },
+      },
+    })
+    return {
+      id: decrypted.id,
+      appointmentId: decrypted.appointmentId,
+      createdAt: decrypted.createdAt,
+      supersedesId: decrypted.supersedesId,
+      plaintext: decrypted.plaintext,
+    }
+  }))
+
+  const appointmentIds = [...new Set(records.map((record) => record.appointmentId))]
+  const appointments = appointmentIds.length
+    ? await client.from('appointments')
+      .select('id,starts_at,status,service:services!appointments_service_id_fkey(name)')
+      .in('id', appointmentIds)
+    : { data: [], error: null }
+  if (appointments.error) throw new Error('CLINICAL_HISTORY_APPOINTMENTS_FAILED')
+  const labels = new Map((appointments.data ?? []).map((appointment) => [
+    appointment.id,
+    `${appointment.service?.name ?? 'Atendimento'} · ${dateTime.format(new Date(appointment.starts_at))}`,
+  ]))
+  const readable = records.map((record) => ({ ...record, appointmentLabel: labels.get(record.appointmentId) }))
+  const inProgress = (appointments.data ?? []).find((appointment) => appointment.status === 'in_progress')
+  const displayName = person.preferred_name || person.civil_name
+
+  return <>
+    <PageHeader
+      title={`Prontuário · ${displayName}`}
+      description="Histórico psicológico protegido, longitudinal e versionado."
+      actions={<div className="page-actions">
+        {inProgress ? <Link className="ui-button ui-button--primary" href={`/atendimentos/${inProgress.id}`}>Voltar ao atendimento</Link> : null}
+        <Link className="ui-button ui-button--outline" href={`/pessoas/${person.id}`}>Ficha do paciente</Link>
+      </div>}
+    />
+
+    <section className="ui-card" aria-labelledby="clinical-history-title">
+      <h2 id="clinical-history-title" className="ui-card__title">Histórico clínico</h2>
+      <p className="ui-card__description">Abra uma sessão para consultar sua evolução. Correções preservam as versões anteriores.</p>
+      <ClinicalHistory records={readable} />
+    </section>
+
+    <section className="ui-card">
+      <h2 className="ui-card__title">Novo registro de sessão</h2>
+      <p>Registros de evolução são criados a partir da consulta correspondente na Agenda. Isso evita vínculos manuais e erros de identificação.</p>
+      <Link className="ui-button ui-button--primary" href="/agenda">Abrir Agenda</Link>
+    </section>
+  </>
 }

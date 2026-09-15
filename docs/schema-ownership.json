@@ -21,6 +21,11 @@
       "appointments",
       "people"
     ],
+    "clinical_permission_guards": [
+      "appointments",
+      "audit",
+      "clinical"
+    ],
     "appointments_confirmation": [
       "appointments",
       "forms"
