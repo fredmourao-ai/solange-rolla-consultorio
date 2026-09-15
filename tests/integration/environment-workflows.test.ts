@@ -98,7 +98,8 @@ describe('environment workflow contracts', () => {
     const autoMerge = readFileSync(autoMergeWorkflow, 'utf8')
     expect(autoMerge).toContain("vars.STAGING_AUTO_PROMOTE_ENABLED == 'true'")
     expect(autoMerge).toContain('actions/workflows/staging-promote.yml/dispatches')
-    expect(autoMerge).toContain('-f commit_sha="$sha"')
+    expect(autoMerge).toContain('-f "inputs[commit_sha]=$sha"')
+    expect(autoMerge).not.toContain('-f commit_sha="$sha"')
   })
 
   it('waits for exact-SHA canonical validation before dispatching staging promotion', () => {
