@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import type { FiscalDocumentStatus } from '@/modules/fiscal/public'
 import { authorizeStaffSession, getStaffSession } from '@/modules/identity/public'
 import { createServerSupabaseClient } from '@/platform/supabase/server'
 import { PageHeader } from '@/shared/ui/page-header'
@@ -21,12 +22,17 @@ const issuanceRuleLabels: Record<string, string> = {
   automatic: 'Emissão automática',
   not_issuable: 'Não emitível',
 }
-const documentStatusLabels: Record<string, string> = {
+const documentStatusLabels: Record<FiscalDocumentStatus, string> = {
+  not_ready: 'Tratamento fiscal pendente',
   ready: 'Pronto para revisão',
-  pending: 'Pendente',
-  issued: 'Emitido',
-  cancelled: 'Cancelado',
-  failed: 'Falha',
+  queued: 'Aguardando emissão',
+  processing: 'Emitindo',
+  issued: 'Documento emitido',
+  failed_retryable: 'Erro temporário',
+  failed_final: 'Erro requer ação',
+  cancel_requested: 'Cancelamento solicitado',
+  cancelled: 'Documento cancelado',
+  replaced: 'Documento substituído',
 }
 const issuerKindLabels: Record<string, string> = {
   individual: 'Pessoa física',
@@ -90,7 +96,7 @@ export default async function FiscalOperationsPage() {
     </section>
     <section><h2>Documentos</h2>{docs.map((doc) => <article key={doc.id} className="card">
       <h3>{personNames.get(doc.person_id) || 'Pessoa'} — {money.format(doc.amount_cents / 100)}</h3>
-      <p><span className="operational-status">{documentStatusLabels[doc.status] ?? doc.status}</span> · {sourceKindLabels[doc.source_type] ?? doc.source_type} · Provedor: {doc.provider === 'mock' ? 'Simulação' : doc.provider}</p>
+      <p><span className="operational-status">{documentStatusLabels[doc.status as FiscalDocumentStatus]}</span> · {sourceKindLabels[doc.source_type] ?? doc.source_type} · Provedor: {doc.provider === 'mock' ? 'Simulação' : doc.provider}</p>
       <details className="operational-technical"><summary>Detalhes técnicos</summary><p>ID externo: {doc.external_id || '—'} · Protocolo: {doc.protocol || '—'}</p><p>Artefatos privados: XML {doc.xml_path ? '✓' : '—'} · PDF {doc.pdf_path ? '✓' : '—'}</p></details>
       {doc.provider === 'mock' && doc.status === 'issued' ? <form action={cancelMockNfseAction} className="stack-form">
         <input type="hidden" name="fiscal_document_id" value={doc.id} />
