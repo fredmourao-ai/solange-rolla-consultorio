@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 
 import './globals.css'
 import './solange-brand.css'
+import './operational-polish.css'
 
 export const metadata: Metadata = {
   title: 'Solange Rolla | Gestão do Consultório',
