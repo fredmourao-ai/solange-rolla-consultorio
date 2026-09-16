@@ -71,6 +71,9 @@ Quando aplicável:
 - [ ] Playwright smoke/E2E aplicável passa.
 - [ ] Bugfix possui teste de regressão.
 - [ ] Casos de borda relevantes foram cobertos.
+- [ ] Mudança que lê/edita persistência foi exercitada contra ao menos um **registro pré-existente** de cada classe material encontrada: atual, legado, migrado/backfill, parcial/null-edge e versionado, quando aplicável.
+- [ ] Fluxo mutável operado pela UI foi salvo e depois foi necessário **recarregar/reabrir** a tela para confirmar persistência, audit/history e efeitos dependentes.
+- [ ] Bug de compatibilidade histórica possui fixture/regressão que reproduz a forma persistida antiga; cast de tipo não substitui a prova.
 
 ## 8. Documentação
 
