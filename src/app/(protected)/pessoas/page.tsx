@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { authorizeStaffPermission, getStaffSession, hasSessionPermission } from '@/modules/identity/public'
+import { buildPeopleSearchFilters } from '@/modules/people/public'
 import { PersonResults, type PersonResult } from '@/modules/people/ui/person-results'
 import { PersonSearch } from '@/modules/people/ui/person-search'
 import { createServerSupabaseClient } from '@/platform/supabase/server'
@@ -49,15 +50,7 @@ export default async function PeoplePage({ searchParams }: {
     .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1)
 
   if (term) {
-    const numeric = term.replace(/\D/g, '')
-    const filters = [
-      `civil_name.ilike.%${term}%`,
-      `preferred_name.ilike.%${term}%`,
-      `email_normalized.ilike.%${term.toLowerCase()}%`,
-      `phone_e164.ilike.%${numeric || term}%`,
-    ]
-    if (numeric.length >= 3) filters.push(`cpf_normalized.ilike.%${numeric}%`)
-    request = request.or(filters.join(','))
+    request = request.or(buildPeopleSearchFilters(term).join(','))
   }
 
   const { data, error, count } = await request
