@@ -244,6 +244,8 @@ jobs:
                   docker rm -f "$REC" >/dev/null 2>&1 || true
                   docker rename "${REC}-previous" "$REC" || true
                   docker start "$REC" >/dev/null 2>&1 || true
+                else
+                  docker rm -f "$REC" >/dev/null 2>&1 || true
                 fi
               fi
               if [ "$APP_SWAPPED" -eq 1 ] && [ -d "$PREVIOUS" ]; then
@@ -593,6 +595,8 @@ jobs:
             docker rm -f "$REC" >/dev/null 2>&1 || true
             docker rename "${REC}-previous" "$REC"
             docker start "$REC" >/dev/null 2>&1 || true
+          else
+            docker rm -f "$REC" >/dev/null 2>&1 || true
           fi
           if [ -f "$ROOT/state/previous-deployed-sha.txt" ]; then
             mv "$ROOT/state/previous-deployed-sha.txt" "$ROOT/state/deployed-sha.txt"
