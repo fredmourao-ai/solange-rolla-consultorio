@@ -7,6 +7,7 @@ const previewScript = path.join(process.cwd(), 'scripts/preview-env.mjs')
 const stagingScript = path.join(process.cwd(), 'scripts/staging-lock.mjs')
 const stagingWorkflow = path.join(process.cwd(), '.github/workflows/staging-promote.yml')
 const autoMergeWorkflow = path.join(process.cwd(), '.github/workflows/pr-auto-merge.yml')
+const ciWorkflow = path.join(process.cwd(), '.github/workflows/ci.yml')
 const backupScript = path.join(process.cwd(), 'scripts/backup-homologation.sh')
 const base = {
   SUPABASE_BRANCHING_ENABLED: 'true',
@@ -127,6 +128,16 @@ describe('environment workflow contracts', () => {
     const autoMerge = readFileSync(autoMergeWorkflow, 'utf8')
     expect(autoMerge).toContain('select(.status != \"completed\" or .conclusion == \"success\")')
   })
+  it('allocates a runner-local E2E port instead of assuming port 3000 is free', () => {
+    const workflow = readFileSync(ciWorkflow, 'utf8')
+    const e2eJob = workflow.split('\n  e2e:')[1] ?? ''
+
+    expect(e2eJob).toContain('E2E_PORT=')
+    expect(e2eJob).toContain('echo "E2E_PORT=$E2E_PORT"')
+    expect(e2eJob).toContain('echo "APP_URL=http://127.0.0.1:$E2E_PORT"')
+    expect(e2eJob).not.toContain('APP_URL=http://127.0.0.1:3000')
+  })
+
   it('builds both workers with the same promoted immutable SHA', () => {
     const workflow = readFileSync(stagingWorkflow, 'utf8')
     expect(workflow).toContain("IMAGE=\"solange-document-worker:$PROMOTE_SHA\"")

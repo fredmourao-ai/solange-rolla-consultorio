@@ -185,12 +185,15 @@ jobs:
             esac
           done < <(npx supabase@2.115.0 status -o env)
           test -n "$API_URL" && test -n "$DB_URL" && test -n "$PUBLISHABLE_KEY" && test -n "$SECRET_KEY"
+          E2E_PORT="$(python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1]); s.close()')"
+          test -n "$E2E_PORT"
           {
             echo "DB_URL=$DB_URL"
             echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL"
             echo "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$PUBLISHABLE_KEY"
             echo "SUPABASE_SECRET_KEY=$SECRET_KEY"
-            echo "APP_URL=http://127.0.0.1:3000"
+            echo "E2E_PORT=$E2E_PORT"
+            echo "APP_URL=http://127.0.0.1:$E2E_PORT"
             echo "APP_ENV=local"
             echo "NEXT_PUBLIC_TEMP_ADMIN_LOGIN_ENABLED=true"
             echo "WHATSAPP_LIVE_ENABLED=false"
