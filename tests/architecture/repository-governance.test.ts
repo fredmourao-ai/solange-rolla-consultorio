@@ -11,6 +11,7 @@ const runnerLabelExceptionsByFile: Record<string, string[][]> = {
   'pr-auto-merge.yml': [requiredRunnerLabels, ['ubuntu-latest']],
   'staging-promote.yml': [requiredRunnerLabels, [...requiredRunnerLabels, 'solange-staging-host']],
   'diag-staging-host.yml': [[...requiredRunnerLabels, 'solange-staging-host']],
+  'historical-state-audit.yml': [[...requiredRunnerLabels, 'solange-staging-host']],
 }
 
 function indexMode(path: string): string {
