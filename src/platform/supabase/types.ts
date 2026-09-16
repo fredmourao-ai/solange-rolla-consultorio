@@ -193,7 +193,7 @@ export type Database = {
         Insert: {
           action: string
           actor_kind?: string
-          actor_user_id: string | null
+          actor_user_id?: string | null
           correlation_id: string
           created_at?: string
           entity_id: string
@@ -1976,19 +1976,6 @@ export type Database = {
           result_idempotency_key: string
         }[]
       }
-      create_recurring_payable_atomic: {
-        Args: {
-          p_amount_cents: number
-          p_category_id: string
-          p_competence: string
-          p_description: string
-          p_due_date: string
-          p_idempotency_key: string
-          p_recurrence_rule_id: string
-          p_vendor_id: string
-        }
-        Returns: boolean
-      }
       clear_user_permission_override: {
         Args: { p_permission_key: string; p_user_id: string }
         Returns: undefined
@@ -2030,6 +2017,19 @@ export type Database = {
           person_id: string
           supersedes_id: string
         }[]
+      }
+      create_recurring_payable_atomic: {
+        Args: {
+          p_amount_cents: number
+          p_category_id: string
+          p_competence: string
+          p_description: string
+          p_due_date: string
+          p_idempotency_key: string
+          p_recurrence_rule_id: string
+          p_vendor_id: string
+        }
+        Returns: boolean
       }
       current_aal: { Args: never; Returns: string }
       current_app_role: {
