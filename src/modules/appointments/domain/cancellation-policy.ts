@@ -16,6 +16,36 @@ export const DEFAULT_CANCELLATION_POLICY: CancellationPolicy = {
   noShowChargeEnabled: true,
 }
 
+function invalidCancellationPolicy(): never {
+  throw new Error('INVALID_CANCELLATION_POLICY')
+}
+
+export function normalizeCancellationPolicySnapshot(snapshot: unknown): CancellationPolicy {
+  if (!snapshot || typeof snapshot !== 'object' || Array.isArray(snapshot)) invalidCancellationPolicy()
+  const value = snapshot as Record<string, unknown>
+  if (value.policyVersion !== 1) invalidCancellationPolicy()
+  if (!Number.isSafeInteger(value.countableHours) || Number(value.countableHours) <= 0 || Number(value.countableHours) % 24 !== 0) invalidCancellationPolicy()
+  if (!Array.isArray(value.excludedWeekdays) || value.excludedWeekdays.length === 0) invalidCancellationPolicy()
+  const excludedWeekdays = value.excludedWeekdays.map((day) => {
+    if (!Number.isInteger(day) || Number(day) < 0 || Number(day) > 6) invalidCancellationPolicy()
+    return Number(day)
+  })
+  const businessTimezone = value.businessTimezone ?? DEFAULT_CANCELLATION_POLICY.businessTimezone
+  const lateCancellationChargeEnabled = value.lateCancellationChargeEnabled ?? DEFAULT_CANCELLATION_POLICY.lateCancellationChargeEnabled
+  const noShowChargeEnabled = value.noShowChargeEnabled ?? DEFAULT_CANCELLATION_POLICY.noShowChargeEnabled
+  if (businessTimezone !== 'America/Sao_Paulo') invalidCancellationPolicy()
+  if (typeof lateCancellationChargeEnabled !== 'boolean' || typeof noShowChargeEnabled !== 'boolean') invalidCancellationPolicy()
+
+  return {
+    policyVersion: 1,
+    countableHours: Number(value.countableHours),
+    excludedWeekdays,
+    businessTimezone,
+    lateCancellationChargeEnabled,
+    noShowChargeEnabled,
+  }
+}
+
 type LocalDateTime = {
   year: number
   month: number
