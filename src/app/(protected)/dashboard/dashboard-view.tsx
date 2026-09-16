@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { Card, CardDescription, CardTitle } from '../../../shared/ui/card'
 
 const money = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -14,25 +15,33 @@ export function DashboardView({
   peopleCount: number
 }) {
   return <div className="dashboard-grid">
-    <Card>
-      <CardTitle>Próximas consultas</CardTitle>
-      <CardDescription>Agenda dos próximos 7 dias.</CardDescription>
-      <strong>{upcomingAppointments} consultas</strong>
-    </Card>
-    <Card>
-      <CardTitle>Contas a receber</CardTitle>
-      <CardDescription>Saldo lançado ainda em aberto.</CardDescription>
-      <strong>{money.format(openReceivablesCents / 100)}</strong>
-    </Card>
-    <Card>
-      <CardTitle>Eventos</CardTitle>
-      <CardDescription>Eventos futuros cadastrados.</CardDescription>
-      <strong>{upcomingEvents} evento{upcomingEvents === 1 ? '' : 's'}</strong>
-    </Card>
-    <Card>
-      <CardTitle>Pessoas</CardTitle>
-      <CardDescription>Cadastros disponíveis para atendimento.</CardDescription>
-      <strong>{peopleCount} pessoas</strong>
-    </Card>
+    <Link className="dashboard-card-link" href="/agenda" aria-label="Abrir agenda">
+      <Card>
+        <CardTitle>Próximas consultas</CardTitle>
+        <CardDescription>Agenda dos próximos 7 dias.</CardDescription>
+        <strong>{upcomingAppointments} consultas</strong>
+      </Card>
+    </Link>
+    <Link className="dashboard-card-link" href="/financeiro" aria-label="Abrir financeiro">
+      <Card>
+        <CardTitle>Contas a receber</CardTitle>
+        <CardDescription>Saldo lançado ainda em aberto.</CardDescription>
+        <strong>{money.format(openReceivablesCents / 100)}</strong>
+      </Card>
+    </Link>
+    <Link className="dashboard-card-link" href="/eventos" aria-label="Abrir eventos">
+      <Card>
+        <CardTitle>Eventos</CardTitle>
+        <CardDescription>Eventos futuros cadastrados.</CardDescription>
+        <strong>{upcomingEvents} evento{upcomingEvents === 1 ? '' : 's'}</strong>
+      </Card>
+    </Link>
+    <Link className="dashboard-card-link" href="/pessoas" aria-label="Abrir pacientes">
+      <Card>
+        <CardTitle>Pacientes</CardTitle>
+        <CardDescription>Cadastros disponíveis para atendimento.</CardDescription>
+        <strong>{peopleCount} paciente{peopleCount === 1 ? '' : 's'}</strong>
+      </Card>
+    </Link>
   </div>
 }

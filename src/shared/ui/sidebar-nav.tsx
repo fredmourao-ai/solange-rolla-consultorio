@@ -35,9 +35,11 @@ function canSee(item: NavItem, permissions: ReadonlySet<AppPermission>) {
 export function SidebarNav({
   pathname = '/dashboard',
   permissions = [],
+  onNavigate,
 }: {
   pathname?: string | null
   permissions?: readonly AppPermission[]
+  onNavigate?: () => void
 }) {
   const effective = new Set(permissions)
   const currentPath = pathname ?? '/dashboard'
@@ -47,6 +49,7 @@ export function SidebarNav({
       <Link
         key={item.href}
         href={item.href}
+        onClick={onNavigate}
         aria-current={currentPath === item.href || currentPath.startsWith(`${item.href}/`) ? 'page' : undefined}
       >
         {item.label}

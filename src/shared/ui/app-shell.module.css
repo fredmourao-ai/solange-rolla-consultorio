@@ -19,6 +19,7 @@
 
 @media (max-width: 800px) {
   .sidebar {
+    display: none;
     position: static;
     height: auto;
     max-height: none;

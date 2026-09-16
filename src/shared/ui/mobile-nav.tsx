@@ -44,7 +44,7 @@ export function MobileNav({
       {open ? 'Fechar menu' : 'Abrir menu'}
     </Button>
     {open && <div id="mobile-navigation" className="mobile-nav__panel">
-      <SidebarNav pathname={pathname} permissions={permissions} />
+      <SidebarNav pathname={pathname} permissions={permissions} onNavigate={() => setOpen(false)} />
       <SessionControls onNavigate={() => setOpen(false)} />
     </div>}
   </div>

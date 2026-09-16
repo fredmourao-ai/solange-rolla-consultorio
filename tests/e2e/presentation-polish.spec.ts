@@ -21,6 +21,13 @@ test('key demo surfaces use product-grade card and list layouts', async ({ page 
   await expect(page.locator('.people-results__item').first()).not.toHaveCSS('border-top-width', '0px')
 })
 
+test('dashboard metrics lead directly to the related operational areas', async ({ page }) => {
+  await signInDemo(page)
+  for (const [name, href] of [['Abrir agenda', '/agenda'], ['Abrir financeiro', '/financeiro'], ['Abrir eventos', '/eventos'], ['Abrir pacientes', '/pessoas']] as const) {
+    await expect(page.getByRole('link', { name })).toHaveAttribute('href', href)
+  }
+})
+
 test('navigation is patient-centric and highlights the current administrative route', async ({ page }) => {
   await signInDemo(page)
 
@@ -54,4 +61,44 @@ test('desktop sidebar keeps every routine reachable on a short viewport', async 
   expect(metrics.scrollHeight).toBeGreaterThanOrEqual(metrics.clientHeight)
 
   await expect(page.locator('.sidebar-nav').getByRole('link', { name: 'Relatórios', exact: true })).toBeVisible()
+})
+
+test('mobile key routes start with content visible and never overflow horizontally', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await signInDemo(page)
+
+  const routes = ['/dashboard', '/pessoas', '/agenda', '/agenda/gerenciar', '/financeiro', '/financeiro/operacoes', '/eventos', '/eventos/operacoes', '/formularios', '/fiscal', '/fiscal/operacoes', '/relatorios', '/usuarios']
+  for (const path of routes) {
+    await page.goto(path)
+    await expect(page.locator('.app-shell__sidebar')).toBeHidden()
+    await expect(page.getByRole('button', { name: 'Abrir menu' })).toBeVisible()
+    const metrics = await page.evaluate(() => ({
+      h1Top: document.querySelector('h1')?.getBoundingClientRect().top ?? Number.POSITIVE_INFINITY,
+      scrollWidth: document.documentElement.scrollWidth,
+      clientWidth: document.documentElement.clientWidth,
+    }))
+    expect(metrics.h1Top, `${path} should start within the first mobile viewport`).toBeLessThan(220)
+    expect(metrics.scrollWidth, `${path} should not overflow horizontally`).toBeLessThanOrEqual(metrics.clientWidth)
+  }
+})
+
+test('operational forms provide branded controls and touch-sized targets on mobile', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await signInDemo(page)
+
+  for (const path of ['/agenda/gerenciar', '/financeiro/operacoes', '/eventos/operacoes', '/formularios', '/fiscal/operacoes']) {
+    await page.goto(path)
+    const visibleControls = page.locator('.app-shell__main :is(input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]), select, textarea, button):visible')
+    expect(await visibleControls.count(), `${path} should expose operational controls`).toBeGreaterThan(0)
+    const undersized = await visibleControls.evaluateAll((elements) => elements.filter((element) => {
+      const rect = element.getBoundingClientRect()
+      return rect.height < 44
+    }).length)
+    expect(undersized, `${path} should not expose controls shorter than 44px`).toBe(0)
+
+    const firstInput = page.locator('.app-shell__main input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"])').first()
+    if (await firstInput.count()) {
+      expect(Number.parseFloat(await firstInput.evaluate((element) => getComputedStyle(element).borderRadius))).toBeGreaterThan(0)
+    }
+  }
 })

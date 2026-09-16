@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import type { EventStatus } from '@/modules/events/public'
 import { authorizeStaffSession, getStaffSession } from '@/modules/identity/public'
 import { createServerSupabaseClient } from '@/platform/supabase/server'
 import { PageHeader } from '@/shared/ui/page-header'
@@ -6,6 +7,14 @@ import { addExpenseAction, createEventAction, registerParticipantAction, updateE
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
+const money = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
+const eventStatusLabels: Record<EventStatus, string> = {
+  planned: 'Planejado',
+  open: 'Aberto',
+  full: 'Lotado',
+  completed: 'Concluído',
+  cancelled: 'Cancelado',
+}
 
 function local(value: string) {
   const parts = new Intl.DateTimeFormat('en-CA', {
@@ -45,7 +54,7 @@ export default async function EventOperationsPage({ searchParams }: {
     <PageHeader title="Operações de eventos" description="Crie eventos, encontre participantes, registre presença, despesas e cobranças em um só fluxo." />
     <p><Link href="/eventos">← Voltar aos eventos</Link></p>
     {params.error === 'event_full' && <p role="alert">Este evento atingiu a capacidade. Cancele uma inscrição ou aumente a capacidade antes de tentar novamente.</p>}
-    <section><h2>Novo evento</h2>
+    <section><h2>Novo evento</h2><p>Defina os dados principais do evento. Inscrições e despesas são registradas depois, no card do evento.</p>
       <form action={createEventAction} className="stack-form">
         <label>Título <input name="title" required /></label><label>Descrição <input name="description" /></label>
         <label>Tipo <input name="type" required defaultValue="grupo" /></label>
@@ -54,16 +63,16 @@ export default async function EventOperationsPage({ searchParams }: {
         <label>Local <input name="location" /></label>
         <label>Modalidade <select name="modality"><option value="in_person">Presencial</option><option value="online">Online</option><option value="hybrid">Híbrido</option></select></label>
         <label>Capacidade <input name="capacity" type="number" min="1" required /></label>
-        <label>Preço <input name="price" required defaultValue="0" /></label><button type="submit">Criar evento</button>
+        <label>Preço <input name="price" inputMode="decimal" required defaultValue="0" /></label><button type="submit">Criar evento</button>
       </form>
     </section>
     <section aria-labelledby="participant-search-heading"><h2 id="participant-search-heading">Encontrar participante</h2>
       <p>Pesquise pelo nome antes de fazer uma inscrição. Mostramos no máximo 50 resultados.</p>
       <form method="get" className="stack-form"><label>Nome da pessoa <input name="person_q" defaultValue={personQuery} /></label><button type="submit">Buscar pessoa</button></form>
-      {personQuery && people.length === 0 && <p>Nenhuma pessoa encontrada. Cadastre a pessoa em <Link href="/pessoas/nova">Pessoas</Link> e volte para continuar.</p>}
+      {personQuery && people.length === 0 && <p>Nenhuma pessoa encontrada. Cadastre a pessoa em <Link href="/pessoas/nova">Pacientes</Link> e volte para continuar.</p>}
     </section>
     <section><h2>Eventos</h2>{events.map((event) => <article className="card" key={event.id}>
-      <h3>{event.title}</h3><p>{event.status} — capacidade {event.capacity}</p>
+      <h3>{event.title}</h3><p><span className="operational-status">{eventStatusLabels[event.status as EventStatus]}</span> · Capacidade: {event.capacity} · Valor padrão: {money.format(event.default_price_cents / 100)}</p>
       <form action={updateEventAction} className="stack-form"><input type="hidden" name="event_id" value={event.id} />
         <label>Título <input name="title" defaultValue={event.title} required /></label>
         <label>Início <input name="starts_at_local" type="datetime-local" defaultValue={local(event.starts_at)} required /></label>
@@ -71,19 +80,19 @@ export default async function EventOperationsPage({ searchParams }: {
         <label>Local <input name="location" defaultValue={event.location ?? ''} /></label>
         <label>Modalidade <select name="modality" defaultValue={event.modality}><option value="in_person">Presencial</option><option value="online">Online</option><option value="hybrid">Híbrido</option></select></label>
         <label>Capacidade <input name="capacity" type="number" min="1" defaultValue={event.capacity} required /></label>
-        <label>Preço <input name="price" defaultValue={(event.default_price_cents / 100).toFixed(2)} required /></label><button type="submit">Salvar evento</button>
+        <label>Preço <input name="price" inputMode="decimal" defaultValue={(event.default_price_cents / 100).toFixed(2)} required /></label><button type="submit">Salvar evento</button>
       </form>
       <form action={registerParticipantAction} className="stack-form"><input type="hidden" name="event_id" value={event.id} />
         <label>Participante <select name="person_id" required><option value="">Selecione</option>{people.map((person) => <option key={person.id} value={person.id}>{person.preferred_name || person.civil_name}</option>)}</select></label>
-        <label>Preço da inscrição <input name="price" defaultValue={(event.default_price_cents / 100).toFixed(2)} /></label><button type="submit" disabled={people.length === 0}>Inscrever participante</button>
+        <label>Preço da inscrição <input name="price" inputMode="decimal" defaultValue={(event.default_price_cents / 100).toFixed(2)} /></label><button type="submit" disabled={people.length === 0}>Inscrever participante</button>
       </form>
-      <form action={addExpenseAction} className="stack-form"><input type="hidden" name="event_id" value={event.id} /><label>Despesa <input name="description" required /></label><label>Valor <input name="amount" required /></label><label>Pago? <select name="paid"><option value="no">Não</option><option value="yes">Sim</option></select></label><button type="submit">Registrar despesa</button></form>
+      <form action={addExpenseAction} className="stack-form"><input type="hidden" name="event_id" value={event.id} /><label>Despesa <input name="description" required /></label><label>Valor <input name="amount" inputMode="decimal" required /></label><label>Pago? <select name="paid"><option value="no">Não</option><option value="yes">Sim</option></select></label><button type="submit">Registrar despesa</button></form>
     </article>)}</section>
     <section><h2>Inscrições</h2>{regs.map((registration) => <form className="card stack-form" action={updateRegistrationAction} key={registration.id}>
-      <input type="hidden" name="registration_id" value={registration.id} /><p>{registration.event?.title} — {registration.person?.preferred_name || registration.person?.civil_name} — R$ {(registration.price_cents / 100).toFixed(2)}</p>
+      <input type="hidden" name="registration_id" value={registration.id} /><p><strong>{registration.event?.title} — {registration.person?.preferred_name || registration.person?.civil_name}</strong><br />Valor: {money.format(registration.price_cents / 100)}</p>
       <label>Status <select name="status" defaultValue={registration.status}><option value="confirmed">Confirmado</option><option value="pending_payment">Pagamento pendente</option><option value="waitlisted">Lista de espera</option><option value="cancelled">Cancelado</option></select></label>
       <label>Presença <select name="attendance_status" defaultValue={registration.attendance_status}><option value="unknown">Não marcada</option><option value="present">Presente</option><option value="absent">Ausente</option></select></label><button type="submit">Atualizar inscrição</button>
     </form>)}</section>
-    <section><h2>Despesas registradas</h2><ul>{expenses.map((expense) => <li key={expense.id}>{expense.description} — R$ {(expense.amount_cents / 100).toFixed(2)} {expense.paid_at ? '(paga)' : ''}</li>)}</ul></section>
+    <section><h2>Despesas registradas</h2><ul>{expenses.map((expense) => <li key={expense.id}>{expense.description} — {money.format(expense.amount_cents / 100)} {expense.paid_at ? '(paga)' : '(pendente)'}</li>)}</ul></section>
   </>
 }
