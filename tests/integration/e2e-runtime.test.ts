@@ -8,6 +8,10 @@ describe('resolveE2eRuntime', () => {
   it('uses local server by default', () => { const r = resolveE2eRuntime({ E2E_PORT: '3456' }); expect(r.baseURL).toBe('http://127.0.0.1:3456'); expect(r.webServer).toBeTruthy(); expect(r.projectTestMatch).toBeUndefined(); expect(r.expectedBuildSha).toBeUndefined() })
   it('reuses a prestarted local server only when explicitly requested', () => { const r = resolveE2eRuntime({ E2E_PORT: '3456', E2E_REUSE_EXISTING_SERVER: 'true' }); expect(r.webServer?.reuseExistingServer).toBe(true) })
   it('allows only an explicitly allowlisted staging app, database and candidate SHA', () => { const r = resolveE2eRuntime(staging); expect(r.baseURL).toBe('https://staging.example.test'); expect(r.webServer).toBeUndefined(); expect(r.projectTestMatch).toBe('**/real-ui-homologation.spec.ts'); expect(r.expectedBuildSha).toBe(sha) })
+  it('selects the historical external suite only when explicitly requested', () => {
+    const r = resolveE2eRuntime({ ...staging, E2E_EXTERNAL_SUITE: 'historical-state' })
+    expect(r.projectTestMatch).toBe('**/agenda-historical-state-transitions.spec.ts')
+  })
   it('rejects external targets whose application or database identity is not allowlisted', () => {
     expect(() => resolveE2eRuntime({ ...staging, E2E_BASE_URL: 'https://prod.example.test' })).toThrow('E2E_EXTERNAL_APP_NOT_ALLOWLISTED')
     expect(() => resolveE2eRuntime({ ...staging, DB_URL: 'postgresql://prod-db/app' })).toThrow('E2E_EXTERNAL_DATABASE_NOT_ALLOWLISTED')
