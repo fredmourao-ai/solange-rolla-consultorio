@@ -12,6 +12,9 @@ describe('resolveE2eRuntime', () => {
     const r = resolveE2eRuntime({ ...staging, E2E_EXTERNAL_SUITE: 'historical-state' })
     expect(r.projectTestMatch).toBe('**/agenda-historical-state-transitions.spec.ts')
   })
+  it('rejects external suites that are not explicitly allowlisted', () => {
+    expect(() => resolveE2eRuntime({ ...staging, E2E_EXTERNAL_SUITE: 'everything' })).toThrow('E2E_EXTERNAL_SUITE_NOT_ALLOWLISTED')
+  })
   it('rejects external targets whose application or database identity is not allowlisted', () => {
     expect(() => resolveE2eRuntime({ ...staging, E2E_BASE_URL: 'https://prod.example.test' })).toThrow('E2E_EXTERNAL_APP_NOT_ALLOWLISTED')
     expect(() => resolveE2eRuntime({ ...staging, DB_URL: 'postgresql://prod-db/app' })).toThrow('E2E_EXTERNAL_DATABASE_NOT_ALLOWLISTED')
