@@ -23,7 +23,7 @@ export function monthlyPayableFor(rule: RecurrenceRule, competence: string): Rec
   if (competence < rule.startDate.slice(0, 7)) return null
   if (!Number.isInteger(rule.dayOfMonth) || rule.dayOfMonth < 1 || rule.dayOfMonth > 31) throw new Error('INVALID_DAY_OF_MONTH')
   const lastDay = daysInMonth(year, month)
-  if (rule.dayOfMonth > lastDay && rule.monthEndFallback === 'reject') throw new Error('INVALID_MONTH_END_FALLBACK')
+  if (rule.dayOfMonth > lastDay && rule.monthEndFallback === 'reject') return null
   if (rule.monthEndFallback !== 'last_day' && rule.monthEndFallback !== 'reject') throw new Error('INVALID_MONTH_END_FALLBACK')
   const day = Math.min(rule.dayOfMonth, lastDay)
   return { dueDate: `${competence}-${String(day).padStart(2, '0')}`, idempotencyKey: recurrenceIdempotencyKey(rule.id, competence) }

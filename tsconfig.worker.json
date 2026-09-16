@@ -16,7 +16,9 @@
     "scripts/document-worker.ts",
     "src/workers/document-worker-runtime.ts",
     "scripts/messaging-worker.ts",
-    "src/workers/messaging-worker-runtime.ts"
+    "src/workers/messaging-worker-runtime.ts",
+    "scripts/recurring-payables-worker.ts",
+    "src/workers/recurring-payables-scheduling.ts"
   ],
   "exclude": [
     "node_modules",

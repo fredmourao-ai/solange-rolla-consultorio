@@ -27,7 +27,9 @@
     "worker:documents:build": "tsc -p tsconfig.worker.json",
     "worker:documents": "npm run worker:documents:build && node --conditions=react-server .worker-dist/scripts/document-worker.js",
     "worker:messaging:build": "tsc -p tsconfig.worker.json",
-    "worker:messaging": "npm run worker:messaging:build && node --conditions=react-server .worker-dist/scripts/messaging-worker.js"
+    "worker:messaging": "npm run worker:messaging:build && node --conditions=react-server .worker-dist/scripts/messaging-worker.js",
+    "worker:recurring:build": "tsc -p tsconfig.worker.json",
+    "worker:recurring": "npm run worker:recurring:build && node --conditions=react-server .worker-dist/scripts/recurring-payables-worker.js"
   },
   "dependencies": {
     "@supabase/ssr": "0.12.5",

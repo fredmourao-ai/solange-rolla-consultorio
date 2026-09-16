@@ -1,10 +1,12 @@
 'use client'
 
 import { FormEvent, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { createBrowserSupabaseClient } from '@/platform/supabase/browser'
 import { normalizeLoginCredentials } from './login-identifier'
 
 export function LoginForm() {
+  const router = useRouter()
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
 
@@ -20,7 +22,7 @@ export function LoginForm() {
     )
     const { error: signInError } = await createBrowserSupabaseClient().auth.signInWithPassword(credentials)
     if (signInError) setError('Não foi possível entrar com essas credenciais.')
-    else window.location.assign('/dashboard')
+    else { router.replace('/dashboard'); router.refresh() }
     setPending(false)
   }
 
