@@ -247,4 +247,11 @@
   .stack-form button {
     width: 100%;
   }
+
+  .app-shell__main > nav a,
+  .app-shell__main > p > a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
 }
