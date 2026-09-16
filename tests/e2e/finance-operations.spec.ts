@@ -82,7 +82,8 @@ test('account payable supports partial and full settlement with immutable paymen
   await expect.poll(() => sql(`select status||'|'||paid_cents from public.payables where id=${q(payableId)}`)).toBe('partial|3000')
   await page.reload({ waitUntil: 'domcontentloaded' })
   paymentForm = page.locator('form').filter({ has: page.locator(`input[name="payable_id"][value="${payableId}"]`) })
-  await expect(paymentForm.getByText('pago R$ 30.00 — partial')).toBeVisible()
+  await expect(paymentForm.getByText('Pago: R$ 30,00')).toBeVisible()
+  await expect(paymentForm.getByText('Parcialmente pago')).toBeVisible()
 
   paymentForm = page.locator('form').filter({ has: page.locator(`input[name="payable_id"][value="${payableId}"]`) })
   await paymentForm.locator('input[name="amount"]').fill('70.00')
