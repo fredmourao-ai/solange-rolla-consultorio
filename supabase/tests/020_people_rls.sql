@@ -1,6 +1,6 @@
 begin;
 
-select plan(18);
+select plan(19);
 
 select has_table('public', 'people', 'people table exists');
 select has_table('public', 'person_relationships', 'person relationships table exists');
@@ -60,6 +60,16 @@ select throws_ok(
   '23514',
   null,
   'emergency contact phone requires name'
+);
+reset role;
+select ok(
+  (select metadata->>'emergencyContactChanged' = 'true'
+     and metadata::text not like '%Contato Teste%'
+     and metadata::text not like '%5531987654321%'
+   from public.audit_events
+   where action = 'person.updated' and entity_id = '10000000-0000-0000-0000-000000000001'
+   order by created_at desc limit 1),
+  'person update audit records sanitized change categories without emergency contact PII'
 );
 
 select * from finish();

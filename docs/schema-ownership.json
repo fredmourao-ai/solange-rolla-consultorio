@@ -143,6 +143,10 @@
       "appointments",
       "identity",
       "people"
+    ],
+    "people_audited_updates": [
+      "audit",
+      "people"
     ]
   },
   "objects": {
@@ -227,6 +231,7 @@
     "public.record_receivable_payment_atomic": "receivables",
     "public.refund_receivable_payment_atomic": "receivables",
     "public.record_payable_payment_atomic": "payables",
-    "public.tasks": "identity"
+    "public.tasks": "identity",
+    "public.audit_person_updated": "audit"
   }
 }
