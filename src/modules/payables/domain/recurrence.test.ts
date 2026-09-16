@@ -26,7 +26,7 @@ describe('monthly payable recurrence', () => {
     expect(monthlyPayableFor({ ...rule, startDate: '2026-01-01', dayOfMonth }, competence)?.dueDate).toBe(dueDate)
   })
 
-  it('rejects an unsupported month-end policy', () => {
-    expect(() => monthlyPayableFor({ ...rule, startDate: '2026-01-01', dayOfMonth: 31, monthEndFallback: 'reject' }, '2026-02')).toThrow('INVALID_MONTH_END_FALLBACK')
+  it('skips a month when the configured day does not exist and policy is reject', () => {
+    expect(monthlyPayableFor({ ...rule, startDate: '2026-01-01', dayOfMonth: 31, monthEndFallback: 'reject' }, '2026-02')).toBeNull()
   })
 })
