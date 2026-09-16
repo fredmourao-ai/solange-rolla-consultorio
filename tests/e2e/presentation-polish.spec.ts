@@ -63,14 +63,23 @@ test('desktop sidebar keeps every routine reachable on a short viewport', async 
   await expect(page.locator('.sidebar-nav').getByRole('link', { name: 'Relatórios', exact: true })).toBeVisible()
 })
 
-test('mobile shell starts with content visible and keeps desktop sidebar out of flow', async ({ page }) => {
+test('mobile key routes start with content visible and never overflow horizontally', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await signInDemo(page)
 
-  await expect(page.locator('.app-shell__sidebar')).toBeHidden()
-  await expect(page.getByRole('button', { name: 'Abrir menu' })).toBeVisible()
-  const h1Top = await page.getByRole('heading', { level: 1 }).evaluate((element) => element.getBoundingClientRect().top)
-  expect(h1Top).toBeLessThan(220)
+  const routes = ['/dashboard', '/pessoas', '/agenda', '/agenda/gerenciar', '/financeiro', '/financeiro/operacoes', '/eventos', '/eventos/operacoes', '/formularios', '/fiscal', '/fiscal/operacoes', '/relatorios', '/usuarios']
+  for (const path of routes) {
+    await page.goto(path)
+    await expect(page.locator('.app-shell__sidebar')).toBeHidden()
+    await expect(page.getByRole('button', { name: 'Abrir menu' })).toBeVisible()
+    const metrics = await page.evaluate(() => ({
+      h1Top: document.querySelector('h1')?.getBoundingClientRect().top ?? Number.POSITIVE_INFINITY,
+      scrollWidth: document.documentElement.scrollWidth,
+      clientWidth: document.documentElement.clientWidth,
+    }))
+    expect(metrics.h1Top, `${path} should start within the first mobile viewport`).toBeLessThan(220)
+    expect(metrics.scrollWidth, `${path} should not overflow horizontally`).toBeLessThanOrEqual(metrics.clientWidth)
+  }
 })
 
 test('operational forms provide branded controls and touch-sized targets on mobile', async ({ page }) => {
