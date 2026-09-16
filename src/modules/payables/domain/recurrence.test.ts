@@ -29,4 +29,15 @@ describe('monthly payable recurrence', () => {
   it('skips a month when the configured day does not exist and policy is reject', () => {
     expect(monthlyPayableFor({ ...rule, startDate: '2026-01-01', dayOfMonth: 31, monthEndFallback: 'reject' }, '2026-02')).toBeNull()
   })
+
+  it('never creates the first occurrence before the rule start date', () => {
+    const midMonth = { ...rule, startDate: '2026-09-15', dayOfMonth: 10 }
+    expect(monthlyPayableFor(midMonth, '2026-09')).toBeNull()
+    expect(monthlyPayableFor(midMonth, '2026-10')?.dueDate).toBe('2026-10-10')
+  })
+
+  it('rejects an invalid month-end policy even when the configured day does not exist', () => {
+    const invalid = { ...rule, startDate: '2026-01-01', dayOfMonth: 31, monthEndFallback: 'invalid' } as unknown as RecurrenceRule
+    expect(() => monthlyPayableFor(invalid, '2026-02')).toThrow('INVALID_MONTH_END_FALLBACK')
+  })
 })

@@ -44,6 +44,16 @@ describe('recurring payables scheduler', () => {
     expect(insertIfMissing).toHaveBeenCalledWith(expect.objectContaining({ idempotencyKey: expect.stringContaining(baseRule.id) }))
   })
 
+  it('does not materialize a payable whose due date is before the rule start date', async () => {
+    const insertIfMissing = vi.fn(async () => true)
+    await expect(reconcileRecurringPayables({
+      now: new Date('2026-09-16T12:00:00Z'),
+      rules: [{ ...baseRule, startDate: '2026-09-15', dayOfMonth: 10 }],
+      insertIfMissing,
+    })).resolves.toEqual({ considered: 1, created: 0, skipped: 1 })
+    expect(insertIfMissing).not.toHaveBeenCalled()
+  })
+
   it('does not count an existing idempotency key as a new payable', async () => {
     const insertIfMissing = vi.fn(async () => false)
     await expect(reconcileRecurringPayables({ now: new Date('2026-09-10T15:00:00Z'), rules: [baseRule], insertIfMissing }))

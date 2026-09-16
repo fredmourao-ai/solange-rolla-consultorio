@@ -64,6 +64,10 @@ select throws_ok(
 reset role;
 select ok(
   (select metadata->>'emergencyContactChanged' = 'true'
+     and metadata->>'identityChanged' = 'false'
+     and metadata->>'contactChanged' = 'false'
+     and metadata->>'preferencesChanged' = 'false'
+     and metadata->>'fiscalChanged' = 'false'
      and metadata::text not like '%Contato Teste%'
      and metadata::text not like '%5531987654321%'
    from public.audit_events
