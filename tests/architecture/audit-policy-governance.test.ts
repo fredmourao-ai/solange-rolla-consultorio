@@ -26,4 +26,16 @@ describe('audit policy governance', () => {
     expect(done).toContain('registro pré-existente')
     expect(done).toContain('recarregar/reabrir')
   })
+
+  it('does not trust persisted cancellation-policy JSON through unchecked type casts', () => {
+    const readers = [
+      projectFile('src/app/(protected)/agenda/page.tsx'),
+      projectFile('src/app/(protected)/agenda/gerenciar/actions.ts'),
+      projectFile('src/app/(clinical)/atendimentos/[appointmentId]/page.tsx'),
+    ]
+
+    for (const source of readers) {
+      expect(source).not.toMatch(/cancellation_policy_snapshot\s+as(?:\s+unknown\s+as)?\s+CancellationPolicy/)
+    }
+  })
 })
