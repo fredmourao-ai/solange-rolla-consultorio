@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import type { ReceivableStatus } from '@/modules/receivables/public'
 import { authorizeStaffSession, getStaffSession } from '@/modules/identity/public'
 import { createServerSupabaseClient } from '@/platform/supabase/server'
 import { PageHeader } from '@/shared/ui/page-header'
@@ -16,12 +17,19 @@ const methodLabels: Record<(typeof methods)[number], string> = {
   bank_transfer: 'Transferência bancária',
   other: 'Outro',
 }
-const statusLabels: Record<string, string> = {
+const statusLabels: Record<ReceivableStatus, string> = {
   open: 'Em aberto',
   partial: 'Parcialmente pago',
   overdue: 'Vencido',
   paid: 'Pago',
   refund_due: 'Estorno pendente',
+  refunded: 'Reembolsado',
+  voided: 'Cancelado',
+}
+const payableStatusLabels: Record<string, string> = {
+  open: 'Em aberto',
+  partial: 'Parcialmente pago',
+  paid: 'Pago',
   cancelled: 'Cancelado',
 }
 const fallbackLabels: Record<string, string> = {
@@ -56,7 +64,7 @@ export default async function FinanceOperationsPage() {
 
     <section><h2>Recebíveis</h2><p>Registre recebimentos ou aplique ajustes somente no lançamento correspondente.</p>
       {(receivables ?? []).map((row) => <article key={row.id} className="card">
-        <h3>{row.person?.preferred_name || row.person?.civil_name || 'Paciente'} — {money.format(row.original_amount_cents / 100)}</h3><p><span className="operational-status">{statusLabels[row.status] ?? row.status}</span></p>
+        <h3>{row.person?.preferred_name || row.person?.civil_name || 'Paciente'} — {money.format(row.original_amount_cents / 100)}</h3><p><span className="operational-status">{statusLabels[row.status as ReceivableStatus]}</span></p>
         <form action={recordPaymentAction} className="stack-form"><input type="hidden" name="receivable_id" value={row.id}/><input type="hidden" name="idempotency_key" value={`ui-payment:${crypto.randomUUID()}`}/><label>Pagamento <input name="amount" inputMode="decimal" required /></label><label>Método <select name="method">{methods.map(m => <option key={m} value={m}>{methodLabels[m]}</option>)}</select></label><button type="submit">Registrar pagamento</button></form>
         <form action={applyAdjustmentAction} className="stack-form"><input type="hidden" name="receivable_id" value={row.id}/><label>Ajuste <input name="amount" inputMode="decimal" required /></label><label>Tipo <select name="direction"><option value="discount">Desconto/isenção</option><option value="increase">Acréscimo</option></select></label><label>Justificativa <input name="reason" required /></label><button type="submit">Aplicar ajuste</button></form>
       </article>)}
@@ -75,7 +83,7 @@ export default async function FinanceOperationsPage() {
       <form action={createPayableAction} className="stack-form"><input type="hidden" name="idempotency_key" value={`ui-payable:${crypto.randomUUID()}`}/><label>Fornecedor <select name="vendor_id" required>{(vendors ?? []).map(v => <option key={v.id} value={v.id}>{v.legal_name}</option>)}</select></label><label>Categoria <select name="category_id" required>{(categories ?? []).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label><label>Descrição <input name="description" required /></label><label>Valor <input name="amount" inputMode="decimal" required /></label><label>Vencimento <input name="due_date" type="date" required /></label><label>Competência <input name="competence" type="date" required /></label><button type="submit">Criar conta</button></form>
     </section>
 
-    <section><h2>Contas a pagar</h2>{(payables ?? []).map((payable) => <form key={payable.id} action={payPayableAction} className="stack-form card"><input type="hidden" name="payable_id" value={payable.id}/><input type="hidden" name="idempotency_key" value={`ui-payable-payment:${crypto.randomUUID()}`}/><p><strong>{payable.vendor?.legal_name || 'Fornecedor'} — {payable.description}</strong><br />Valor: {money.format(payable.amount_cents / 100)} · Pago: {money.format(payable.paid_cents / 100)} · <span className="operational-status">{statusLabels[payable.status] ?? payable.status}</span></p><label>Baixa <input name="amount" inputMode="decimal" required /></label><label>Método <select name="method" defaultValue="pix">{methods.map(m => <option key={m} value={m}>{methodLabels[m]}</option>)}</select></label><button type="submit">Registrar baixa</button></form>)}</section>
+    <section><h2>Contas a pagar</h2>{(payables ?? []).map((payable) => <form key={payable.id} action={payPayableAction} className="stack-form card"><input type="hidden" name="payable_id" value={payable.id}/><input type="hidden" name="idempotency_key" value={`ui-payable-payment:${crypto.randomUUID()}`}/><p><strong>{payable.vendor?.legal_name || 'Fornecedor'} — {payable.description}</strong><br />Valor: {money.format(payable.amount_cents / 100)} · Pago: {money.format(payable.paid_cents / 100)} · <span className="operational-status">{payableStatusLabels[payable.status] ?? payable.status}</span></p><label>Baixa <input name="amount" inputMode="decimal" required /></label><label>Método <select name="method" defaultValue="pix">{methods.map(m => <option key={m} value={m}>{methodLabels[m]}</option>)}</select></label><button type="submit">Registrar baixa</button></form>)}</section>
 
     <section><h2>Nova recorrência</h2><form action={createRecurrenceAction} className="stack-form"><label>Fornecedor <select name="vendor_id" required>{(vendors ?? []).map(v => <option key={v.id} value={v.id}>{v.legal_name}</option>)}</select></label><label>Categoria <select name="category_id" required>{(categories ?? []).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label><label>Descrição <input name="description" required /></label><label>Valor <input name="amount" inputMode="decimal" required /></label><label>Início <input name="start_date" type="date" required /></label><label>Dia do mês <input name="day_of_month" type="number" min="1" max="31" required /></label><label>Fim do mês <select name="month_end_fallback"><option value="last_day">Usar último dia</option><option value="reject">Não gerar</option></select></label><button type="submit">Criar recorrência</button></form><ul>{(rules ?? []).map(rule => <li key={rule.id}>{rule.description}: dia {rule.day_of_month} ({fallbackLabels[rule.month_end_fallback] ?? rule.month_end_fallback})</li>)}</ul></section>
   </>
