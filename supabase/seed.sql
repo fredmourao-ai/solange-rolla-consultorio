@@ -64,11 +64,8 @@ select
   repeat('a', 64), '2026-01-01T00:00:00-03:00', false
 from public.legal_documents as d
 where d.key = 'cancellation_policy'
-on conflict (document_id, version) do update set
-  content = excluded.content,
-  content_hash_sha256 = excluded.content_hash_sha256,
-  effective_from = excluded.effective_from,
-  is_draft = false;
+-- Accepted legal versions are immutable; changing this fixture requires a new version.
+on conflict (document_id, version) do nothing;
 
 insert into public.cancellation_policies (
   id, policy_version, countable_hours, excluded_weekdays, business_timezone,
