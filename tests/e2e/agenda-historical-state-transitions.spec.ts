@@ -90,3 +90,30 @@ test('legacy late-cancellation remains chargeable through the agenda UI', async 
   await openAgendaItem(page, appointmentId)
   await expect.poll(() => sql(`select count(*) from public.receivables where source_type='appointment' and source_id=${q(appointmentId)}`)).toBe('1')
 })
+
+test('staff claims and completes an unassigned partial task through the UI with reload verification', async ({ page }) => {
+  const taskId = randomUUID()
+  const title = `Tarefa parcial UI ${taskId.slice(0, 8)}`
+  const ownerId = sql("select user_id from public.profiles where role='psychologist_owner' and active=true order by created_at limit 1")
+  if (!ownerId) throw new Error('E2E_ACTIVE_OWNER_REQUIRED')
+  sql(`insert into public.tasks (id,type,title,status,created_by_user_id,assigned_to_user_id,person_id,appointment_id,due_at)
+    values (${q(taskId)},'other_admin',${q(title)},'open',${q(ownerId)},null,null,null,null)`)
+
+  await signInDemo(page)
+  await page.goto('/dashboard', { waitUntil: 'domcontentloaded' })
+  let item = page.locator('li.task-queue-item').filter({ hasText: title })
+  await expect(item).toBeVisible()
+  await expect(item.getByText('Sem responsável')).toBeVisible()
+  await item.getByRole('button', { name: 'Assumir' }).click()
+  await expect.poll(() => sql(`select assigned_to_user_id from public.tasks where id=${q(taskId)}`)).toBe(ownerId)
+
+  await page.reload({ waitUntil: 'domcontentloaded' })
+  item = page.locator('li.task-queue-item').filter({ hasText: title })
+  await expect(item).toBeVisible()
+  await expect(item.getByText(/Responsável:/)).toBeVisible()
+  await item.getByRole('button', { name: 'Concluir' }).click()
+  await expect.poll(() => sql(`select status from public.tasks where id=${q(taskId)}`)).toBe('done')
+
+  await page.reload({ waitUntil: 'domcontentloaded' })
+  await expect(page.locator('li.task-queue-item').filter({ hasText: title })).toHaveCount(0)
+})
