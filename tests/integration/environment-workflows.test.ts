@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest'
 const previewScript = path.join(process.cwd(), 'scripts/preview-env.mjs')
 const stagingScript = path.join(process.cwd(), 'scripts/staging-lock.mjs')
 const stagingWorkflow = path.join(process.cwd(), '.github/workflows/staging-promote.yml')
+const historicalAuditWorkflow = path.join(process.cwd(), '.github/workflows/historical-state-audit.yml')
 const autoMergeWorkflow = path.join(process.cwd(), '.github/workflows/pr-auto-merge.yml')
 const ciWorkflow = path.join(process.cwd(), '.github/workflows/ci.yml')
 const backupScript = path.join(process.cwd(), 'scripts/backup-homologation.sh')
@@ -159,10 +160,21 @@ describe('environment workflow contracts', () => {
     expect(workflow).toContain("'SUPABASE_ACCESS_TOKEN': os.environ['SUPABASE_ACCESS_TOKEN']")
     expect(workflow).toContain('E2E_EXPECTED_BUILD_SHA')
     expect(workflow).toContain('tests/e2e/real-ui-homologation.spec.ts')
-    expect(workflow).toContain('tests/e2e/agenda-historical-state-transitions.spec.ts')
     expect(workflow).toContain('Rollback staging release after failed validation')
     expect(workflow).toContain('Finalize promoted release')
     expect(workflow.indexOf('Real UI staging homologation')).toBeLessThan(workflow.indexOf('Finalize promoted release'))
+  })
+
+  it('audits historical UI state transitions against the exact promoted SHA', () => {
+    const workflow = readFileSync(historicalAuditWorkflow, 'utf8')
+    expect(workflow).toContain('workflows: [Staging Promote]')
+    expect(workflow).toContain("github.event.workflow_run.conclusion == 'success'")
+    expect(workflow).toContain('github.event.workflow_run.head_sha')
+    expect(workflow).toContain('deployed-sha.txt')
+    expect(workflow).toContain("jq -r '.buildSha'")
+    expect(workflow).toContain("'E2E_DB_MODE': 'supabase-management-api'")
+    expect(workflow).toContain('tests/e2e/agenda-historical-state-transitions.spec.ts')
+    expect(workflow).toContain("'--workers=1'")
   })
 
   it('keeps staging backups host-local and independent of Fred-Win', () => {
