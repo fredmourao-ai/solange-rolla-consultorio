@@ -168,6 +168,12 @@ describe('environment workflow contracts', () => {
   it('audits historical UI state transitions against the exact promoted SHA', () => {
     const workflow = readFileSync(historicalAuditWorkflow, 'utf8')
     expect(workflow).toContain('workflows: [Staging Promote]')
+    expect(workflow).toContain('workflow_dispatch:')
+    expect(workflow).toContain('expected_sha:')
+    expect(workflow).toContain("github.event_name == 'workflow_dispatch'")
+    expect(workflow).toContain('EXPECTED_SHA_INPUT')
+    expect(workflow).toContain('expected_sha: ${{ steps.upstream.outputs.expected_sha }}')
+    expect(workflow).toContain('EXPECTED_SHA: ${{ needs.eligibility.outputs.expected_sha }}')
     expect(workflow).toContain("github.event.workflow_run.conclusion == 'success'")
     expect(workflow).toContain('actions: read')
     expect(workflow).toContain('Verify upstream promotion actually deployed')
