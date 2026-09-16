@@ -55,3 +55,34 @@ test('desktop sidebar keeps every routine reachable on a short viewport', async 
 
   await expect(page.locator('.sidebar-nav').getByRole('link', { name: 'Relatórios', exact: true })).toBeVisible()
 })
+
+test('mobile shell starts with content visible and keeps desktop sidebar out of flow', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await signInDemo(page)
+
+  await expect(page.locator('.app-shell__sidebar')).toBeHidden()
+  await expect(page.getByRole('button', { name: 'Abrir menu' })).toBeVisible()
+  const h1Top = await page.getByRole('heading', { level: 1 }).evaluate((element) => element.getBoundingClientRect().top)
+  expect(h1Top).toBeLessThan(220)
+})
+
+test('operational forms provide branded controls and touch-sized targets on mobile', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await signInDemo(page)
+
+  for (const path of ['/agenda/gerenciar', '/financeiro/operacoes', '/eventos/operacoes', '/formularios', '/fiscal/operacoes']) {
+    await page.goto(path)
+    const visibleControls = page.locator('.app-shell__main :is(input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]), select, textarea, button):visible')
+    expect(await visibleControls.count(), `${path} should expose operational controls`).toBeGreaterThan(0)
+    const undersized = await visibleControls.evaluateAll((elements) => elements.filter((element) => {
+      const rect = element.getBoundingClientRect()
+      return rect.height < 44
+    }).length)
+    expect(undersized, `${path} should not expose controls shorter than 44px`).toBe(0)
+
+    const firstInput = page.locator('.app-shell__main input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"])').first()
+    if (await firstInput.count()) {
+      expect(Number.parseFloat(await firstInput.evaluate((element) => getComputedStyle(element).borderRadius))).toBeGreaterThan(0)
+    }
+  }
+})
