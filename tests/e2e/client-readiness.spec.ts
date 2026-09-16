@@ -17,8 +17,8 @@ test('local demo owner sees operational dashboard and navigation', async ({ page
   await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible()
   await expect(page.getByText('R$ 900,00')).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Pacientes' }).locator('..').getByText(/\d+ pacientes/)).toBeVisible()
-  await expect(page.getByRole('link', { name: 'Agenda' })).toHaveAttribute('href', '/agenda')
-  await expect(page.getByRole('link', { name: 'Financeiro' })).toHaveAttribute('href', '/financeiro')
+  await expect(page.getByRole('link', { name: 'Agenda', exact: true })).toHaveAttribute('href', '/agenda')
+  await expect(page.getByRole('link', { name: 'Financeiro', exact: true })).toHaveAttribute('href', '/financeiro')
 })
 test('local demo owner sees seeded operational surfaces', async ({ page }) => {
   await signIn(page)
