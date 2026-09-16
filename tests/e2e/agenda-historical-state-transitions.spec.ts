@@ -9,6 +9,9 @@ function sql(statement: string) { return runSql(statement, dbUrl) }
 function q(value: string) { return `'${value.replaceAll("'", "''")}'` }
 
 const legacySnapshot = { policyVersion: 1, countableHours: 48, excludedWeekdays: [6, 0] }
+const createdAppointmentIds = new Set<string>()
+const createdTaskIds = new Set<string>()
+
 const currentSnapshot = {
   ...legacySnapshot,
   businessTimezone: 'America/Sao_Paulo',
@@ -18,6 +21,7 @@ const currentSnapshot = {
 
 function insertAppointment(snapshot: object, startsAtLocal: string, status = 'confirmed') {
   const id = randomUUID()
+  createdAppointmentIds.add(id)
   sql(`insert into public.appointments
     (id,person_id,service_id,starts_at,ends_at,status,policy_version,cancellation_deadline_at,business_timezone,cancellation_policy_snapshot)
     values (${q(id)},'d0000000-0000-4000-8000-000000000001','d0200000-0000-4000-8000-000000000001',
@@ -27,6 +31,19 @@ function insertAppointment(snapshot: object, startsAtLocal: string, status = 'co
       'America/Sao_Paulo',${q(JSON.stringify(snapshot))}::jsonb)`)
   return id
 }
+
+test.afterEach(() => {
+  for (const taskId of createdTaskIds) {
+    sql(`delete from public.tasks where id=${q(taskId)}`)
+  }
+  createdTaskIds.clear()
+
+  for (const appointmentId of createdAppointmentIds) {
+    sql(`delete from public.receivables where source_type='appointment' and source_id=${q(appointmentId)}`)
+    sql(`delete from public.appointments where id=${q(appointmentId)}`)
+  }
+  createdAppointmentIds.clear()
+})
 
 function editor(page: Page, appointmentId: string) {
   return page.locator('article').filter({ has: page.locator(`input[name="appointment_id"][value="${appointmentId}"]`) }).locator('form')
@@ -94,6 +111,7 @@ test('legacy late-cancellation remains chargeable through the agenda UI', async 
 test('staff claims and completes an unassigned partial task through the UI with reload verification', async ({ page }) => {
   const taskId = randomUUID()
   const title = `Tarefa parcial UI ${taskId.slice(0, 8)}`
+  createdTaskIds.add(taskId)
   const ownerId = sql("select user_id from public.profiles where role='psychologist_owner' and active=true order by created_at limit 1")
   if (!ownerId) throw new Error('E2E_ACTIVE_OWNER_REQUIRED')
   sql(`insert into public.tasks (id,type,title,status,created_by_user_id,assigned_to_user_id,person_id,appointment_id,due_at)
@@ -103,7 +121,7 @@ test('staff claims and completes an unassigned partial task through the UI with 
   await page.goto('/dashboard', { waitUntil: 'domcontentloaded' })
   let item = page.locator('li.task-queue-item').filter({ hasText: title })
   await expect(item).toBeVisible()
-  await expect(item.getByText('Sem responsável')).toBeVisible()
+  await expect(item.locator('.task-queue-item__bucket')).toHaveText('Sem responsável')
   await item.getByRole('button', { name: 'Assumir' }).click()
   await expect.poll(() => sql(`select assigned_to_user_id from public.tasks where id=${q(taskId)}`)).toBe(ownerId)
 
