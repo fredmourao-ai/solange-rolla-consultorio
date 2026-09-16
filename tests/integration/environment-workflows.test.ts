@@ -115,7 +115,6 @@ describe('environment workflow contracts', () => {
     )
   })
 
-
   it('does not occupy the self-hosted runner while waiting for post-merge canonical checks', () => {
     const autoMerge = readFileSync(autoMergeWorkflow, 'utf8')
     const [mergeJob, stagingHandoff] = autoMerge.split('\n  staging-handoff:')
@@ -160,6 +159,7 @@ describe('environment workflow contracts', () => {
     expect(workflow).toContain("'SUPABASE_ACCESS_TOKEN': os.environ['SUPABASE_ACCESS_TOKEN']")
     expect(workflow).toContain('E2E_EXPECTED_BUILD_SHA')
     expect(workflow).toContain('tests/e2e/real-ui-homologation.spec.ts')
+    expect(workflow).toContain('tests/e2e/agenda-historical-state-transitions.spec.ts')
     expect(workflow).toContain('Rollback staging release after failed validation')
     expect(workflow).toContain('Finalize promoted release')
     expect(workflow.indexOf('Real UI staging homologation')).toBeLessThan(workflow.indexOf('Finalize promoted release'))
