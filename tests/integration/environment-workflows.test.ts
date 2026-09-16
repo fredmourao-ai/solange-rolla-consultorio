@@ -7,6 +7,7 @@ const previewScript = path.join(process.cwd(), 'scripts/preview-env.mjs')
 const stagingScript = path.join(process.cwd(), 'scripts/staging-lock.mjs')
 const stagingWorkflow = path.join(process.cwd(), '.github/workflows/staging-promote.yml')
 const autoMergeWorkflow = path.join(process.cwd(), '.github/workflows/pr-auto-merge.yml')
+const ciWorkflow = path.join(process.cwd(), '.github/workflows/ci.yml')
 const backupScript = path.join(process.cwd(), 'scripts/backup-homologation.sh')
 const base = {
   SUPABASE_BRANCHING_ENABLED: 'true',
@@ -110,6 +111,34 @@ describe('environment workflow contracts', () => {
     expect(autoMerge.indexOf('canonical post-merge checks are green')).toBeLessThan(
       autoMerge.indexOf('actions/workflows/staging-promote.yml/dispatches'),
     )
+  })
+
+
+  it('does not occupy the self-hosted runner while waiting for post-merge canonical checks', () => {
+    const autoMerge = readFileSync(autoMergeWorkflow, 'utf8')
+    const [mergeJob, stagingHandoff] = autoMerge.split('\n  staging-handoff:')
+
+    expect(stagingHandoff).toBeDefined()
+    expect(mergeJob).not.toContain('canonical post-merge checks still pending')
+    expect(stagingHandoff).toContain('runs-on: ubuntu-latest')
+    expect(stagingHandoff).toContain('canonical post-merge checks still pending')
+  })
+
+  it('retries staging handoff after a cancelled or failed prior promotion', () => {
+    const autoMerge = readFileSync(autoMergeWorkflow, 'utf8')
+    expect(autoMerge).toContain('select(.status != \"completed\" or .conclusion == \"success\")')
+  })
+  it('allocates a runner-local E2E port instead of assuming port 3000 is free', () => {
+    const workflow = readFileSync(ciWorkflow, 'utf8')
+    const e2eJob = workflow.split('\n  e2e:')[1] ?? ''
+
+    const endToEndStep = e2eJob.split('      - name: End-to-end tests')[1] ?? ''
+    expect(endToEndStep).toContain('for attempt in 1 2 3 4 5')
+    expect(endToEndStep).toContain('E2E_PORT=')
+    expect(endToEndStep).toContain('npm run start -- --hostname 127.0.0.1 --port "$E2E_PORT"')
+    expect(endToEndStep).toContain('E2E_REUSE_EXISTING_SERVER=true')
+    expect(endToEndStep).toContain('kill -TERM -- "-$E2E_SERVER_PID"')
+    expect(endToEndStep).toContain('npm run test:e2e')
   })
 
   it('builds both workers with the same promoted immutable SHA', () => {
