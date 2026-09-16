@@ -1,13 +1,11 @@
 'use client'
 
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { createBrowserSupabaseClient } from '../../platform/supabase/browser'
 import { Button } from './button'
 
 export function SessionControls({ onNavigate }: { onNavigate?: () => void }) {
-  const router = useRouter()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
@@ -15,9 +13,7 @@ export function SessionControls({ onNavigate }: { onNavigate?: () => void }) {
     setBusy(true); setError('')
     const { error: signOutError } = await createBrowserSupabaseClient().auth.signOut({ scope: 'local' })
     if (signOutError) { setBusy(false); setError('Não foi possível encerrar a sessão.'); return }
-    onNavigate?.()
-    router.replace('/login')
-    router.refresh()
+    window.location.assign('/login')
   }
 
   return <div className="session-controls">
