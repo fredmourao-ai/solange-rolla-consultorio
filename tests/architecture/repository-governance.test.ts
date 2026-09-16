@@ -5,8 +5,8 @@ import { describe, expect, it } from 'vitest'
 
 const root = fileURLToPath(new URL('../../', import.meta.url))
 const requiredRunnerLabels = ['self-hosted', 'Linux', 'ARM64', 'solange-ci']
-// staging-promote.yml declares two jobs in order: canonical-gate (shared runner) then
-// promote (pinned to the dedicated homologation host, which persists release state).
+// Stateful staging workflows are pinned when they need access to persisted homologation
+// state; staging-promote has a shared canonical gate before its host-pinned promote job.
 const runnerLabelExceptionsByFile: Record<string, string[][]> = {
   'pr-auto-merge.yml': [requiredRunnerLabels, ['ubuntu-latest']],
   'staging-promote.yml': [requiredRunnerLabels, [...requiredRunnerLabels, 'solange-staging-host']],
