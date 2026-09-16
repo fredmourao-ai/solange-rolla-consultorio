@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "status": "approved",
+  "issue": 148,
+  "migration": "20260916010000_people_audited_updates.sql",
+  "owners": [
+    "audit",
+    "people"
+  ],
+  "objects": [
+    {
+      "name": "public.audit_events",
+      "owner": "audit"
+    },
+    {
+      "name": "public.audit_person_updated",
+      "owner": "audit"
+    },
+    {
+      "name": "public.people",
+      "owner": "people"
+    }
+  ]
+}

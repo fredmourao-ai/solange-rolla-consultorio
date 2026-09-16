@@ -48,8 +48,10 @@ describe('environment workflow contracts', () => {
     expect(workflow).toContain('solange-client-demo-web')
     expect(workflow).toContain('ops/document-worker/run-demo-worker.sh')
     expect(workflow).toContain('ops/messaging-worker/run-demo-worker.sh')
+    expect(workflow).toContain('ops/recurring-payables-worker/run-demo-worker.sh')
     expect(workflow).toContain('solange-document-worker')
     expect(workflow).toContain('solange-messaging-worker')
+    expect(workflow).toContain('solange-recurring-payables-worker')
     expect(workflow).toContain('Verify deployed SHA')
     expect(workflow).toContain('buildSha')
   })
@@ -126,12 +128,12 @@ describe('environment workflow contracts', () => {
 
   it('retries staging handoff after a cancelled or failed prior promotion', () => {
     const autoMerge = readFileSync(autoMergeWorkflow, 'utf8')
-    expect(autoMerge).toContain('select(.status != \"completed\" or .conclusion == \"success\")')
+    expect(autoMerge).toContain('select(.status != "completed" or .conclusion == "success")')
   })
+
   it('allocates a runner-local E2E port instead of assuming port 3000 is free', () => {
     const workflow = readFileSync(ciWorkflow, 'utf8')
     const e2eJob = workflow.split('\n  e2e:')[1] ?? ''
-
     const endToEndStep = e2eJob.split('      - name: End-to-end tests')[1] ?? ''
     expect(endToEndStep).toContain('for attempt in 1 2 3 4 5')
     expect(endToEndStep).toContain('E2E_PORT=')
@@ -141,10 +143,11 @@ describe('environment workflow contracts', () => {
     expect(endToEndStep).toContain('npm run test:e2e')
   })
 
-  it('builds both workers with the same promoted immutable SHA', () => {
+  it('builds every worker with the same promoted immutable SHA', () => {
     const workflow = readFileSync(stagingWorkflow, 'utf8')
     expect(workflow).toContain("IMAGE=\"solange-document-worker:$PROMOTE_SHA\"")
     expect(workflow).toContain("IMAGE=\"solange-messaging-worker:$PROMOTE_SHA\"")
+    expect(workflow).toContain("IMAGE=\"solange-recurring-payables-worker:$PROMOTE_SHA\"")
   })
 
   it('runs browser-driven operational homologation against the exact staged SHA before finalizing the release', () => {

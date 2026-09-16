@@ -1,6 +1,6 @@
 begin;
 
-select plan(18);
+select plan(20);
 
 select has_table('public', 'people', 'people table exists');
 select has_table('public', 'person_relationships', 'person relationships table exists');
@@ -49,6 +49,17 @@ select is(
   'Contato Teste|+5531987654321|Irmã',
   'secretary can persist complete emergency contact details'
 );
+update public.people
+set civil_name = civil_name
+where id = '10000000-0000-0000-0000-000000000001';
+reset role;
+select is(
+  (select count(*)::int from public.audit_events where action = 'person.updated' and entity_id = '10000000-0000-0000-0000-000000000001'),
+  1,
+  'no-op updates do not create spurious person update audit events'
+);
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-000000000002","aal":"aal2","role":"authenticated"}', true);
 select throws_ok(
   $$ update public.people set emergency_contact_name = 'Sem telefone', emergency_contact_phone_e164 = null where id = '10000000-0000-0000-0000-000000000001' $$,
   '23514',
@@ -60,6 +71,20 @@ select throws_ok(
   '23514',
   null,
   'emergency contact phone requires name'
+);
+reset role;
+select ok(
+  (select metadata->>'emergencyContactChanged' = 'true'
+     and metadata->>'identityChanged' = 'false'
+     and metadata->>'contactChanged' = 'false'
+     and metadata->>'preferencesChanged' = 'false'
+     and metadata->>'fiscalChanged' = 'false'
+     and metadata::text not like '%Contato Teste%'
+     and metadata::text not like '%5531987654321%'
+   from public.audit_events
+   where action = 'person.updated' and entity_id = '10000000-0000-0000-0000-000000000001'
+   order by created_at desc limit 1),
+  'person update audit records sanitized change categories without emergency contact PII'
 );
 
 select * from finish();

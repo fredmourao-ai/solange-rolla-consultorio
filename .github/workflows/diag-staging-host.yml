@@ -43,8 +43,9 @@ jobs:
           echo "--- web container status and crash logs ---"
           docker inspect solange-client-demo-web --format '{{.State.Status}} exit={{.State.ExitCode}} error={{.State.Error}}' 2>&1 || true
           docker logs --tail 80 solange-client-demo-web 2>&1 || true
-          echo "--- backup destination mount ---"
-          BACKUP_DEST=/mnt/fredwin-backup/solange/homologacao
-          mountpoint -q /mnt/fredwin-backup 2>&1 && echo "MOUNTED" || echo "NOT_MOUNTED"
+          echo "--- backup destination and scheduler health ---"
+          BACKUP_DEST=/home/ubuntu/solange-client-demo/backups
           ls -la "$BACKUP_DEST" 2>&1 || true
           test -w "$BACKUP_DEST" 2>&1 && echo "WRITABLE" || echo "NOT_WRITABLE_OR_MISSING"
+          cat "$BACKUP_DEST/LAST_SUCCESS" 2>&1 || echo "NO_LAST_SUCCESS"
+          docker inspect solange-backup-scheduler --format 'status={{.State.Status}} health={{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' 2>&1 || true

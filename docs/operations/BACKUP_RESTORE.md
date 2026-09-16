@@ -13,7 +13,7 @@ A VM mantém backup lógico diário em `/home/ubuntu/solange-client-demo/backups
 
 São gerados dois artefatos na mesma execução: um dump completo do PostgreSQL/Supabase e um dump `public + clinical + auth` destinado ao drill portátil. O segundo existe porque a imagem local Supabase inclui extensões/plataforma específicas que não devem ser sobrepostas em um PostgreSQL vazio durante o teste de recuperabilidade da aplicação.
 
-O scheduler de homologação roda em container Docker com `--restart unless-stopped`, executa imediatamente após iniciar/reiniciar e repete a cada 86400 segundos. O segredo do banco não é persistido no script nem em logs: é lido em runtime do container Supabase já provisionado.
+O scheduler de homologação roda em container Docker com `--restart unless-stopped`, executa imediatamente após iniciar/reiniciar e repete a cada 86400 segundos. O container possui health check que rejeita `LAST_SUCCESS` stale, artefatos ausentes e divergência de SHA-256 nos dois dumps. O segredo do banco não é persistido no script nem em logs: é lido em runtime do container Supabase já provisionado.
 
 ## Restore isolado
 
