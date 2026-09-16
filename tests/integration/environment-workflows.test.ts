@@ -132,10 +132,11 @@ describe('environment workflow contracts', () => {
     const workflow = readFileSync(ciWorkflow, 'utf8')
     const e2eJob = workflow.split('\n  e2e:')[1] ?? ''
 
-    expect(e2eJob).toContain('E2E_PORT=')
-    expect(e2eJob).toContain('echo "E2E_PORT=$E2E_PORT"')
-    expect(e2eJob).toContain('echo "APP_URL=http://127.0.0.1:$E2E_PORT"')
-    expect(e2eJob).not.toContain('APP_URL=http://127.0.0.1:3000')
+    const endToEndStep = e2eJob.split('      - name: End-to-end tests')[1] ?? ''
+    expect(endToEndStep).toContain('E2E_PORT=')
+    expect(endToEndStep).toContain('export E2E_PORT')
+    expect(endToEndStep).toContain('export APP_URL="http://127.0.0.1:$E2E_PORT"')
+    expect(endToEndStep.indexOf('E2E_PORT=')).toBeLessThan(endToEndStep.indexOf('npm run test:e2e'))
   })
 
   it('builds both workers with the same promoted immutable SHA', () => {
