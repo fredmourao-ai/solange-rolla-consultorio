@@ -17,7 +17,7 @@ describe('audit policy governance', () => {
   })
 
   it('makes the canonical audit policy mandatory for agents and completion', () => {
-    const agents = projectFile('AGENTS.md')
+    const agents = projectFile('AGENTS.override.md')
     const policy = projectFile('AUDIT_POLICY.md')
     const done = projectFile('docs/DEFINITION_OF_DONE.md')
 
