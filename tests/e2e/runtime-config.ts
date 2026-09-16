@@ -29,7 +29,12 @@ export function resolveE2eRuntime(env: Env = process.env): E2eRuntime {
     }
     const expectedBuildSha = env.E2E_EXPECTED_BUILD_SHA?.trim() ?? ''
     if (!/^[0-9a-f]{40}$/i.test(expectedBuildSha)) throw new Error('E2E_EXPECTED_BUILD_SHA_REQUIRED')
-    return { baseURL: external, webServer: undefined, projectTestMatch: '**/real-ui-homologation.spec.ts', expectedBuildSha }
+    const externalSuite = env.E2E_EXTERNAL_SUITE?.trim().toLowerCase() || 'real-ui'
+    let projectTestMatch: string
+    if (externalSuite === 'real-ui') projectTestMatch = '**/real-ui-homologation.spec.ts'
+    else if (externalSuite === 'historical-state') projectTestMatch = '**/agenda-historical-state-transitions.spec.ts'
+    else throw new Error('E2E_EXTERNAL_SUITE_NOT_ALLOWLISTED')
+    return { baseURL: external, webServer: undefined, projectTestMatch, expectedBuildSha }
   }
   const port = Number(env.E2E_PORT ?? '3000')
   if (!Number.isInteger(port) || port <= 0 || port > 65535) throw new Error('E2E_PORT_INVALID')
