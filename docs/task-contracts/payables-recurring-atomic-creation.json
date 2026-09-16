@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "status": "approved",
+  "issue": 149,
+  "migration": "20260916012000_payables_recurring_atomic_creation.sql",
+  "owners": ["audit", "payables"],
+  "objects": [
+    {"name": "public.create_recurring_payable_atomic", "owner": "payables"},
+    {"name": "public.payables", "owner": "payables"},
+    {"name": "public.recurrence_rules", "owner": "payables"},
+    {"name": "public.audit_events", "owner": "audit"}
+  ]
+}

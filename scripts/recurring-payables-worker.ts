@@ -52,19 +52,18 @@ async function main() {
   }
 
   async function insertIfMissing(row: RecurringPayableRow): Promise<boolean> {
-    const { error } = await client.from('payables').insert({
-      vendor_id: row.vendorId,
-      category_id: row.categoryId,
-      recurrence_rule_id: row.recurrenceRuleId,
-      description: row.description,
-      amount_cents: row.amountCents,
-      due_date: row.dueDate,
-      competence: row.competence,
-      idempotency_key: row.idempotencyKey,
+    const { data, error } = await client.rpc('create_recurring_payable_atomic', {
+      p_vendor_id: row.vendorId,
+      p_category_id: row.categoryId,
+      p_recurrence_rule_id: row.recurrenceRuleId,
+      p_description: row.description,
+      p_amount_cents: row.amountCents,
+      p_due_date: row.dueDate,
+      p_competence: row.competence,
+      p_idempotency_key: row.idempotencyKey,
     })
-    if (!error) return true
-    if (error.code === '23505') return false
-    throw new Error(`RECURRING_PAYABLE_CREATE_FAILED:${error.code}`)
+    if (error) throw new Error(`RECURRING_PAYABLE_CREATE_FAILED:${error.code}`)
+    return data === true
   }
 
   log('recurring_payables_worker_started', { intervalMs })

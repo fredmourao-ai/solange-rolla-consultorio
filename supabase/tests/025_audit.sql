@@ -1,6 +1,6 @@
 begin;
 
-select plan(7);
+select plan(10);
 
 select has_table('public', 'audit_events', 'audit events table exists');
 select ok((select relrowsecurity from pg_class where oid = 'public.audit_events'::regclass), 'audit events has RLS enabled');
@@ -25,6 +25,14 @@ select throws_ok($$ delete from public.audit_events $$, '42501', null, 'audit ev
 
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-000000000011","aal":"aal2","role":"authenticated"}', true);
 select is((select count(*)::int from public.audit_events), 1, 'owner can read audit events with AAL2');
+select has_column('public', 'audit_events', 'actor_kind', 'audit events distinguish user and system actors');
+select is((select actor_kind from public.audit_events where correlation_id = 'audit-test-1'), 'user', 'authenticated audit rows default to user actor');
+select throws_ok(
+  $$ insert into public.audit_events (actor_user_id, actor_kind, action, entity_type, entity_id, correlation_id) values (null, 'system', 'forged.system', 'person', '10000000-0000-0000-0000-000000000011', 'audit-test-system-forgery') $$,
+  '42501',
+  null,
+  'authenticated actor cannot forge a system audit event'
+);
 
 select * from finish();
 rollback;

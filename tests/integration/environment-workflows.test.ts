@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest'
 const previewScript = path.join(process.cwd(), 'scripts/preview-env.mjs')
 const stagingScript = path.join(process.cwd(), 'scripts/staging-lock.mjs')
 const stagingWorkflow = path.join(process.cwd(), '.github/workflows/staging-promote.yml')
+const historicalAuditWorkflow = path.join(process.cwd(), '.github/workflows/historical-state-audit.yml')
 const autoMergeWorkflow = path.join(process.cwd(), '.github/workflows/pr-auto-merge.yml')
 const ciWorkflow = path.join(process.cwd(), '.github/workflows/ci.yml')
 const backupScript = path.join(process.cwd(), 'scripts/backup-homologation.sh')
@@ -115,7 +116,6 @@ describe('environment workflow contracts', () => {
     )
   })
 
-
   it('does not occupy the self-hosted runner while waiting for post-merge canonical checks', () => {
     const autoMerge = readFileSync(autoMergeWorkflow, 'utf8')
     const [mergeJob, stagingHandoff] = autoMerge.split('\n  staging-handoff:')
@@ -165,6 +165,18 @@ describe('environment workflow contracts', () => {
     expect(workflow.indexOf('Real UI staging homologation')).toBeLessThan(workflow.indexOf('Finalize promoted release'))
   })
 
+  it('audits historical UI state transitions against the exact promoted SHA', () => {
+    const workflow = readFileSync(historicalAuditWorkflow, 'utf8')
+    expect(workflow).toContain('workflows: [Staging Promote]')
+    expect(workflow).toContain("github.event.workflow_run.conclusion == 'success'")
+    expect(workflow).toContain('github.event.workflow_run.head_sha')
+    expect(workflow).toContain('deployed-sha.txt')
+    expect(workflow).toContain("jq -r '.buildSha'")
+    expect(workflow).toContain("'E2E_DB_MODE': 'supabase-management-api'")
+    expect(workflow).toContain('tests/e2e/agenda-historical-state-transitions.spec.ts')
+    expect(workflow).toContain("'--workers=1'")
+  })
+
   it('keeps staging backups host-local and independent of Fred-Win', () => {
     const workflow = readFileSync(stagingWorkflow, 'utf8')
     const backup = readFileSync(backupScript, 'utf8')
@@ -172,6 +184,17 @@ describe('environment workflow contracts', () => {
     expect(backup).not.toContain('/mnt/fredwin-backup')
     expect(workflow).toContain('SOLANGE_BACKUP_DEST="$ROOT/backups" scripts/backup-homologation.sh')
     expect(workflow).not.toContain('/home/ubuntu/.local/bin/solange-backup.sh')
+  })
+
+  it('removes a newly introduced recurring worker when rollback has no previous container', () => {
+    const workflow = readFileSync(stagingWorkflow, 'utf8')
+    const deployRollback = workflow.split('          rollback() {')[1]?.split('          cleanup_stage')[0] ?? ''
+    const failedValidationRollback = workflow.split('      - name: Rollback staging release after failed validation')[1]?.split('      - name: Finalize promoted release')[0] ?? ''
+
+    for (const rollback of [deployRollback, failedValidationRollback]) {
+      expect(rollback).toContain('if docker inspect "${REC}-previous"')
+      expect(rollback).toMatch(new RegExp('else\\n\\s+docker rm -f "\\$REC"'))
+    }
   })
 
   it('rolls back only resources created by the current staging transaction', () => {
