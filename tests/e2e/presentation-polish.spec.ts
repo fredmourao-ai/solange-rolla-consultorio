@@ -21,6 +21,13 @@ test('key demo surfaces use product-grade card and list layouts', async ({ page 
   await expect(page.locator('.people-results__item').first()).not.toHaveCSS('border-top-width', '0px')
 })
 
+test('dashboard metrics lead directly to the related operational areas', async ({ page }) => {
+  await signInDemo(page)
+  for (const [name, href] of [['Abrir agenda', '/agenda'], ['Abrir financeiro', '/financeiro'], ['Abrir eventos', '/eventos'], ['Abrir pacientes', '/pessoas']] as const) {
+    await expect(page.getByRole('link', { name })).toHaveAttribute('href', href)
+  }
+})
+
 test('navigation is patient-centric and highlights the current administrative route', async ({ page }) => {
   await signInDemo(page)
 
