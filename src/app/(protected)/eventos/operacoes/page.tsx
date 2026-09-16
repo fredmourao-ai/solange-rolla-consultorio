@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import type { EventStatus } from '@/modules/events/public'
 import { authorizeStaffSession, getStaffSession } from '@/modules/identity/public'
 import { createServerSupabaseClient } from '@/platform/supabase/server'
 import { PageHeader } from '@/shared/ui/page-header'
@@ -7,11 +8,12 @@ import { addExpenseAction, createEventAction, registerParticipantAction, updateE
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 const money = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
-const eventStatusLabels: Record<string, string> = {
+const eventStatusLabels: Record<EventStatus, string> = {
+  planned: 'Planejado',
   open: 'Aberto',
-  closed: 'Encerrado',
+  full: 'Lotado',
+  completed: 'Concluído',
   cancelled: 'Cancelado',
-  draft: 'Rascunho',
 }
 
 function local(value: string) {
@@ -70,7 +72,7 @@ export default async function EventOperationsPage({ searchParams }: {
       {personQuery && people.length === 0 && <p>Nenhuma pessoa encontrada. Cadastre a pessoa em <Link href="/pessoas/nova">Pacientes</Link> e volte para continuar.</p>}
     </section>
     <section><h2>Eventos</h2>{events.map((event) => <article className="card" key={event.id}>
-      <h3>{event.title}</h3><p><span className="operational-status">{eventStatusLabels[event.status] ?? event.status}</span> · Capacidade: {event.capacity} · Valor padrão: {money.format(event.default_price_cents / 100)}</p>
+      <h3>{event.title}</h3><p><span className="operational-status">{eventStatusLabels[event.status as EventStatus]}</span> · Capacidade: {event.capacity} · Valor padrão: {money.format(event.default_price_cents / 100)}</p>
       <form action={updateEventAction} className="stack-form"><input type="hidden" name="event_id" value={event.id} />
         <label>Título <input name="title" defaultValue={event.title} required /></label>
         <label>Início <input name="starts_at_local" type="datetime-local" defaultValue={local(event.starts_at)} required /></label>
