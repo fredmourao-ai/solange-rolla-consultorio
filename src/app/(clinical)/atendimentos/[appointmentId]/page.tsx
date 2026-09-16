@@ -2,9 +2,9 @@ import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import {
   changeAppointmentStatus,
+  normalizeCancellationPolicySnapshot,
   type Appointment,
   type AppointmentStatusRepository,
-  type CancellationPolicy,
 } from '@/modules/appointments/public'
 import { recordAuditEvent, type AuditEvent, type AuditEventRepository } from '@/modules/audit/public'
 import {
@@ -109,7 +109,7 @@ function toAppointment(row: {
     status: row.status as Appointment['status'],
     policyVersion: row.policy_version,
     cancellationDeadlineAt: row.cancellation_deadline_at,
-    cancellationPolicy: row.cancellation_policy_snapshot as CancellationPolicy,
+    cancellationPolicy: normalizeCancellationPolicySnapshot(row.cancellation_policy_snapshot),
   }
 }
 
