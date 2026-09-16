@@ -34,7 +34,8 @@ export function resolveE2eRuntime(env: Env = process.env): E2eRuntime {
   const port = Number(env.E2E_PORT ?? '3000')
   if (!Number.isInteger(port) || port <= 0 || port > 65535) throw new Error('E2E_PORT_INVALID')
   const baseURL = `http://127.0.0.1:${port}`
-  return { baseURL, webServer: { command: `npm run start -- --hostname 127.0.0.1 --port ${port}`, url: baseURL, reuseExistingServer: false, timeout: 120_000 }, projectTestMatch: undefined, expectedBuildSha: undefined }
+  const reuseExistingServer = env.E2E_REUSE_EXISTING_SERVER?.trim().toLowerCase() === 'true'
+  return { baseURL, webServer: { command: `npm run start -- --hostname 127.0.0.1 --port ${port}`, url: baseURL, reuseExistingServer, timeout: 120_000 }, projectTestMatch: undefined, expectedBuildSha: undefined }
 }
 
 export async function assertExternalBuild(runtime: E2eRuntime, fetcher: typeof fetch = fetch): Promise<void> {

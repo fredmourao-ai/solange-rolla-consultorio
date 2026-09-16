@@ -133,10 +133,12 @@ describe('environment workflow contracts', () => {
     const e2eJob = workflow.split('\n  e2e:')[1] ?? ''
 
     const endToEndStep = e2eJob.split('      - name: End-to-end tests')[1] ?? ''
+    expect(endToEndStep).toContain('for attempt in 1 2 3 4 5')
     expect(endToEndStep).toContain('E2E_PORT=')
-    expect(endToEndStep).toContain('export E2E_PORT')
-    expect(endToEndStep).toContain('export APP_URL="http://127.0.0.1:$E2E_PORT"')
-    expect(endToEndStep.indexOf('E2E_PORT=')).toBeLessThan(endToEndStep.indexOf('npm run test:e2e'))
+    expect(endToEndStep).toContain('npm run start -- --hostname 127.0.0.1 --port "$E2E_PORT"')
+    expect(endToEndStep).toContain('E2E_REUSE_EXISTING_SERVER=true')
+    expect(endToEndStep).toContain('kill -TERM -- "-$E2E_SERVER_PID"')
+    expect(endToEndStep).toContain('npm run test:e2e')
   })
 
   it('builds both workers with the same promoted immutable SHA', () => {

@@ -211,8 +211,44 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          E2E_PORT="$(python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1]); s.close()')"
-          test -n "$E2E_PORT"
-          export E2E_PORT
-          export APP_URL="http://127.0.0.1:$E2E_PORT"
+          LOG="$RUNNER_TEMP/solange-e2e-server.log"
+          E2E_SERVER_PID=''
+          cleanup_server() {
+            if [ -n "$E2E_SERVER_PID" ] && kill -0 "$E2E_SERVER_PID" 2>/dev/null; then
+              kill -TERM -- "-$E2E_SERVER_PID" 2>/dev/null || true
+              wait "$E2E_SERVER_PID" 2>/dev/null || true
+            fi
+          }
+          trap cleanup_server EXIT
+          started=false
+          for attempt in 1 2 3 4 5; do
+            E2E_PORT="$(python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1]); s.close()')"
+            test -n "$E2E_PORT"
+            export E2E_PORT
+            export APP_URL="http://127.0.0.1:$E2E_PORT"
+            : > "$LOG"
+            setsid npm run start -- --hostname 127.0.0.1 --port "$E2E_PORT" >"$LOG" 2>&1 &
+            E2E_SERVER_PID=$!
+            for _ in $(seq 1 60); do
+              if curl -fsS "$APP_URL/api/health" >/dev/null 2>&1; then
+                started=true
+                break
+              fi
+              if ! kill -0 "$E2E_SERVER_PID" 2>/dev/null; then
+                break
+              fi
+              sleep 1
+            done
+            if [ "$started" = true ]; then
+              break
+            fi
+            cleanup_server
+            E2E_SERVER_PID=''
+            sleep 1
+          done
+          if [ "$started" != true ]; then
+            cat "$LOG" >&2 || true
+            exit 1
+          fi
+          export E2E_REUSE_EXISTING_SERVER=true
           npm run test:e2e
