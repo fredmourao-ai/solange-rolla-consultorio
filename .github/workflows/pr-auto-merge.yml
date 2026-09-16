@@ -29,6 +29,8 @@ jobs:
        github.event.workflow_run.conclusion == 'skipped')
     runs-on: [self-hosted, Linux, ARM64, solange-ci]
     timeout-minutes: 30
+    outputs:
+      main_sha: ${{ steps.revalidate.outputs.sha }}
     steps:
       - name: Bootstrap verified GitHub CLI
         env:
@@ -136,6 +138,7 @@ jobs:
           gh pr merge "$PR_NUMBER" --repo "$REPO" --squash --delete-branch --match-head-commit "$HEAD_SHA"
 
       - name: Re-validate merged main at its exact SHA
+        id: revalidate
         # The squash merge above is pushed with GITHUB_TOKEN, which GitHub
         # does not treat as a `push` event trigger. Without this step,
         # ci.yml/db.yml/repository-governance.yml's `push` triggers never
@@ -168,20 +171,26 @@ jobs:
             fi
             gh api --method POST "repos/$REPO/actions/workflows/$workflow/dispatches" -f ref=main
           done
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
 
+  staging-handoff:
+    needs: merge-if-green
+    if: >-
+      needs.merge-if-green.outputs.main_sha != '' &&
+      vars.STAGING_AUTO_PROMOTE_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
       - name: Hand validated main to automatic staging promotion
-        if: >-
-          (steps.pr.outputs.pr_number != '' || steps.pr.outputs.merged_main_sha != '') &&
-          vars.STAGING_AUTO_PROMOTE_ENABLED == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
-          STAGING_HANDOFF_MAX_ATTEMPTS: 60
+          MAIN_SHA: ${{ needs.merge-if-green.outputs.main_sha }}
+          STAGING_HANDOFF_MAX_ATTEMPTS: 160
         shell: bash
         run: |
           set -Eeuo pipefail
-          sha="${{ steps.pr.outputs.merged_main_sha }}"
-          [ -n "$sha" ] || sha="$(gh api "repos/$REPO/git/ref/heads/main" --jq .object.sha)"
+          sha="$MAIN_SHA"
           current_main="$(gh api "repos/$REPO/git/ref/heads/main" --jq .object.sha)"
           [ "$current_main" = "$sha" ] || { echo "Main advanced to $current_main; refusing stale staging handoff $sha."; exit 0; }
           required=('CI' 'Database' 'Repository Governance Gate')
@@ -207,7 +216,7 @@ jobs:
             sleep 15
           done
           existing="$(gh api "repos/$REPO/actions/runs?head_sha=$sha&event=workflow_dispatch&per_page=100")"
-          if jq -e '.workflow_runs[] | select(.path == ".github/workflows/staging-promote.yml")' <<<"$existing" >/dev/null; then
+          if jq -e '.workflow_runs[] | select(.path == ".github/workflows/staging-promote.yml") | select(.status != "completed" or .conclusion == "success")' <<<"$existing" >/dev/null; then
             echo "Staging Promote already dispatched for main@$sha"
             exit 0
           fi
