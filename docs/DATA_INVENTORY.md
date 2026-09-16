@@ -7,7 +7,7 @@ as retenções devem ser confirmados no registro de operações antes do go-live
 | --- | --- | --- | --- | --- | --- |
 | L0 | Conteúdo institucional | Site público | Público | Não | Revisão editorial |
 | L1 | Agenda, confirmações e eventos | Supabase administrativo/outbox | Staff conforme papel | Não clínico | Relação ativa + revisão anual |
-| L2 | Cadastro, contato, responsáveis e pagamentos | Supabase people/finance | Secretaria/contabilidade conforme necessidade | Pessoal/financeiro | Enquanto necessário + obrigação legal/defesa |
+| L2 | Cadastro, contato, contato de emergência, responsáveis e pagamentos | Supabase people/finance | Secretaria/contabilidade conforme necessidade | Pessoal/financeiro | Enquanto necessário + obrigação legal/defesa |
 | L2 | Documentos fiscais e artefatos | Supabase fiscal + bucket privado/provider fiscal | Contabilidade/owner | Fiscal/PII | Obrigação fiscal aplicável + defesa |
 | L2 | Mensagens e tentativas | Outbox/inbox/provider | Operação mínima, sem conteúdo clínico | Pode conter contato | Retenção operacional curta e revisão |
 | L3 | Formulários sensíveis e assinatura vinculada | Supabase forms/signatures/bucket privado | Psicóloga autorizada; assinatura conforme finalidade | Saúde/conteúdo sensível | Regra profissional/legal; sem exclusão automática |
