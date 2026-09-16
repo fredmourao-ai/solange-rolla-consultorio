@@ -102,3 +102,17 @@ test('operational forms provide branded controls and touch-sized targets on mobi
     }
   }
 })
+
+
+test('mobile secondary navigation and return links expose touch-sized targets', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await signInDemo(page)
+
+  for (const path of ['/agenda/gerenciar', '/financeiro/operacoes', '/eventos/operacoes', '/fiscal/operacoes', '/relatorios']) {
+    await page.goto(path)
+    const links = page.locator('.app-shell__main > nav a:visible, .app-shell__main > p > a:visible')
+    expect(await links.count(), `${path} should expose secondary navigation links`).toBeGreaterThan(0)
+    const undersized = await links.evaluateAll((elements) => elements.filter((element) => element.getBoundingClientRect().height < 44).length)
+    expect(undersized, `${path} should not expose secondary navigation links shorter than 44px`).toBe(0)
+  }
+})
