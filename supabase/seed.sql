@@ -56,19 +56,25 @@ values ('d0250000-0000-4000-8000-000000000001', 'cancellation_policy')
 on conflict (key) do nothing;
 
 insert into public.legal_document_versions (
-  id, document_id, version, content, content_hash_sha256, effective_from, is_draft
+  id, document_id, version, content, content_hash_sha256, effective_from, supersedes_id, is_draft
 )
 select
-  'd0260000-0000-4000-8000-000000000001', d.id, 1,
+  gen_random_uuid(),
+  d.id,
+  coalesce((select max(v.version) from public.legal_document_versions v where v.document_id = d.id), 0) + 1,
   'Política sintética de demonstração: cancelamento sem cobrança até 48 horas computáveis antes da consulta; sábados e domingos não reduzem o prazo.',
-  repeat('a', 64), '2026-01-01T00:00:00-03:00', false
+  repeat('a', 64),
+  '2026-01-01T00:00:00-03:00',
+  (select v.id from public.legal_document_versions v where v.document_id = d.id order by v.version desc limit 1),
+  false
 from public.legal_documents as d
 where d.key = 'cancellation_policy'
-on conflict (document_id, version) do update set
-  content = excluded.content,
-  content_hash_sha256 = excluded.content_hash_sha256,
-  effective_from = excluded.effective_from,
-  is_draft = false;
+  and not exists (
+    select 1 from public.legal_document_versions v
+    where v.document_id = d.id and not v.is_draft and v.effective_from <= now()
+  )
+-- Accepted legal versions are immutable; if the baseline draft already exists, add a successor.
+on conflict (document_id, version) do nothing;
 
 insert into public.cancellation_policies (
   id, policy_version, countable_hours, excluded_weekdays, business_timezone,
