@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import { expect, test } from '@playwright/test'
 import { signInDemo } from './demo-auth'
 import { runSql } from './db-command'
@@ -38,17 +39,22 @@ test('event operational statuses are localized', async ({ page }) => {
 
 test('fiscal operational statuses use the canonical Portuguese labels', async ({ page }) => {
   await signInDemo(page)
-  const docId = sql('select id from public.fiscal_documents order by created_at limit 1')
-  const originalStatus = sql(`select status from public.fiscal_documents where id=${q(docId)}`)
+  const personId = sql('select id from public.people order by created_at limit 1')
+  const [profileId, profileVersion] = sql('select id::text||\'|\'||version::text from public.fiscal_profiles order by version desc limit 1').split('|')
+  const [treatmentId, treatmentVersion] = sql("select id::text||'|'||version::text from public.fiscal_treatments where source_kind='appointment_completed' order by version desc limit 1").split('|')
   const labels = { not_ready: 'Tratamento fiscal pendente', ready: 'Pronto para revisão', queued: 'Aguardando emissão', processing: 'Emitindo', issued: 'Documento emitido', failed_retryable: 'Erro temporário', failed_final: 'Erro requer ação', cancel_requested: 'Cancelamento solicitado', cancelled: 'Documento cancelado', replaced: 'Documento substituído' } as const
-  try {
-    for (const [status, label] of Object.entries(labels)) {
-      sql(`update public.fiscal_documents set status=${q(status)} where id=${q(docId)}`)
+
+  for (const [status, label] of Object.entries(labels)) {
+    const docId = randomUUID()
+    const provider = `e2e-status-${status}-${docId.slice(0, 8)}`
+    try {
+      sql(`insert into public.fiscal_documents(id,source_type,source_id,person_id,payer_person_id,amount_cents,profile_id,profile_version,treatment_id,treatment_version,provider,idempotency_key,status) values (${q(docId)},'appointment_completed',${q(randomUUID())},${q(personId)},${q(personId)},12345,${q(profileId)},${profileVersion},${q(treatmentId)},${treatmentVersion},${q(provider)},${q(`e2e:fiscal-status:${docId}`)},${q(status)})`)
       await page.goto('/fiscal/operacoes', { waitUntil: 'domcontentloaded' })
-      await expect(page.locator('article').filter({ hasText: label })).toBeVisible()
+      const card = page.locator('article').filter({ hasText: `Provedor: ${provider}` })
+      await expect(card.locator('.operational-status')).toHaveText(label)
+    } finally {
+      sql(`delete from public.fiscal_documents where id=${q(docId)}`)
     }
-  } finally {
-    sql(`update public.fiscal_documents set status=${q(originalStatus)} where id=${q(docId)}`)
   }
 })
 
