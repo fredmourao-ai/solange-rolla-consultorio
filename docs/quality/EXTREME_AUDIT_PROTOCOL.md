@@ -30,6 +30,20 @@ Derive propriedades que jamais podem ser violadas e crie matriz `Invariante | Ga
 ## 5. Ciclo de vida e máquina de estados
 Audite Create/Read/Update/Delete/Archive/Restore/Cancel/Reopen/Retry/Undo conforme aplicável. Mapeie `estado atual → evento → condição → próximo estado` e detecte estados inalcançáveis, eternos, sem saída, saltos indevidos, reversões ausentes e registros fantasmas presos.
 
+## 5A. Matriz obrigatória de transições e compatibilidade histórica
+Para cada entidade persistida ou fluxo stateful, construa uma matriz explícita cruzando **operação/transição × classe de dado histórico × superfície × pós-condição**. A cobertura mínima deve contemplar, quando existirem:
+
+- operações: create, read, no-op update, update de campo único, update combinado, cancel, reopen, archive, restore, retry, undo e transições específicas do domínio;
+- proveniência: **dados novos, legados, migrados**/backfilled, parcialmente preenchidos/null-edge, snapshots/políticas/eventos versionados, estados intermediários e terminais;
+- superfície: a mutação de rotina usada por operador/usuário deve ser executada pela UI real; API, action direta, SQL e scripts são apenas apoio para fixture, diagnóstico ou verificação;
+- pós-condição: persistência, audit/history, dependências, efeitos externos, idempotência/retry e confirmação após **reload/reopen**.
+
+Antes de considerar uma área coberta, inventarie no ambiente alvo as distribuições reais de estado, versão, nullabilidade e formato histórico. Cada **classe de dado histórico** material encontrada deve ter representante testado ou ser registrada explicitamente como `NÃO VALIDADO`. Happy path sobre seed novo não certifica compatibilidade com registros antigos.
+
+Qualquer leitor/editor de JSON persistido, snapshot de política, payload de evento ou estrutura versionada deve provar migração/backfill completo ou normalização explícita das versões históricas suportadas. Cast de tipo não é garantia técnica.
+
+Para fluxo mutável pela UI, clique/salvamento, redirect, HTTP 200 ou ausência de exceção não bastam: recarregue/reabra a tela e verifique independentemente que o estado persistiu e que histórico/auditoria/efeitos esperados ocorreram. Uma tela genérica `This page couldn’t load`, 5xx, blank state ou error boundary em mutação operacional é achado material e bloqueia `APTO` até regressão comprovada.
+
 ## 6. Pilares técnicos mínimos
 Audite quando aplicável: lógica/matemática/moeda/datas/timezone; concorrência/idempotência; autenticação/autorização/RBAC/IDOR/tenant isolation/OWASP; privacidade/LGPD; constraints/FKs/índices/transações/migrations; integração entre módulos; resiliência a timeout/429/5xx/restart/processamento parcial; UX/acessibilidade/prevenção de erro; performance/saturação; observabilidade; CI/CD/rollback/config drift/feature flags; supply chain/dependências/imagens/actions/licenças.
 
@@ -71,6 +85,8 @@ Após correções, faça regressão e nova rodada tentando provar que as conclus
 
 ## 19. Matriz de cobertura
 Para cada área pertinente registre `Auditada | Problemas | Corrigidos | Pendentes | Evidência`: backend, frontend, banco, APIs, jobs, queues, cron, webhooks, integrações, segurança, permissões, testes, CI/CD, infraestrutura, logs, monitoramento, backup/restore, UX, performance, dependências e documentação. Área não auditada deve aparecer com motivo.
+
+Além disso, para cada fluxo persistido registre `Workflow | Classe de dado | Estado inicial | Operação | UI path | Estado esperado | Estado persistido | Audit/history | Side effects | Reload/reopen | Resultado | Evidência`.
 
 ## 20. Gate Final de Completude
 Não use “100%”, “pronto” ou “apto” apenas por build/test/health verde. Valide, conforme aplicável: código, dados, fluxos happy/edge/failure/retry/idempotência, integrações, operação, segurança, produção e recuperação. Veredito: `NÃO APTO`, `APTO COM RESSALVAS` ou `APTO`, com **confiança 0–100%**, **risco residual** e **dívida de evidência**. Nunca use 100% de confiança com área crítica não validada.

@@ -1,6 +1,7 @@
 export {
   calculateCancellationDeadline,
   DEFAULT_CANCELLATION_POLICY,
+  normalizeCancellationPolicySnapshot,
   type CancellationPolicy,
 } from './domain/cancellation-policy'
 export {

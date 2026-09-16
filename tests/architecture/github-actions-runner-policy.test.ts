@@ -9,12 +9,12 @@ const loadYaml = (require('js-yaml') as { load: (content: string) => unknown }).
 const workflowsDir = fileURLToPath(new URL('../../.github/workflows/', import.meta.url))
 const runnerLabels = ['self-hosted', 'Linux', 'ARM64', 'solange-ci'] as const
 const runnerLine = `runs-on: [${runnerLabels.join(', ')}]`
-// The staging promote job owns the one stateful, host-pinned deployment (persisted
-// release state, Docker containers) and must land on the dedicated homologation host,
-// not any runner that merely carries the shared `solange-ci` label.
+// Stateful staging workflows that read or mutate persisted homologation state must land
+// on the dedicated host rather than any runner carrying only the shared `solange-ci` label.
 const runnerLineExceptions: Record<string, string> = {
   'staging-promote.yml': `runs-on: [${[...runnerLabels, 'solange-staging-host'].join(', ')}]`,
   'diag-staging-host.yml': `runs-on: [${[...runnerLabels, 'solange-staging-host'].join(', ')}]`,
+  'historical-state-audit.yml': `runs-on: [${[...runnerLabels, 'solange-staging-host'].join(', ')}]`,
 }
 const sameRepoGuard = 'github.event.pull_request.head.repo.full_name == github.repository'
 type PullRequestEvent = 'pull_request' | 'pull_request_target'

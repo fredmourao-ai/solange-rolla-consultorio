@@ -4,11 +4,11 @@ import {
   calendarRange,
   changeAppointmentStatus,
   availableAppointmentCommands,
+  normalizeCancellationPolicySnapshot,
   type CalendarView,
   type Appointment,
   type AppointmentStatusRepository,
   type AppointmentCommand,
-  type CancellationPolicy,
 } from '@/modules/appointments/public'
 import {
   buildAppointmentCharge,
@@ -121,7 +121,7 @@ async function changeAppointmentStatusAction(formData: FormData) {
     status: row.status as Appointment['status'],
     policyVersion: row.policy_version,
     cancellationDeadlineAt: row.cancellation_deadline_at,
-    cancellationPolicy: row.cancellation_policy_snapshot as unknown as CancellationPolicy,
+    cancellationPolicy: normalizeCancellationPolicySnapshot(row.cancellation_policy_snapshot),
   }
 
   const repository: AppointmentStatusRepository = {
@@ -146,7 +146,7 @@ async function changeAppointmentStatusAction(formData: FormData) {
         status: data.status as Appointment['status'],
         policyVersion: data.policy_version,
         cancellationDeadlineAt: data.cancellation_deadline_at,
-        cancellationPolicy: data.cancellation_policy_snapshot as unknown as CancellationPolicy,
+        cancellationPolicy: normalizeCancellationPolicySnapshot(data.cancellation_policy_snapshot),
       }
     },
   }
@@ -180,7 +180,7 @@ async function chargeAppointmentAction(formData: FormData) {
   if (readError || !row) throw new Error('AGENDA_APPOINTMENT_NOT_FOUND')
   if (row.status !== 'no_show' && row.status !== 'cancelled_late') throw new Error('AGENDA_APPOINTMENT_NOT_CHARGEABLE')
 
-  const policy = row.cancellation_policy_snapshot as unknown as CancellationPolicy
+  const policy = normalizeCancellationPolicySnapshot(row.cancellation_policy_snapshot)
   const chargeable: ChargeableAppointment = {
     id: row.id,
     status: row.status,
@@ -290,26 +290,29 @@ export default async function AgendaPage({ searchParams }: {
   if (error) throw new Error('AGENDA_READ_FAILED')
 
   const redirectTo = `/agenda?view=${view}&date=${anchor}`
-  const items: AppointmentCalendarItem[] = (data ?? []).map((row) => ({
-    id: row.id,
-    personId: row.person_id,
-    patientName: row.person?.preferred_name || row.person?.civil_name || 'Paciente',
-    serviceName: row.service?.name || 'Consulta',
-    startsAt: row.starts_at,
-    endsAt: row.ends_at,
-    status: row.status as AppointmentCalendarItem['status'],
-    cancellationDeadlineAt: row.cancellation_deadline_at,
-    availableCommands: commandsFor(session, row.status as Appointment['status']),
-    chargeable: hasSessionPermission(session, 'finance.receive') && (
-      row.status === 'no_show'
-        ? Boolean((row.cancellation_policy_snapshot as unknown as CancellationPolicy).noShowChargeEnabled)
-        : row.status === 'cancelled_late'
-          ? Boolean((row.cancellation_policy_snapshot as unknown as CancellationPolicy).lateCancellationChargeEnabled)
-          : false
-    ),
-    canOpenPatient: hasSessionPermission(session, 'patients.read'),
-    canStartCare: hasSessionPermission(session, 'clinical.create') && session.role === 'psychologist_owner' && session.aal === 'aal2',
-  }))
+  const items: AppointmentCalendarItem[] = (data ?? []).map((row) => {
+    const policy = normalizeCancellationPolicySnapshot(row.cancellation_policy_snapshot)
+    return {
+      id: row.id,
+      personId: row.person_id,
+      patientName: row.person?.preferred_name || row.person?.civil_name || 'Paciente',
+      serviceName: row.service?.name || 'Consulta',
+      startsAt: row.starts_at,
+      endsAt: row.ends_at,
+      status: row.status as AppointmentCalendarItem['status'],
+      cancellationDeadlineAt: row.cancellation_deadline_at,
+      availableCommands: commandsFor(session, row.status as Appointment['status']),
+      chargeable: hasSessionPermission(session, 'finance.receive') && (
+        row.status === 'no_show'
+          ? policy.noShowChargeEnabled
+          : row.status === 'cancelled_late'
+            ? policy.lateCancellationChargeEnabled
+            : false
+      ),
+      canOpenPatient: hasSessionPermission(session, 'patients.read'),
+      canStartCare: hasSessionPermission(session, 'clinical.create') && session.role === 'psychologist_owner' && session.aal === 'aal2',
+    }
+  })
 
   return <>
     <PageHeader
