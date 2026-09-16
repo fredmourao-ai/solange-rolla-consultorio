@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { authorizeStaffPermission, getStaffSession, hasSessionPermission } from '@/modules/identity/public'
-import { buildPeopleSearchFilters } from '@/modules/people/application/search-people'
+import { buildPeopleSearchFilters } from '@/modules/people/public'
 import { PersonResults, type PersonResult } from '@/modules/people/ui/person-results'
 import { PersonSearch } from '@/modules/people/ui/person-search'
 import { createServerSupabaseClient } from '@/platform/supabase/server'
