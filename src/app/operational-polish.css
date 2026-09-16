@@ -1,0 +1,242 @@
+/* Operational UI hardening: dense administrative surfaces */
+.app-shell__main > section {
+  margin-top: var(--space-8);
+}
+
+.app-shell__main > section > h2 {
+  margin: 0 0 var(--space-3);
+  color: var(--accent);
+  font-size: clamp(1.25rem, 2vw, 1.55rem);
+  letter-spacing: -0.015em;
+}
+
+.app-shell__main > section > p {
+  max-width: 60rem;
+  color: var(--muted);
+}
+
+.stack-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+  gap: var(--space-4);
+  align-items: end;
+  margin: var(--space-3) 0 var(--space-6);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: rgb(255 253 248 / 94%);
+  padding: var(--space-4);
+  box-shadow: 0 8px 24px rgb(88 40 112 / 5%);
+}
+
+.stack-form > label,
+.stack-form fieldset label {
+  display: grid;
+  gap: 0.35rem;
+  min-width: 0;
+  color: #4f3e49;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.stack-form > p,
+.stack-form > fieldset,
+.stack-form > ul,
+.stack-form > output {
+  grid-column: 1 / -1;
+}
+
+.stack-form input:not([type='hidden']):not([type='checkbox']):not([type='radio']),
+.stack-form select,
+.stack-form textarea,
+.app-shell__main form input:not([type='hidden']):not([type='checkbox']):not([type='radio']),
+.app-shell__main form select,
+.app-shell__main form textarea {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  border: 1px solid #d7c4cf;
+  border-radius: 10px;
+  background: #fff;
+  color: var(--foreground);
+  padding: 0.6rem 0.75rem;
+}
+
+.stack-form textarea,
+.app-shell__main form textarea {
+  min-height: 7rem;
+  resize: vertical;
+}
+
+.stack-form input[type='checkbox'],
+.stack-form input[type='radio'],
+.app-shell__main form input[type='checkbox'],
+.app-shell__main form input[type='radio'] {
+  width: 1.25rem;
+  height: 1.25rem;
+  accent-color: var(--primary);
+}
+
+.stack-form label:has(> input[type='checkbox']),
+.stack-form label:has(> input[type='radio']) {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px;
+}
+
+.stack-form button,
+.app-shell__main form button:not(.ui-button) {
+  min-height: 44px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  padding: 0.6rem 1rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.stack-form button:disabled,
+.app-shell__main form button:not(.ui-button):disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.card {
+  margin: var(--space-3) 0;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: rgb(255 253 248 / 96%);
+  padding: var(--space-4);
+  box-shadow: 0 10px 28px rgb(88 40 112 / 6%);
+}
+
+.card > :first-child {
+  margin-top: 0;
+}
+
+.card > :last-child {
+  margin-bottom: 0;
+}
+
+.card > h3 {
+  color: var(--accent);
+  font-size: 1.05rem;
+}
+
+.card > p {
+  color: var(--muted);
+}
+
+.card .stack-form,
+.card.stack-form {
+  margin-top: var(--space-3);
+  margin-bottom: 0;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  box-shadow: none;
+}
+
+.stack-form > fieldset.card {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+  gap: var(--space-3);
+  margin: 0;
+  border-color: #ddccd5;
+  padding: var(--space-4);
+}
+
+.stack-form > fieldset.card legend {
+  padding: 0 var(--space-2);
+  color: var(--accent);
+  font-weight: 800;
+}
+
+.app-shell__main [role='status'],
+.app-shell__main [role='alert'] {
+  border-radius: 12px;
+  padding: var(--space-3) var(--space-4);
+}
+
+.app-shell__main [role='status'] {
+  border: 1px solid #d7c4cf;
+  background: #f7edf2;
+}
+
+.app-shell__main [role='alert'] {
+  border: 1px solid color-mix(in srgb, var(--danger) 35%, transparent);
+  background: #fbedef;
+  color: var(--danger);
+}
+
+.operational-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  border: 1px solid #d7c4cf;
+  border-radius: 999px;
+  background: var(--surface-muted);
+  padding: 0.2rem 0.65rem;
+  color: var(--accent);
+  font-size: 0.85rem;
+  font-weight: 800;
+}
+
+.operational-note {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.operational-technical {
+  border: 1px dashed #d7c4cf;
+  border-radius: 12px;
+  background: rgb(243 233 238 / 55%);
+  padding: var(--space-3);
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.dashboard-card-link {
+  display: contents;
+  color: inherit;
+  text-decoration: none;
+}
+
+.dashboard-card-link .ui-card {
+  transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
+}
+
+.dashboard-card-link:hover .ui-card,
+.dashboard-card-link:focus-visible .ui-card {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--primary) 42%, var(--border));
+  box-shadow: 0 16px 36px rgb(88 40 112 / 12%);
+}
+
+@media (max-width: 800px) {
+  .app-shell__main > section {
+    margin-top: var(--space-6);
+  }
+
+  .stack-form {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-3);
+    border-radius: 14px;
+    padding: var(--space-3);
+  }
+
+  .stack-form > fieldset.card {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .card {
+    border-radius: 14px;
+    padding: var(--space-3);
+  }
+
+  .stack-form button,
+  .app-shell__main form button:not(.ui-button) {
+    width: 100%;
+  }
+}
