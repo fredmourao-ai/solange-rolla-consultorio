@@ -197,15 +197,18 @@ describe('environment workflow contracts', () => {
     expect(workflow).not.toContain('/home/ubuntu/.local/bin/solange-backup.sh')
   })
 
-  it('removes a newly introduced recurring worker when rollback has no previous container', () => {
+  it('only removes the recurring worker when this deployment actually promoted its candidate', () => {
     const workflow = readFileSync(stagingWorkflow, 'utf8')
     const deployRollback = workflow.split('          rollback() {')[1]?.split('          cleanup_stage')[0] ?? ''
     const failedValidationRollback = workflow.split('      - name: Rollback staging release after failed validation')[1]?.split('      - name: Finalize promoted release')[0] ?? ''
 
-    for (const rollback of [deployRollback, failedValidationRollback]) {
-      expect(rollback).toContain('if docker inspect "${REC}-previous"')
-      expect(rollback).toMatch(new RegExp('else\\n\\s+docker rm -f "\\$REC"'))
-    }
+    expect(workflow).toContain('REC_SWAPPED=0')
+    expect(workflow).toContain('docker rename "${REC}-candidate" "$REC"\n          REC_SWAPPED=1')
+    expect(deployRollback).toContain('elif [ "$REC_SWAPPED" -eq 1 ]; then')
+    expect(deployRollback).not.toMatch(new RegExp('else\\n\\s+docker rm -f "\\$REC"'))
+
+    expect(failedValidationRollback).toContain('[ -f "$TRANSACTION" ] || exit 0')
+    expect(failedValidationRollback).toMatch(new RegExp('else\\n\\s+docker rm -f "\\$REC"'))
   })
 
   it('rolls back only resources created by the current staging transaction', () => {
