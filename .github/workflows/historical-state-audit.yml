@@ -135,7 +135,6 @@ jobs:
               'APP_URL': app_url,
               'E2E_BASE_URL': app_url,
               'E2E_ALLOWED_BASE_URL': app_url,
-              'E2E_DB_MODE': 'supabase-management-api',
               'E2E_EXTERNAL_SUITE': 'historical-state-audit',
               'SUPABASE_STAGING_PROJECT_REF': os.environ['SUPABASE_STAGING_PROJECT_REF'],
               'SUPABASE_ACCESS_TOKEN': os.environ['SUPABASE_ACCESS_TOKEN'],
