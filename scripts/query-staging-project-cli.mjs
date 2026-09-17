@@ -8,7 +8,7 @@ try {
     projectRef: process.env.SUPABASE_STAGING_PROJECT_REF,
     accessToken: process.env.SUPABASE_ACCESS_TOKEN,
     query,
-    readOnly: true,
+    readOnly: process.env.SUPABASE_STAGING_QUERY_READ_ONLY !== 'false',
   })
   process.stdout.write(`${scalarFromRows(rows)}\n`)
 } catch (error) {
