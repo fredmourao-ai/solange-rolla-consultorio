@@ -30,7 +30,11 @@ export function runSql(statement: string, dbUrl: string, executor: SqlExecutor =
       const accessToken = process.env.SUPABASE_ACCESS_TOKEN?.trim()
       if (!projectRef || !accessToken) throw new Error('STAGING_MANAGEMENT_API_ENV_REQUIRED')
       return executor(process.execPath, ['scripts/query-staging-project-cli.mjs'], {
-        encoding: 'utf8', env: process.env, timeout: 15_000, killSignal: 'SIGKILL', input: statement,
+        encoding: 'utf8',
+        env: { ...process.env, SUPABASE_STAGING_QUERY_READ_ONLY: 'false' },
+        timeout: 15_000,
+        killSignal: 'SIGKILL',
+        input: statement,
       }).trim()
     }
     return executor('psql', ['-At', '-v', 'ON_ERROR_STOP=1', '-c', statement], { encoding: 'utf8', env: connectionEnv(dbUrl), timeout: 15_000, killSignal: 'SIGKILL' }).trim()
