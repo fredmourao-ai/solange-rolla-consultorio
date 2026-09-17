@@ -16,8 +16,8 @@ permissions:
   actions: read
 
 concurrency:
-  group: historical-state-audit
-  cancel-in-progress: true
+  group: historical-state-audit-${{ github.event_name == 'workflow_dispatch' && 'manual' || 'automatic' }}
+  cancel-in-progress: ${{ github.event_name == 'workflow_run' }}
 
 jobs:
   eligibility:
