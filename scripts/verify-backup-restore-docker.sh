@@ -25,6 +25,7 @@ until docker exec "$NAME" psql -U postgres -d postgres -Atc 'select 1' >/dev/nul
   sleep 1
 done
 docker exec -e PGPASSWORD=restore-only "$NAME" createdb -U "$RESTORE_ROLE" -T template0 "$RESTORE_DB"
+docker exec -e PGPASSWORD=restore-only "$NAME" psql -U "$RESTORE_ROLE" -d "$RESTORE_DB" -v ON_ERROR_STOP=1 -c 'drop schema public;'
 docker exec -e PGPASSWORD=restore-only "$NAME" pg_restore -U "$RESTORE_ROLE" -d "$RESTORE_DB" --no-owner --no-privileges --exit-on-error "/backup/$BASE"
 RESULT=$(docker exec -e PGPASSWORD=restore-only "$NAME" psql -U "$RESTORE_ROLE" -d "$RESTORE_DB" -Atc "select to_regclass('public.profiles') is not null, to_regclass('clinical.records') is not null, to_regclass('auth.users') is not null, (select count(*) from pg_policies)>0;")
 [ "$RESULT" = 't|t|t|t' ] || { echo "restore verification failed: $RESULT" >&2; exit 1; }
