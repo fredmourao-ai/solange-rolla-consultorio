@@ -210,6 +210,7 @@ jobs:
           APP_SWAPPED=0
           WEB_SWAPPED=0
           WORKERS_SWAPPED=0
+          REC_SWAPPED=0
           SHA_SWAPPED=0
           RECONCILER_SWAPPED=0
 
@@ -244,7 +245,7 @@ jobs:
                   docker rm -f "$REC" >/dev/null 2>&1 || true
                   docker rename "${REC}-previous" "$REC" || true
                   docker start "$REC" >/dev/null 2>&1 || true
-                else
+                elif [ "$REC_SWAPPED" -eq 1 ]; then
                   docker rm -f "$REC" >/dev/null 2>&1 || true
                 fi
               fi
@@ -448,6 +449,7 @@ jobs:
           docker rename "${DOC}-candidate" "$DOC"
           docker rename "${MSG}-candidate" "$MSG"
           docker rename "${REC}-candidate" "$REC"
+          REC_SWAPPED=1
           test "$(docker inspect -f '{{.State.Status}}' "$DOC")" = running
           test "$(docker inspect -f '{{.State.Status}}' "$MSG")" = running
           test "$(docker inspect -f '{{.State.Status}}' "$REC")" = running
