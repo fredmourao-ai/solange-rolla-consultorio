@@ -88,7 +88,7 @@ exit 99
       expect(invocations).toContain('public.ecr.aws/supabase/postgres:15.8.1.085')
       expect(invocations).toMatch(/exec -e PGPASSWORD=restore-only .* createdb -U supabase_admin -T template0 solange_restore/)
       expect(invocations).toMatch(/exec -e PGPASSWORD=restore-only .* pg_restore -U supabase_admin -d solange_restore --no-owner --no-privileges --exit-on-error/)
-      expect(invocations).not.toContain('drop schema public')
+      expect(invocations).toMatch(/exec -e PGPASSWORD=restore-only .* psql -U supabase_admin -d solange_restore .*drop schema public/)
     } finally {
       rmSync(root, { recursive: true, force: true })
     }
