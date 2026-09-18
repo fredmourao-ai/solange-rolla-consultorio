@@ -158,18 +158,21 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          trap 'rm -f "$RUNNER_TEMP/supabase-start.log" "$RUNNER_TEMP/supabase-start-retry.log"' EXIT
           if docker ps -a --format '{{.Names}}' | grep -q '_solange-rolla-consultorio$'; then
             npx supabase@2.115.0 stop --no-backup
           else
             echo "No local Supabase stack to stop."
           fi
-          if ! npx supabase@2.115.0 start; then
+          if ! npx supabase@2.115.0 start >"$RUNNER_TEMP/supabase-start.log" 2>&1; then
             echo "::warning::Local Supabase failed initial health check; retrying once after cleanup."
             npx supabase@2.115.0 stop --no-backup || true
             sleep 5
-            npx supabase@2.115.0 start
+            npx supabase@2.115.0 start >"$RUNNER_TEMP/supabase-start-retry.log" 2>&1
           fi
           npx supabase@2.115.0 db reset
+          rm -f "$RUNNER_TEMP/supabase-start.log" "$RUNNER_TEMP/supabase-start-retry.log"
+          trap - EXIT
       - name: Prepare local E2E environment
         shell: bash
         run: |
