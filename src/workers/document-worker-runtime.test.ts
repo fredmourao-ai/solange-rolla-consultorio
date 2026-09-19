@@ -63,6 +63,21 @@ describe('document worker runtime', () => {
     expect(wait).not.toHaveBeenCalled()
   })
 
+  it('continues draining queued work when dispatch fails transiently', async () => {
+    const controller = new AbortController()
+    const dispatch = vi.fn(async () => { throw new Error('DOCUMENT_DISPATCH_UNAVAILABLE') })
+    const drain = vi.fn(async () => { controller.abort(); return 1 })
+    const wait = vi.fn(async () => undefined)
+    const logger = vi.fn()
+
+    await runDocumentWorker({ signal: controller.signal, dispatch, drain, wait, logger, pollMs: 250 })
+
+    expect(dispatch).toHaveBeenCalledTimes(1)
+    expect(drain).toHaveBeenCalledTimes(1)
+    expect(logger).toHaveBeenCalledWith('document_worker_dispatch_failed', { code: 'DOCUMENT_DISPATCH_UNAVAILABLE' })
+    expect(logger).toHaveBeenCalledWith('document_worker_poll_ok', { completed: 1 })
+  })
+
   it('dispatches pending outbox jobs before draining the queue', async () => {
     const controller = new AbortController()
     const order: string[] = []
