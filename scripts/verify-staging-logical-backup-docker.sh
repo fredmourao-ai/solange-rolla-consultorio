@@ -25,4 +25,6 @@ docker exec "$NAME" psql -U supabase_admin -d "$RESTORE_DB" -v ON_ERROR_STOP=1 -
 docker exec "$NAME" psql -U supabase_admin -d "$RESTORE_DB" -v ON_ERROR_STOP=1 -f "/backup/$DATA_BASE" >/dev/null
 RESULT=$(docker exec "$NAME" psql -U supabase_admin -d "$RESTORE_DB" -Atc "select to_regclass('public.profiles') is not null, to_regclass('clinical.records') is not null, to_regclass('auth.users') is not null, (select count(*) from pg_policies)>0;")
 [ "$RESULT" = 't|t|t|t' ] || { echo "staging_restore_failed contract=$RESULT" >&2; exit 1; }
+INTEGRITY=$(docker exec "$NAME" psql -U supabase_admin -d "$RESTORE_DB" -Atc "select (select count(*)>0 from auth.users), not exists(select 1 from public.profiles p left join auth.users u on u.id=p.user_id where u.id is null), not exists(select 1 from public.audit_events a left join auth.users u on u.id=a.actor_user_id where a.actor_user_id is not null and u.id is null), not exists(select 1 from clinical.records r left join auth.users u on u.id=r.author_user_id where r.author_user_id is not null and u.id is null), not exists(select 1 from pg_constraint where contype='f' and not convalidated);")
+[ "$INTEGRITY" = 't|t|t|t|t' ] || { echo "staging_restore_failed integrity=$INTEGRITY" >&2; exit 1; }
 echo "staging_restore_success rto_seconds=$(( $(date +%s) - START ))"
