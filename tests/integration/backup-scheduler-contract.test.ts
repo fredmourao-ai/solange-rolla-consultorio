@@ -26,13 +26,11 @@ describe('durable backup scheduler contract', () => {
     expect(yaml).not.toContain('/mnt/fredwin-backup')
   })
 
-  it('refreshes the durable scheduler only after staging acceptance succeeds', () => {
+  it('does not start the local scheduler for managed staging runtime data', () => {
     const yaml = readFileSync(workflow, 'utf8')
-    const acceptance = yaml.indexOf('Real UI staging homologation')
-    const scheduler = yaml.indexOf('Refresh durable backup scheduler')
-    const rollback = yaml.indexOf('Rollback staging release after failed validation')
-    expect(scheduler).toBeGreaterThan(acceptance)
-    expect(scheduler).toBeLessThan(rollback)
-    expect(yaml).toContain('ops/backup/run-demo-scheduler.sh')
+    expect(yaml).toContain('Verify managed staging backup provenance')
+    expect(yaml).toContain('scripts/check-managed-staging-backup.mjs')
+    expect(yaml).not.toContain('Refresh durable backup scheduler')
+    expect(yaml).not.toContain('ops/backup/run-demo-scheduler.sh')
   })
 })
