@@ -90,3 +90,7 @@ jobs:
         run: |
           npx supabase@2.115.0 gen types typescript --local > /tmp/database-types.ts
           diff -u src/platform/supabase/types.ts /tmp/database-types.ts
+
+      - name: Stop isolated local Supabase
+        if: always()
+        run: npx supabase@2.115.0 stop --no-backup
