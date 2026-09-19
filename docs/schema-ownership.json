@@ -27,6 +27,7 @@
       "clinical"
     ],
     "clinical_medical_history": [
+      "audit",
       "clinical",
       "people"
     ],
