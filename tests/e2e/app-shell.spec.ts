@@ -1,9 +1,9 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 
 const email = process.env.DEMO_LOCAL_EMAIL
 const password = process.env.DEMO_LOCAL_PASSWORD
 
-async function signIn(page: import('@playwright/test').Page) {
+async function signIn(page: import('./fixtures').Page) {
   if (!email || !password) throw new Error('local demo credentials are required')
   await page.goto('/login', { waitUntil: 'domcontentloaded' })
   await page.getByLabel('E-mail').fill(email)

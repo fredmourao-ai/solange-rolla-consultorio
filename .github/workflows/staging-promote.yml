@@ -204,6 +204,7 @@ jobs:
           MSG=solange-messaging-worker
           REC=solange-recurring-payables-worker
           RECONCILER=solange-demo-reconciler
+          TUNNEL=solange-demo-tunnel
           RECONCILER_PREVIOUS="$ROOT/reconcile-previous.sh"
           STAGING_DB_CONTAINER=supabase_db_solange-client-demo
           TRANSACTION="$ROOT/state/deploy-transaction-$PROMOTE_SHA"
@@ -439,6 +440,7 @@ jobs:
             -v "$APP:/app" \
             -w /app \
             node:24-bookworm-slim npm run start -- --hostname 127.0.0.1 --port 3200 >/dev/null
+          docker update --restart unless-stopped "$RECONCILER" "$TUNNEL" >/dev/null
           docker restart "$RECONCILER" >/dev/null
 
           docker rm -f "${DOC}-previous" "${MSG}-previous" "${REC}-previous" >/dev/null 2>&1 || true
@@ -482,6 +484,8 @@ jobs:
           test "$actual" = "$PROMOTE_SHA"
           test "$(sed -n 's/^APP_URL=//p' "$ROOT/app/.env.production.local" | tail -1)" = "$URL"
           test "$(docker inspect -f '{{.HostConfig.RestartPolicy.Name}}' solange-client-demo-web)" = unless-stopped
+          test "$(docker inspect -f '{{.HostConfig.RestartPolicy.Name}}' solange-demo-reconciler)" = unless-stopped
+          test "$(docker inspect -f '{{.HostConfig.RestartPolicy.Name}}' solange-demo-tunnel)" = unless-stopped
           test "$(docker inspect -f '{{.State.Status}}' solange-demo-reconciler)" = running
           case "$(sed -n 's/^NEXT_PUBLIC_SUPABASE_URL=//p' "$ROOT/app/.env.production.local" | tail -1)" in
             *.trycloudflare.com*) echo 'Supabase URL must not point at the staging tunnel' >&2; exit 1 ;;

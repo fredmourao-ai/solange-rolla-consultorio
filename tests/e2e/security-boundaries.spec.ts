@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 
 test('anonymous requests cannot reach clinical content or reveal its existence', async ({ page }) => {
   const response = await page.goto('/clinico/synthetic-person-1', { waitUntil: 'domcontentloaded' })

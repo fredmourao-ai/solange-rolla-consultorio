@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 import { signInDemo } from './demo-auth'
 
 test('fiscal operations page exposes sanitized document states', async ({ page }) => {

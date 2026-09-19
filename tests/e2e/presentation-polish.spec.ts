@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 import { signInDemo } from './demo-auth'
 
 test('key demo surfaces use product-grade card and list layouts', async ({ page }) => {

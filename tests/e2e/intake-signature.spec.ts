@@ -1,6 +1,6 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto'
 import { execFileSync } from 'node:child_process'
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 
 const dbUrl = process.env.DB_URL ?? ''
 if (!dbUrl) throw new Error('local Supabase DB_URL is required')

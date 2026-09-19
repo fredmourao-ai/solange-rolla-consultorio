@@ -37,6 +37,15 @@ describe('staging management API db command', () => {
     expect(captureReadOnly("insert into public.appointments (id) values ('fixture')")).toBe('false')
   })
 
+  it('marks full runtime parity fixture SQL as writable', () => {
+    process.env.E2E_DB_MODE = 'supabase-management-api'
+    process.env.SUPABASE_STAGING_PROJECT_REF = 'staging-ref'
+    process.env.SUPABASE_ACCESS_TOKEN = 'token'
+    process.env.E2E_EXTERNAL_SUITE = 'full-runtime-parity'
+
+    expect(captureReadOnly("insert into public.appointments (id) values ('fixture')")).toBe('false')
+  })
+
   it('keeps ordinary staging management queries read-only', () => {
     process.env.E2E_DB_MODE = 'supabase-management-api'
     process.env.SUPABASE_STAGING_PROJECT_REF = 'staging-ref'

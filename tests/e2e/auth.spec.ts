@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 
 test('login page exposes the internal staff access form', async ({ page }) => {
   await page.goto('/login', { waitUntil: 'domcontentloaded' })

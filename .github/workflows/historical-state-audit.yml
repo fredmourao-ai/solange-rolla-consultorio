@@ -79,7 +79,7 @@ jobs:
     if: needs.eligibility.outputs.ready == 'true'
     runs-on: [self-hosted, Linux, ARM64, solange-ci, solange-staging-host]
     environment: staging
-    timeout-minutes: 30
+    timeout-minutes: 60
     env:
       EXPECTED_SHA: ${{ needs.eligibility.outputs.expected_sha }}
       STAGING_DEPLOY_ROOT: /home/ubuntu/solange-client-demo
@@ -144,6 +144,38 @@ jobs:
           subprocess.run([
               'npx', 'playwright', 'test',
               'tests/e2e/agenda-historical-state-transitions.spec.ts',
+              '--project=chromium', '--workers=1',
+          ], env=child, check=True)
+          PY
+      - name: Audit full runtime parity through published UI
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python3 - "$STAGING_DEPLOY_ROOT/staging.env" "$STAGING_DEPLOY_ROOT/state/current-url.txt" "$EXPECTED_SHA" <<'PY'
+          import os, pathlib, subprocess, sys
+          values = {}
+          for raw in pathlib.Path(sys.argv[1]).read_text().splitlines():
+              if raw and not raw.startswith('#') and '=' in raw:
+                  key, value = raw.split('=', 1)
+                  values[key] = value
+          app_url = pathlib.Path(sys.argv[2]).read_text().strip().rstrip('/')
+          expected_sha = sys.argv[3]
+          child = os.environ.copy()
+          child.update(values)
+          child.update({
+              'APP_ENV': 'staging',
+              'E2E_TARGET_ENV': 'staging',
+              'APP_URL': app_url,
+              'E2E_BASE_URL': app_url,
+              'E2E_ALLOWED_BASE_URL': app_url,
+              'E2E_DB_MODE': 'supabase-management-api',
+              'E2E_EXTERNAL_SUITE': 'full-runtime-parity',
+              'SUPABASE_STAGING_PROJECT_REF': os.environ['SUPABASE_STAGING_PROJECT_REF'],
+              'SUPABASE_ACCESS_TOKEN': os.environ['SUPABASE_ACCESS_TOKEN'],
+              'E2E_EXPECTED_BUILD_SHA': expected_sha,
+          })
+          subprocess.run([
+              'npx', 'playwright', 'test',
               '--project=chromium', '--workers=1',
           ], env=child, check=True)
           PY

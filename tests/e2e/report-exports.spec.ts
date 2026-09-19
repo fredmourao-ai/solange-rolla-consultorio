@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 import { signInDemo } from './demo-auth'
 
 test('authorized staff downloads CSV XLSX and PDF administrative exports',async({page})=>{

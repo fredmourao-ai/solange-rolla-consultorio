@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 import { syntheticConsultationFinance } from '../fixtures/synthetic-finance'
 import { syntheticPerson } from '../fixtures/synthetic-people'
 import { signInDemo } from './demo-auth'

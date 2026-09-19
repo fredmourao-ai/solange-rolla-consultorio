@@ -1,5 +1,5 @@
 import AxeBuilder from '@axe-core/playwright'
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 
 test('home exposes the Solange Rolla brand with accessible focus', async ({ page }) => {
   await page.goto('/', { waitUntil: 'domcontentloaded' })
