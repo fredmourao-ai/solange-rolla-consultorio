@@ -55,6 +55,7 @@ export function CareSessionEditor({
         <OptionalField name="objectives" label="Objetivos e foco terapêutico" />
         <OptionalField name="referrals" label="Encaminhamentos e decisões" />
         <OptionalField name="next_steps" label="Combinações / próximos passos" />
+
       </div>
     </details>
 

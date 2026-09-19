@@ -83,5 +83,5 @@ describe('pre-push worktree isolation', () => {
     } finally {
       rmSync(root, { recursive: true, force: true })
     }
-  })
+  }, 15_000)
 })

@@ -2060,6 +2060,51 @@ export type Database = {
           supersedes_id: string
         }[]
       }
+      create_medical_history: {
+        Args: {
+          p_auth_tag: string
+          p_author_user_id: string
+          p_ciphertext: string
+          p_iv: string
+          p_key_version: number
+          p_person_id: string
+          p_record_id: string
+          p_source_reference_id?: string | null
+          p_source_type?: string
+          p_supersedes_id?: string | null
+        }
+        Returns: {
+          auth_tag: string
+          author_user_id: string
+          ciphertext: string
+          created_at: string
+          id: string
+          iv: string
+          key_version: number
+          person_id: string
+          revision: number
+          source_reference_id: string | null
+          source_type: string
+          supersedes_id: string | null
+        }[]
+      }
+      get_medical_history_envelope: {
+        Args: { record_id: string }
+        Returns: {
+          auth_tag: string
+          author_user_id: string
+          ciphertext: string
+          created_at: string
+          id: string
+          iv: string
+          key_version: number
+          person_id: string
+          revision: number
+          source_reference_id: string | null
+          source_type: string
+          supersedes_id: string | null
+        }[]
+      }
       has_permission: { Args: { p_permission_key: string }; Returns: boolean }
       list_clinical_record_metadata: {
         Args: { p_person_id: string }
@@ -2069,6 +2114,18 @@ export type Database = {
           id: string
           person_id: string
           supersedes_id: string
+        }[]
+      }
+      list_medical_history_metadata: {
+        Args: { p_person_id: string }
+        Returns: {
+          created_at: string
+          id: string
+          person_id: string
+          revision: number
+          source_reference_id: string | null
+          source_type: string
+          supersedes_id: string | null
         }[]
       }
       list_current_permissions: {
