@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "status": "approved",
+  "issue": 207,
+  "migration": "20260919223000_appointments_atomic_audit.sql",
+  "owners": [
+    "appointments",
+    "audit"
+  ],
+  "objects": [
+    {
+      "name": "public.appointments",
+      "owner": "appointments"
+    },
+    {
+      "name": "public.appointment_status_history",
+      "owner": "appointments"
+    },
+    {
+      "name": "public.create_appointment_atomic",
+      "owner": "appointments"
+    },
+    {
+      "name": "public.update_appointment_atomic",
+      "owner": "appointments"
+    },
+    {
+      "name": "public.audit_events",
+      "owner": "audit"
+    }
+  ]
+}
