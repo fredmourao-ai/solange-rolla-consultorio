@@ -153,8 +153,29 @@ begin
     clinical.medical_histories.key_version, clinical.medical_histories.revision,
     clinical.medical_histories.source_type, clinical.medical_histories.source_reference_id,
     clinical.medical_histories.supersedes_id, clinical.medical_histories.created_at;
+
+  insert into public.audit_events (
+    actor_user_id,
+    action,
+    entity_type,
+    entity_id,
+    correlation_id,
+    metadata
+  ) values (
+    auth.uid(),
+    case when p_supersedes_id is null then 'medical_history.created' else 'medical_history.superseded' end,
+    'medical_history',
+    p_record_id,
+    p_record_id,
+    jsonb_build_object(
+      'personId', p_person_id,
+      'revision', v_revision,
+      'sourceType', p_source_type,
+      'sourceReferenceId', p_source_reference_id
+    )
+  );
 end;
-$$;
+$;
 
 create or replace function public.list_medical_history_metadata(p_person_id uuid)
 returns table (
