@@ -1,0 +1,26 @@
+name: Host Disk Guard
+
+on:
+  schedule:
+    - cron: '37 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: host-disk-guard-solange-staging-host
+  cancel-in-progress: true
+
+jobs:
+  guard:
+    runs-on: [self-hosted, Linux, ARM64, solange-ci, solange-staging-host]
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: scripts/host-disk-guard.sh
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Run signed deterministic disk guard
+        run: bash scripts/host-disk-guard.sh
