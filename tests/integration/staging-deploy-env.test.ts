@@ -19,10 +19,10 @@ describe('staging deploy environment', () => {
     expect(deploy).toContain("'SUPABASE_PRODUCTION_PROJECT_REF': os.environ['SUPABASE_PRODUCTION_PROJECT_REF']")
   })
 
-  it('disables TLS only for the loopback homologation database push', () => {
+  it('removes the inherited local DB_URL from the managed staging runtime', () => {
     const deploy = workflow.slice(workflow.indexOf('- name: Deploy exact SHA to homologation'))
-    expect(deploy).toContain("hostname in {'127.0.0.1', 'localhost'}")
-    expect(deploy).toContain("query['sslmode'] = 'disable'")
+    expect(deploy).toContain("values.pop('DB_URL', None)")
+    expect(deploy).not.toContain("'db', 'push', '--db-url'")
   })
 })
 
@@ -34,13 +34,13 @@ describe('staging deploy live-channel flags', () => {
   })
 })
 
-describe('staging database endpoint readiness', () => {
-  it('repairs a missing loopback database publication before migration push', () => {
+describe('staging database provenance', () => {
+  it('never treats the local Docker database as the managed staging migration target', () => {
     const deploy = workflow.slice(workflow.indexOf('- name: Deploy exact SHA to homologation'))
-    expect(deploy).toContain('STAGING_DB_CONTAINER=supabase_db_solange-client-demo')
-    expect(deploy).toContain('pg_isready -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER"')
-    expect(deploy).toContain('docker restart -t 30 "$STAGING_DB_CONTAINER"')
-    expect(deploy).toContain('staging database endpoint unavailable after repair')
+    expect(deploy).not.toContain('STAGING_DB_CONTAINER=supabase_db_solange-client-demo')
+    expect(deploy).not.toContain('pg_isready -h "$DB_HOST"')
+    expect(deploy).not.toContain('docker restart -t 30 "$STAGING_DB_CONTAINER"')
+    expect(workflow).toContain('node scripts/apply-staging-migrations.mjs')
   })
 })
 

@@ -64,7 +64,11 @@ const backupWorkflow = readFileSync('.github/workflows/staging-backup-audit.yml'
 describe('staging logical recovery fallback', () => {
   it('exports the exact linked staging project and restore-verifies it', () => {
     expect(recoveryScript).toContain('SUPABASE_STAGING_PROJECT_REF')
-    expect(recoveryScript).toContain('db dump --project-ref "$SUPABASE_STAGING_PROJECT_REF"')
+    expect(recoveryScript).toContain('SUPABASE_DB_URL')
+    expect(recoveryScript).toContain('db dump --db-url "$SUPABASE_DB_URL"')
+    expect(recoveryScript).not.toContain('db dump --project-ref')
+    expect(recoveryScript).toContain('staging_recovery_failed local_db_url_forbidden')
+    expect(recoveryScript).toContain('db_project_ref_mismatch')
     expect(recoveryScript).toContain('--schema public,clinical,auth')
     expect(recoveryScript).toContain('--data-only --use-copy')
     expect(recoveryScript).toContain('verify-staging-logical-backup-docker.sh')
@@ -79,6 +83,10 @@ describe('staging logical recovery fallback', () => {
     expect(backupWorkflow).toContain('scripts/ensure-staging-recovery-backup.sh')
     expect(backupWorkflow).toContain('Verify protected staging credential is configured')
     expect(backupWorkflow).toContain('STAGING_DEMO_PASSWORD: ${{ secrets.STAGING_DEMO_PASSWORD }}')
+    expect(backupWorkflow).toContain('SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}')
+    expect(backupWorkflow).toContain('SUPABASE_PRODUCTION_PROJECT_REF: ${{ secrets.SUPABASE_PRODUCTION_PROJECT_REF }}')
+    expect(backupWorkflow).toContain('NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}')
+    expect(backupWorkflow).toContain('SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}')
     expect(backupWorkflow).toContain('test "${#STAGING_DEMO_PASSWORD}" -ge 32')
   })
 })

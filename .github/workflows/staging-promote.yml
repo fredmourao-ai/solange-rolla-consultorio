@@ -167,6 +167,7 @@ jobs:
           SUPABASE_PRODUCTION_PROJECT_REF: ${{ secrets.SUPABASE_PRODUCTION_PROJECT_REF }}
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
           STAGING_BACKUP_MAX_AGE_SECONDS: 90000
         run: STAGING_DEPLOY_ROOT="$STAGING_DEPLOY_ROOT" bash scripts/ensure-staging-recovery-backup.sh
 
@@ -227,7 +228,6 @@ jobs:
           RECONCILER=solange-demo-reconciler
           TUNNEL=solange-demo-tunnel
           RECONCILER_PREVIOUS="$ROOT/reconcile-previous.sh"
-          STAGING_DB_CONTAINER=supabase_db_solange-client-demo
           TRANSACTION="$ROOT/state/deploy-transaction-$PROMOTE_SHA"
           APP_SWAPPED=0
           WEB_SWAPPED=0
@@ -338,6 +338,7 @@ jobs:
                   continue
               key, value = line.split('=', 1)
               values[key] = value
+          values.pop('DB_URL', None)
           overrides = {
               'APP_ENV': 'staging',
               'APP_URL': app_url,
@@ -384,61 +385,9 @@ jobs:
           subprocess.run(['npm', 'run', 'environment:check'], cwd=sys.argv[2], env=env, check=True)
           PY
 
-          read -r DB_HOST DB_PORT DB_USER < <(python3 - "$RUNTIME_ENV" <<'PY'
-          import pathlib, sys
-          from urllib.parse import urlsplit
-          values = {}
-          for raw in pathlib.Path(sys.argv[1]).read_text().splitlines():
-              if raw and not raw.startswith('#') and '=' in raw:
-                  key, value = raw.split('=', 1)
-                  values[key] = value
-          parsed = urlsplit(values.get('DB_URL', ''))
-          if not parsed.hostname:
-              raise SystemExit('DB_URL missing host for staging readiness check')
-          print(parsed.hostname, parsed.port or 5432, parsed.username or 'postgres')
-          PY
-          )
-          if [ "$DB_HOST" = 127.0.0.1 ] || [ "$DB_HOST" = localhost ]; then
-            if ! pg_isready -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" >/dev/null 2>&1; then
-              echo "staging database endpoint unavailable; repairing Docker publication" >&2
-              docker inspect "$STAGING_DB_CONTAINER" >/dev/null
-              docker restart -t 30 "$STAGING_DB_CONTAINER" >/dev/null
-              ready=0
-              for _ in $(seq 1 30); do
-                if pg_isready -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" >/dev/null 2>&1; then
-                  ready=1
-                  break
-                fi
-                sleep 1
-              done
-              if [ "$ready" -ne 1 ]; then
-                echo "staging database endpoint unavailable after repair" >&2
-                exit 1
-              fi
-            fi
-          fi
-
-          python3 - "$RUNTIME_ENV" <<'PY'
-          import pathlib, subprocess, sys
-          from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
-          values = {}
-          for raw in pathlib.Path(sys.argv[1]).read_text().splitlines():
-              if raw and not raw.startswith('#') and '=' in raw:
-                  key, value = raw.split('=', 1)
-                  values[key] = value
-          db_url = values.get('DB_URL')
-          if not db_url:
-              raise SystemExit('DB_URL missing from staging runtime env')
-          parsed = urlsplit(db_url)
-          if parsed.hostname in {'127.0.0.1', 'localhost'}:
-              query = dict(parse_qsl(parsed.query, keep_blank_values=True))
-              query['sslmode'] = 'disable'
-              db_url = urlunsplit((parsed.scheme, parsed.netloc, parsed.path, urlencode(query), parsed.fragment))
-          result = subprocess.run(['npx', 'supabase@2.115.0', 'db', 'push', '--db-url', db_url, '--include-all', '--yes'])
-          if result.returncode:
-              print('staging migration push failed', file=sys.stderr)
-              raise SystemExit(result.returncode)
-          PY
+          # Migrations are already applied to the exact managed staging project
+          # through scripts/apply-staging-migrations.mjs. The inherited local
+          # Docker DB_URL is deliberately excluded from managed staging.
 
           docker run --rm --network host --user "$(id -u):$(id -g)" -e HOME=/tmp -e npm_config_cache=/tmp/.npm -v "$STAGE:/app" -w /app node:24.19.0-bookworm-slim npm ci
           docker run --rm --network host --user "$(id -u):$(id -g)" -e HOME=/tmp -e npm_config_cache=/tmp/.npm -v "$STAGE:/app" -w /app node:24.19.0-bookworm-slim npm run build

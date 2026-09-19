@@ -43,6 +43,7 @@ jobs:
           SUPABASE_PRODUCTION_PROJECT_REF: ${{ secrets.SUPABASE_PRODUCTION_PROJECT_REF }}
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
           STAGING_BACKUP_MAX_AGE_SECONDS: 90000
           STAGING_DEPLOY_ROOT: /home/ubuntu/solange-client-demo
         run: bash scripts/ensure-staging-recovery-backup.sh

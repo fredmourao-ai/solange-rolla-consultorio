@@ -11,7 +11,7 @@
 
 O runtime publicado de staging usa um projeto Supabase gerenciado. O banco Docker local da VM é apenas infraestrutura local/self-hosted e **não é** fonte de recuperação do staging publicado. `scripts/backup-homologation.sh` continua disponível para ambientes locais que realmente usem esse banco, mas seus artefatos não podem ser apresentados como backup do runtime remoto.
 
-Antes de qualquer migration/promoção de staging, a automação tenta confirmar um backup gerenciado recente pela Management API e exige `SUPABASE_PROJECT_REF == SUPABASE_STAGING_PROJECT_REF`. Como o Supabase Free não fornece backup gerenciado diário, ausência/staleness desse artefato aciona o fallback canônico: `scripts/ensure-staging-recovery-backup.sh` exporta `public + clinical + auth` do projeto remoto identificado explicitamente por `SUPABASE_STAGING_PROJECT_REF`, grava os artefatos com permissão `0600` na OCI e executa restore isolado antes de liberar a promoção. Erros de API, autenticação ou divergência de project ref continuam fail-closed.
+Antes de qualquer migration/promoção de staging, a automação tenta confirmar um backup gerenciado recente pela Management API e exige `SUPABASE_PROJECT_REF == SUPABASE_STAGING_PROJECT_REF`. Como o Supabase Free não fornece backup gerenciado diário, ausência/staleness desse artefato aciona o fallback canônico: `scripts/ensure-staging-recovery-backup.sh` usa a conexão remota protegida `SUPABASE_DB_URL`, prova que host/usuário pertencem ao `SUPABASE_STAGING_PROJECT_REF`, exporta `public + clinical + auth`, grava os artefatos com permissão `0600` na OCI e executa restore isolado antes de liberar a promoção. A URL nunca é impressa nem gravada nos artefatos. Erros de API, autenticação, URL local ou divergência de project ref continuam fail-closed.
 
 O workflow `Staging Backup Audit` executa a mesma prova em contexto protegido de `staging`, no host de staging, e também roda diariamente. Nenhum token, URL com senha ou conteúdo clínico é impresso.
 
@@ -19,7 +19,7 @@ O workflow `Staging Backup Audit` executa a mesma prova em contexto protegido de
 
 Para banco local/self-hosted, o drill portátil existente continua válido com `scripts/verify-backup-restore-docker.sh`.
 
-Para staging gerenciado, **não considerar o restore certificado apenas porque existe backup gerenciado**. O gate gera um dump lógico do projeto Supabase linkado e o restaura em PostgreSQL Supabase descartável, exigindo `public.profiles`, `clinical.records`, `auth.users` e políticas RLS. Só depois desse drill o recovery gate pode ser PASS.
+Para staging gerenciado, **não considerar o restore certificado apenas porque existe backup gerenciado**. O gate gera um dump lógico pela conexão remota protegida do projeto Supabase e o restaura em PostgreSQL Supabase descartável, exigindo `public.profiles`, `clinical.records`, `auth.users` e políticas RLS. O mesmo gate copia os buckets privados obrigatórios, restaura-os temporariamente e compara SHA-256 antes de removê-los. Só depois dos dois drills o recovery gate pode ser PASS.
 
 ## Evidência histórica e verificação atual
 

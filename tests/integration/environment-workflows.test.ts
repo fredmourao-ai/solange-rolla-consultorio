@@ -81,11 +81,13 @@ describe('environment workflow contracts', () => {
     )
   })
 
-  it('uses the Supabase Management API path for staging migrations', () => {
+  it('uses the Management API for migrations and the remote DB URL only for recovery backup', () => {
     const workflow = readText(stagingWorkflow)
     expect(workflow).toContain('SUPABASE_ACCESS_TOKEN')
     expect(workflow).toContain('node scripts/apply-staging-migrations.mjs')
-    expect(workflow).not.toContain('SUPABASE_DB_URL')
+    expect(workflow).toContain('SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}')
+    expect(workflow).toContain('bash scripts/ensure-staging-recovery-backup.sh')
+    expect(workflow).not.toContain("'db', 'push', '--db-url'")
   })
 
   it('runs the database security smoke and makes app smoke conditional', () => {
