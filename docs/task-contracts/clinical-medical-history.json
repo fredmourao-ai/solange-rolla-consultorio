@@ -4,6 +4,7 @@
   "issue": 192,
   "migration": "20260919010000_clinical_medical_history.sql",
   "owners": [
+    "audit",
     "clinical",
     "people"
   ],
@@ -27,6 +28,10 @@
     {
       "name": "public.people",
       "owner": "people"
+    },
+    {
+      "name": "public.audit_events",
+      "owner": "audit"
     }
   ]
 }
