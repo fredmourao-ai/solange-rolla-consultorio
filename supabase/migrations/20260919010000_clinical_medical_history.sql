@@ -1,4 +1,4 @@
--- owners: clinical,people
+-- owners: audit,clinical,people
 -- cross-module-task: docs/task-contracts/clinical-medical-history.json
 -- allow-static-routines: true
 
@@ -166,7 +166,7 @@ begin
     case when p_supersedes_id is null then 'medical_history.created' else 'medical_history.superseded' end,
     'medical_history',
     p_record_id,
-    p_record_id,
+    p_record_id::text,
     jsonb_build_object(
       'personId', p_person_id,
       'revision', v_revision,
