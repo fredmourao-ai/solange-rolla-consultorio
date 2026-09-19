@@ -271,7 +271,6 @@ async function finishCareAction(formData: FormData) {
     }, {
       crypto: createSensitiveDataCrypto(),
       repository,
-      audit: auditRepository(client),
       taskRepository,
       assigneeDirectory,
     })

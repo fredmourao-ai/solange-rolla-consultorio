@@ -37,9 +37,6 @@ function buildDependencies(overrides: Partial<CompleteAppointmentWithHandoffDepe
     repository: {
       insert: vi.fn().mockResolvedValue(insertedRecord),
     },
-    audit: {
-      insert: vi.fn().mockResolvedValue(undefined),
-    },
     taskRepository: {
       insert: vi.fn().mockImplementation(async (task: Task) => {
         insertedTasks.push(task)

@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "status": "approved",
+  "issue": 200,
+  "migration": "20260919204000_clinical_atomic_audit.sql",
+  "owners": [
+    "appointments",
+    "audit",
+    "clinical"
+  ],
+  "objects": [
+    {
+      "name": "clinical.records",
+      "owner": "clinical"
+    },
+    {
+      "name": "public.create_clinical_record",
+      "owner": "clinical"
+    },
+    {
+      "name": "public.audit_events",
+      "owner": "audit"
+    },
+    {
+      "name": "public.appointments",
+      "owner": "appointments"
+    }
+  ]
+}
