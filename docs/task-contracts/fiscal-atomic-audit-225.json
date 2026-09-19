@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "status": "approved",
+  "issue": 225,
+  "migration": "20260919230000_fiscal_atomic_audit.sql",
+  "owners": [
+    "audit",
+    "fiscal"
+  ],
+  "objects": [
+    {
+      "name": "public.fiscal_documents",
+      "owner": "fiscal"
+    },
+    {
+      "name": "public.fiscal_attempts",
+      "owner": "fiscal"
+    },
+    {
+      "name": "public.fiscal_cancellation_events",
+      "owner": "fiscal"
+    },
+    {
+      "name": "public.issue_mock_fiscal_document_atomic",
+      "owner": "fiscal"
+    },
+    {
+      "name": "public.cancel_mock_fiscal_document_atomic",
+      "owner": "fiscal"
+    },
+    {
+      "name": "public.audit_events",
+      "owner": "audit"
+    }
+  ]
+}
