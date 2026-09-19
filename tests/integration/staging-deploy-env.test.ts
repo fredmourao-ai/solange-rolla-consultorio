@@ -51,11 +51,15 @@ describe('staging runtime URL and reconciler contract', () => {
     expect(deploy).toContain("'APP_URL': app_url")
   })
 
-  it('normalizes web restart policy and remounts the reconciler after the app swap', () => {
+  it('normalizes web, tunnel, and reconciler restart policies before the app swap', () => {
     const deploy = workflow.slice(workflow.indexOf('- name: Deploy exact SHA to homologation'))
     expect(deploy).toContain('RECONCILER=solange-demo-reconciler')
+    expect(deploy).toContain('TUNNEL=solange-demo-tunnel')
+    expect(deploy).toContain('docker update --restart unless-stopped "$RECONCILER" "$TUNNEL"')
     expect(deploy).toContain('docker run -d --name "$WEB" --restart unless-stopped')
     expect(deploy).toContain('docker restart "$RECONCILER"')
+    expect(deploy).toContain('docker inspect -f \'{{.HostConfig.RestartPolicy.Name}}\' solange-demo-reconciler')
+    expect(deploy).toContain('docker inspect -f \'{{.HostConfig.RestartPolicy.Name}}\' solange-demo-tunnel')
   })
 
   it('uses the versioned reconciler instead of the legacy host preflight', () => {
