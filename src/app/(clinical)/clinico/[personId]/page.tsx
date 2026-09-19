@@ -103,8 +103,8 @@ async function saveMedicalHistoryAction(formData: FormData) {
     p_auth_tag: envelope.authTag,
     p_key_version: envelope.keyVersion,
     p_source_type: sourceType,
-    p_source_reference_id: sourceReferenceId || null,
-    p_supersedes_id: supersedesId || null,
+    p_source_reference_id: sourceReferenceId || undefined,
+    p_supersedes_id: supersedesId || undefined,
   })
   const saved = data?.[0]
   if (error || !saved) throw new Error('MEDICAL_HISTORY_SAVE_FAILED')
