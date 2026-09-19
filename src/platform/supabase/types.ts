@@ -1993,6 +1993,20 @@ export type Database = {
           retry_after_seconds: number
         }[]
       }
+      create_appointment_atomic: {
+        Args: {
+          p_appointment_id: string
+          p_business_timezone: string
+          p_cancellation_deadline_at: string
+          p_cancellation_policy_snapshot: Json
+          p_ends_at: string
+          p_person_id: string
+          p_policy_version: number
+          p_service_id: string
+          p_starts_at: string
+        }
+        Returns: string
+      }
       create_clinical_record: {
         Args: {
           p_appointment_id: string
@@ -2248,6 +2262,18 @@ export type Database = {
           result_submission_version_id: string
           result_typed_name: string
         }[]
+      }
+      update_appointment_atomic: {
+        Args: {
+          p_appointment_id: string
+          p_cancellation_deadline_at: string
+          p_ends_at: string
+          p_next_status: string
+          p_person_id: string
+          p_service_id: string
+          p_starts_at: string
+        }
+        Returns: string
       }
       upsert_staff_profile: {
         Args: {
