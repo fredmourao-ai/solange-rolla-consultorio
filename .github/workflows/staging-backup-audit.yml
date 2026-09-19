@@ -9,12 +9,20 @@ on:
       - .github/workflows/staging-promote.yml
       - scripts/ensure-staging-recovery-backup.sh
       - scripts/verify-staging-logical-backup-docker.sh
+      - scripts/backup-verify-staging-storage.mjs
+      - scripts/rotate-staging-demo-credential.mjs
+      - tests/integration/staging-recovery-hardening.test.ts
+      - tests/integration/staging-storage-recovery.test.ts
   workflow_dispatch:
   schedule:
     - cron: '17 5 * * *'
 
 permissions:
   contents: read
+
+concurrency:
+  group: staging-backup-audit-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   managed-backup:
