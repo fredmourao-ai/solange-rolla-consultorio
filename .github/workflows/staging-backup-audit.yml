@@ -1,0 +1,32 @@
+name: Staging Backup Audit
+
+on:
+  pull_request:
+    paths:
+      - scripts/check-managed-staging-backup.mjs
+      - tests/integration/managed-staging-backup.test.ts
+      - .github/workflows/staging-backup-audit.yml
+      - .github/workflows/staging-promote.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  managed-backup:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: [self-hosted, Linux, ARM64, solange-ci]
+    environment: staging
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24.19.0
+      - name: Verify managed staging backup provenance
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_STAGING_PROJECT_REF }}
+          SUPABASE_STAGING_PROJECT_REF: ${{ secrets.SUPABASE_STAGING_PROJECT_REF }}
+          STAGING_BACKUP_MAX_AGE_SECONDS: 90000
+        run: node scripts/check-managed-staging-backup.mjs

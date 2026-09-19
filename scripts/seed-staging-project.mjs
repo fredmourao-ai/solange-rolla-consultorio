@@ -3,13 +3,27 @@ import process from 'node:process'
 import { pathToFileURL } from 'node:url'
 import { queryStagingProject } from './query-staging-project.mjs'
 
+export function stagingSafeSeedSql(seedSql) {
+  if (!seedSql?.trim()) throw new Error('STAGING_SEED_SQL_REQUIRED')
+  const begin = '-- BEGIN LOCAL_AUTH_FIXTURE'
+  const end = '-- END LOCAL_AUTH_FIXTURE'
+  const start = seedSql.indexOf(begin)
+  const finish = seedSql.indexOf(end)
+  if (start < 0 || finish < 0 || finish <= start) throw new Error('STAGING_SEED_AUTH_FIXTURE_MARKERS_REQUIRED')
+  const safeSeed = (seedSql.slice(0, start) + seedSql.slice(finish + end.length)).trim()
+  if (/insert\s+into\s+auth\.users|encrypted_password/i.test(safeSeed)) {
+    throw new Error('STAGING_SEED_AUTH_FIXTURE_PRESENT')
+  }
+  return safeSeed
+}
+
 export async function seedStagingProject({ stagingRef, productionRef, accessToken, seedSql, fetchImpl = fetch }) {
   if (!stagingRef) throw new Error('SUPABASE_STAGING_PROJECT_REF_REQUIRED')
   if (!productionRef) throw new Error('SUPABASE_PRODUCTION_PROJECT_REF_REQUIRED')
   if (stagingRef === productionRef) throw new Error('STAGING_SEED_PRODUCTION_FORBIDDEN')
   if (!accessToken) throw new Error('SUPABASE_ACCESS_TOKEN_REQUIRED')
-  if (!seedSql?.trim()) throw new Error('STAGING_SEED_SQL_REQUIRED')
-  await queryStagingProject({ projectRef: stagingRef, accessToken, query: seedSql, fetchImpl, readOnly: false })
+  const safeSeed = stagingSafeSeedSql(seedSql)
+  await queryStagingProject({ projectRef: stagingRef, accessToken, query: safeSeed, fetchImpl, readOnly: false })
 }
 
 async function main() {

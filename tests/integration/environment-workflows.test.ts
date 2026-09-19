@@ -9,7 +9,6 @@ const stagingWorkflow = path.join(process.cwd(), '.github/workflows/staging-prom
 const historicalAuditWorkflow = path.join(process.cwd(), '.github/workflows/historical-state-audit.yml')
 const autoMergeWorkflow = path.join(process.cwd(), '.github/workflows/pr-auto-merge.yml')
 const ciWorkflow = path.join(process.cwd(), '.github/workflows/ci.yml')
-const backupScript = path.join(process.cwd(), 'scripts/backup-homologation.sh')
 const base = {
   SUPABASE_BRANCHING_ENABLED: 'true',
   APP_ENV: 'preview',
@@ -188,13 +187,13 @@ describe('environment workflow contracts', () => {
     expect(workflow).toContain("'--workers=1'")
   })
 
-  it('keeps staging backups host-local and independent of Fred-Win', () => {
+  it('requires managed staging backup provenance and never treats the local Docker database as runtime recovery', () => {
     const workflow = readFileSync(stagingWorkflow, 'utf8')
-    const backup = readFileSync(backupScript, 'utf8')
-    expect(backup).toContain('DEST=${SOLANGE_BACKUP_DEST:-/home/ubuntu/solange-client-demo/backups}')
-    expect(backup).not.toContain('/mnt/fredwin-backup')
-    expect(workflow).toContain('SOLANGE_BACKUP_DEST="$ROOT/backups" scripts/backup-homologation.sh')
-    expect(workflow).not.toContain('/home/ubuntu/.local/bin/solange-backup.sh')
+    expect(workflow).toContain('Verify managed staging backup provenance')
+    expect(workflow).toContain('node scripts/check-managed-staging-backup.mjs')
+    expect(workflow).toContain('SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_STAGING_PROJECT_REF }}')
+    expect(workflow).not.toContain('SOLANGE_BACKUP_DEST="$ROOT/backups" scripts/backup-homologation.sh')
+    expect(workflow).not.toContain('ops/backup/run-demo-scheduler.sh')
   })
 
   it('only removes the recurring worker when this deployment actually promoted its candidate', () => {
