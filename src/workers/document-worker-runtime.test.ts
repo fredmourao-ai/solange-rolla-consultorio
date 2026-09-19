@@ -62,4 +62,18 @@ describe('document worker runtime', () => {
     expect(drain).toHaveBeenCalledTimes(1)
     expect(wait).not.toHaveBeenCalled()
   })
+
+  it('dispatches pending outbox jobs before draining the queue', async () => {
+    const controller = new AbortController()
+    const order: string[] = []
+    const dispatch = vi.fn(async () => { order.push('dispatch') })
+    const drain = vi.fn(async () => { order.push('drain'); controller.abort(); return 0 })
+    const wait = vi.fn(async () => undefined)
+
+    await runDocumentWorker({ signal: controller.signal, dispatch, drain, wait, pollMs: 250 })
+
+    expect(dispatch).toHaveBeenCalledTimes(1)
+    expect(drain).toHaveBeenCalledTimes(1)
+    expect(order).toEqual(['dispatch', 'drain'])
+  })
 })
