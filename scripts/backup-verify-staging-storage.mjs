@@ -64,8 +64,10 @@ async function listObjectPaths(bucket) {
 }
 
 async function removeRestoreBucket(client, bucketName) {
-  await client.storage.emptyBucket(bucketName)
-  await client.storage.deleteBucket(bucketName)
+  const emptied = await client.storage.emptyBucket(bucketName)
+  if (emptied.error) throw new Error('STAGING_STORAGE_RESTORE_BUCKET_EMPTY_FAILED')
+  const deleted = await client.storage.deleteBucket(bucketName)
+  if (deleted.error) throw new Error('STAGING_STORAGE_RESTORE_BUCKET_DELETE_FAILED')
 }
 
 export async function backupAndVerifyStagingStorage({
