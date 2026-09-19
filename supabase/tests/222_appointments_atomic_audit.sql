@@ -1,6 +1,6 @@
 begin;
 
-select plan(12);
+select plan(13);
 
 insert into auth.users (id,aud,role,email,encrypted_password,email_confirmed_at,raw_app_meta_data,raw_user_meta_data)
 values
@@ -142,6 +142,20 @@ select throws_ok(
   ) $$,
   '42501','APPOINTMENT_CREATE_FORBIDDEN',
   'accounting cannot create appointment'
+);
+
+reset role;
+set local role anon;
+select throws_ok(
+  $ select public.create_appointment_atomic(
+    'f7400000-0000-4000-8000-000000000004',
+    'f7100000-0000-4000-8000-000000000001',
+    'f7200000-0000-4000-8000-000000000001',
+    '2035-01-25T18:00:00Z','2035-01-25T18:50:00Z',77,
+    '2035-01-23T18:00:00Z','America/Sao_Paulo','{"policyVersion":77}'::jsonb
+  ) $,
+  '42501',null,
+  'anon cannot execute appointment creation'
 );
 
 reset role;
