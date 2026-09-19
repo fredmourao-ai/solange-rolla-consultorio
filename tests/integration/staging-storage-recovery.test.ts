@@ -44,7 +44,7 @@ function makeFakeClient(options: {
     for (const objectPath of objects.keys()) {
       const relative = prefix ? objectPath.slice(prefix.length + 1) : objectPath
       if (prefix && !objectPath.startsWith(prefix + '/')) continue
-      if (!relative || relative.startsWith('../')) continue
+      if (!relative) continue
       const [name, ...rest] = relative.split('/')
       if (!name) continue
       children.set(name, { name, id: rest.length ? null : 'object-id' })
