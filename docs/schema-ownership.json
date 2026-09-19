@@ -51,6 +51,11 @@
     "capabilities": [
       "forms"
     ],
+    "clinical_atomic_audit": [
+      "appointments",
+      "audit",
+      "clinical"
+    ],
     "clinical_read_rpc": [
       "audit",
       "clinical"

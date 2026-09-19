@@ -1,7 +1,5 @@
 import 'server-only'
 import { randomUUID } from 'node:crypto'
-import type { AuditEventRepository } from '../../audit/public'
-import { recordAuditEvent } from '../../audit/public'
 import type { SensitiveDataCrypto } from '../../../platform/crypto/types'
 import { envelopeFields, type ClinicalRecord, type ClinicalRecordInsert } from '../domain/clinical-record'
 
@@ -20,7 +18,6 @@ export type ClinicalRecordRepository = {
 export type CreateClinicalRecordDependencies = {
   crypto: SensitiveDataCrypto
   repository: ClinicalRecordRepository
-  audit: AuditEventRepository
   idFactory?: () => string
 }
 
@@ -37,7 +34,7 @@ export async function createClinicalRecord(
     entity: 'clinical-record',
     id,
   })
-  const record = await dependencies.repository.insert({
+  return dependencies.repository.insert({
     id,
     appointmentId: input.appointmentId,
     personId: input.personId,
@@ -45,19 +42,4 @@ export async function createClinicalRecord(
     ...envelopeFields(envelope),
     supersedesId: input.supersedesId,
   })
-
-  await recordAuditEvent({
-    actorId: input.authorUserId,
-    action: 'clinical_record.created',
-    entityType: 'clinical_record',
-    entityId: id,
-    correlationId: id,
-    metadata: {
-      appointmentId: input.appointmentId,
-      personId: input.personId,
-      keyVersion: envelope.keyVersion,
-    },
-  }, dependencies.audit)
-
-  return record
 }

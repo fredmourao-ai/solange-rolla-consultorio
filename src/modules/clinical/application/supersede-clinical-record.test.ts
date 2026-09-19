@@ -41,7 +41,6 @@ describe('supersedeClinicalRecord', () => {
           return { ...record, createdAt: '2026-01-02T00:00:00.000Z' }
         },
       },
-      audit: { insert: async () => undefined },
     })
 
     expect(result.id).toBe('record-2')
