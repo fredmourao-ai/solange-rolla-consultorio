@@ -151,6 +151,10 @@
     "payables_recurring_atomic_creation": [
       "audit",
       "payables"
+    ],
+    "appointments_atomic_audit": [
+      "appointments",
+      "audit"
     ]
   },
   "objects": {
@@ -237,6 +241,8 @@
     "public.record_payable_payment_atomic": "payables",
     "public.tasks": "identity",
     "public.audit_person_updated": "audit",
-    "public.create_recurring_payable_atomic": "payables"
+    "public.create_recurring_payable_atomic": "payables",
+    "public.create_appointment_atomic": "appointments",
+    "public.update_appointment_atomic": "appointments"
   }
 }
