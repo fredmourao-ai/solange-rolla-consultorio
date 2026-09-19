@@ -79,6 +79,19 @@ describe('staging reconciler transactional rollback', () => {
   })
 })
 
+describe('staging demo credential hardening', () => {
+  it('requires a protected staging secret and never enables the public admin alias', () => {
+    const deploy = workflow.slice(workflow.indexOf('- name: Deploy exact SHA to homologation'))
+    expect(deploy).toContain('STAGING_DEMO_PASSWORD: ${{ secrets.STAGING_DEMO_PASSWORD }}')
+    expect(deploy).toContain("'NEXT_PUBLIC_TEMP_ADMIN_LOGIN_ENABLED': 'false'")
+    expect(deploy).toContain("'DEMO_LOCAL_PASSWORD': staging_demo_password")
+    expect(deploy).toContain('len(staging_demo_password) < 32')
+    expect(deploy).toContain('public-exposure-enabled')
+    expect(deploy).toContain('docker update --restart unless-stopped "$RECONCILER" "$TUNNEL"')
+    expect(workflow).toContain('docker update --restart=no solange-demo-tunnel "$RECONCILER"')
+  })
+})
+
 describe('staging cloud homologation data contract', () => {
   it('seeds and verifies the same dedicated cloud staging project used by the browser', () => {
     const deploy = workflow.slice(workflow.indexOf('- name: Deploy exact SHA to homologation'))
