@@ -14,8 +14,9 @@ describe('workflow continuity under rapid PR updates', () => {
     expect(governance).toContain('cancel-in-progress: true')
   })
 
-  it('coalesces duplicate auto-merge workflow-run triggers for the same SHA', () => {
+  it('coalesces duplicate auto-merge triggers per immutable PR head on a dedicated runner', () => {
     expect(autoMerge).toContain('group: pr-auto-merge-${{ github.event.workflow_run.head_sha }}')
+    expect(autoMerge).toContain('runs-on: [self-hosted, Linux, ARM64, solange-control]')
     expect(autoMerge).toContain('cancel-in-progress: true')
   })
 
