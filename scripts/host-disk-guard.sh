@@ -83,6 +83,8 @@ if (( before >= 80 )) && command -v docker >/dev/null 2>&1; then
   while IFS= read -r volume; do
     [[ "$volume" =~ ^[0-9a-f]{64}$ ]] || continue
     [[ -z "$(docker ps -aq --filter volume="$volume")" ]] || continue
+    labels="$(docker volume inspect -f '{{json .Labels}}' "$volume" 2>/dev/null || :)"
+    [[ "$labels" == "null" || "$labels" == "{}" ]] || continue
     created="$(docker volume inspect -f '{{.CreatedAt}}' "$volume" 2>/dev/null || :)"
     [[ -n "$created" ]] || continue
     created_epoch="$(date -d "$created" +%s 2>/dev/null || printf '%s' "$now_epoch")"
