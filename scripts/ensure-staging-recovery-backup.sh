@@ -41,5 +41,6 @@ STORAGE_DIR="$DEST/staging-storage-$TS"
 STAGING_STORAGE_BACKUP_DEST="$STORAGE_DIR" node scripts/backup-verify-staging-storage.mjs
 printf '%s source=supabase-linked project_ref=%s schema=%s data=%s storage=%s\n' "$(date -u +%FT%TZ)" "$SUPABASE_STAGING_PROJECT_REF" "$(basename "$SCHEMA")" "$(basename "$DATA")" "$(basename "$STORAGE_DIR")" > "$DEST/LAST_SUCCESS"
 chmod 600 "$DEST/LAST_SUCCESS"
-find "$DEST" -maxdepth 1 -type f -name 'staging-linked-*' -mtime +14 -delete
-echo "staging_recovery_backup_ok source=supabase-linked schema=$(basename "$SCHEMA") data=$(basename "$DATA")"
+find "$DEST" -maxdepth 1 -type f -name 'staging-linked-*' -mtime +7 -delete
+find "$DEST" -mindepth 1 -maxdepth 1 -type d -name 'staging-storage-*' -mtime +7 -exec rm -rf -- {} +
+echo "staging_recovery_backup_ok source=supabase-linked schema=$(basename "$SCHEMA") data=$(basename "$DATA") storage=$(basename "$STORAGE_DIR")"
