@@ -16,7 +16,6 @@ import {
   type ReceivableRepository,
   type ChargeableAppointment,
 } from '@/modules/receivables/public'
-import { recordAuditEvent, type AuditEvent, type AuditEventRepository } from '@/modules/audit/public'
 import { AppointmentCalendar, type AppointmentCalendarItem } from '@/modules/appointments/ui/calendar'
 import {
   authorizeStaffPermission,
@@ -27,7 +26,6 @@ import {
 } from '@/modules/identity/public'
 import { createServerSupabaseClient } from '@/platform/supabase/server'
 import { PageHeader } from '@/shared/ui/page-header'
-import type { Database } from '@/platform/supabase/types'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -73,22 +71,6 @@ function commandsFor(session: StaffSession, status: Appointment['status']) {
   return availableAppointmentCommands(status).filter((command) => hasSessionPermission(session, permissionForCommand(command)))
 }
 
-function auditRepository(client: Awaited<ReturnType<typeof createServerSupabaseClient>>): AuditEventRepository {
-  return {
-    async insert(event: AuditEvent): Promise<void> {
-      const { error } = await client.from('audit_events').insert({
-        actor_user_id: event.actorId,
-        action: event.action,
-        entity_type: event.entityType,
-        entity_id: event.entityId,
-        correlation_id: event.correlationId,
-        metadata: event.metadata as Database['public']['Tables']['audit_events']['Insert']['metadata'],
-        created_at: event.createdAt,
-      })
-      if (error) throw new Error('AGENDA_AUDIT_FAILED')
-    },
-  }
-}
 
 function redirectBackTo(formData: FormData): string {
   const value = String(formData.get('redirect_to') ?? '')
@@ -126,17 +108,21 @@ async function changeAppointmentStatusAction(formData: FormData) {
 
   const repository: AppointmentStatusRepository = {
     async updateStatus(id, status) {
-      const { data, error } = await client.from('appointments').update({ status }).eq('id', id)
-        .select('id,person_id,service_id,starts_at,ends_at,status,policy_version,cancellation_deadline_at,cancellation_policy_snapshot')
-        .single()
-      if (error || !data) throw new Error('AGENDA_STATUS_UPDATE_FAILED')
-      const { error: historyError } = await client.from('appointment_status_history').insert({
-        appointment_id: id,
-        from_status: appointment.status,
-        to_status: status,
-        changed_by_user_id: authorized.userId,
+      const rpc = client.rpc.bind(client) as unknown as (name: 'change_appointment_status_atomic', args: {
+        p_appointment_id: string; p_expected_status: string; p_next_status: string; p_command: string
+      }) => PromiseLike<{ error: { code: string } | null }>
+      const { error: mutationError } = await rpc('change_appointment_status_atomic', {
+        p_appointment_id: id,
+        p_expected_status: appointment.status,
+        p_next_status: status,
+        p_command: command,
       })
-      if (historyError) throw new Error('AGENDA_STATUS_HISTORY_FAILED')
+      if (mutationError) throw new Error(`AGENDA_STATUS_UPDATE_FAILED:${mutationError.code}`)
+      const { data, error } = await client.from('appointments')
+        .select('id,person_id,service_id,starts_at,ends_at,status,policy_version,cancellation_deadline_at,cancellation_policy_snapshot')
+        .eq('id', id)
+        .single()
+      if (error || !data) throw new Error('AGENDA_STATUS_RELOAD_FAILED')
       return {
         id: data.id,
         personId: data.person_id,
@@ -151,15 +137,7 @@ async function changeAppointmentStatusAction(formData: FormData) {
     },
   }
 
-  const updated = await changeAppointmentStatus(appointment, command, repository)
-  await recordAuditEvent({
-    actorId: authorized.userId,
-    action: 'appointment.status_changed',
-    entityType: 'appointment',
-    entityId: appointmentId,
-    correlationId: appointmentId,
-    metadata: { fromStatus: appointment.status, toStatus: updated.status, command },
-  }, auditRepository(client))
+  await changeAppointmentStatus(appointment, command, repository)
 
   redirect(redirectTo)
 }
@@ -167,7 +145,7 @@ async function changeAppointmentStatusAction(formData: FormData) {
 async function chargeAppointmentAction(formData: FormData) {
   'use server'
   const session = await getStaffSession()
-  const authorized = authorizeStaffPermission(session, 'finance.receive')
+  authorizeStaffPermission(session, 'finance.receive')
   const client = await createServerSupabaseClient()
   const appointmentId = String(formData.get('appointment_id') ?? '')
   const redirectTo = redirectBackTo(formData)
@@ -216,53 +194,28 @@ async function chargeAppointmentAction(formData: FormData) {
         }
       },
       async insert(receivable) {
-        const { data, error } = await client.from('receivables').insert({
-          source_type: receivable.sourceType,
-          source_id: receivable.sourceId,
-          person_id: receivable.personId,
-          payer_person_id: receivable.payerPersonId,
-          original_amount_cents: receivable.originalAmountCents,
-          idempotency_key: receivable.idempotencyKey,
-        }).select('id,source_type,source_id,person_id,payer_person_id,original_amount_cents').single()
-        if (error?.code === '23505') {
-          const { data: existing, error: reselectError } = await client.from('receivables')
-            .select('id,source_type,source_id,person_id,payer_person_id,original_amount_cents')
-            .eq('idempotency_key', receivable.idempotencyKey)
-            .single()
-          if (reselectError || !existing) throw new Error('AGENDA_CHARGE_CREATE_FAILED')
-          return {
-            id: existing.id,
-            sourceType: existing.source_type,
-            sourceId: existing.source_id,
-            personId: existing.person_id,
-            payerPersonId: existing.payer_person_id,
-            originalAmountCents: existing.original_amount_cents,
-            adjustmentCents: 0,
-            paidCents: 0,
-          }
-        }
-        if (error || !data) throw new Error('AGENDA_CHARGE_CREATE_FAILED')
+        const rpc = client.rpc.bind(client) as unknown as (name: 'create_appointment_charge_atomic', args: {
+          p_appointment_id: string; p_amount_cents: number; p_idempotency_key: string
+        }) => PromiseLike<{ data: string | null; error: { code: string } | null }>
+        const { data: id, error } = await rpc('create_appointment_charge_atomic', {
+          p_appointment_id: appointmentId,
+          p_amount_cents: receivable.originalAmountCents,
+          p_idempotency_key: receivable.idempotencyKey,
+        })
+        if (error || !id) throw new Error(`AGENDA_CHARGE_CREATE_FAILED:${error?.code ?? 'unknown'}`)
         return {
-          id: data.id,
-          sourceType: data.source_type,
-          sourceId: data.source_id,
-          personId: data.person_id,
-          payerPersonId: data.payer_person_id,
-          originalAmountCents: data.original_amount_cents,
+          id,
+          sourceType: receivable.sourceType,
+          sourceId: receivable.sourceId,
+          personId: receivable.personId,
+          payerPersonId: receivable.payerPersonId,
+          originalAmountCents: receivable.originalAmountCents,
           adjustmentCents: 0,
           paidCents: 0,
         }
       },
     }
-    const receivable = await createReceivableIdempotent(charge, repository)
-    await recordAuditEvent({
-      actorId: authorized.userId,
-      action: 'receivable.appointment_charge_created',
-      entityType: 'receivable',
-      entityId: receivable.id,
-      correlationId: appointmentId,
-      metadata: { appointmentId, appointmentStatus: row.status, amountCents: charge.amountCents },
-    }, auditRepository(client))
+    await createReceivableIdempotent(charge, repository)
   }
 
   redirect(redirectTo)
