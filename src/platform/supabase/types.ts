@@ -1969,6 +1969,13 @@ export type Database = {
           id: string
         }[]
       }
+      cancel_mock_fiscal_document_atomic: {
+        Args: {
+          p_document_id: string
+          p_reason: string
+        }
+        Returns: string
+      }
       claim_document_jobs: {
         Args: { p_limit?: number }
         Returns: {
@@ -2061,6 +2068,31 @@ export type Database = {
         }[]
       }
       has_permission: { Args: { p_permission_key: string }; Returns: boolean }
+      issue_mock_fiscal_document_atomic: {
+        Args: {
+          p_amount_cents: number
+          p_document_id: string
+          p_external_id: string
+          p_idempotency_key: string
+          p_issued_at: string
+          p_payer_person_id: string
+          p_pdf_byte_length: number
+          p_pdf_path: string
+          p_pdf_sha256: string
+          p_person_id: string
+          p_profile_id: string
+          p_profile_version: number
+          p_protocol: string
+          p_source_id: string
+          p_source_type: string
+          p_treatment_id: string
+          p_treatment_version: number
+          p_xml_byte_length: number
+          p_xml_path: string
+          p_xml_sha256: string
+        }
+        Returns: string
+      }
       list_clinical_record_metadata: {
         Args: { p_person_id: string }
         Returns: {
