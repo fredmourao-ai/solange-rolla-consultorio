@@ -32,9 +32,10 @@ function run(script: string, environment: Record<string, string>) {
 }
 
 describe('environment workflow contracts', () => {
-  it('keeps automatic staging promotion explicitly opt-in', () => {
+  it('automatically promotes staging after canonical main checks without an external kill switch', () => {
     const workflow = readFileSync(stagingWorkflow, 'utf8')
-    expect(workflow).toContain("vars.STAGING_AUTO_PROMOTE_ENABLED == 'true'")
+    expect(workflow).not.toContain("vars.STAGING_AUTO_PROMOTE_ENABLED == 'true'")
+    expect(workflow).toContain("github.event.workflow_run.conclusion == 'success'")
   })
 
   it('requires all canonical checks and deploys the exact main SHA', () => {
@@ -98,9 +99,9 @@ describe('environment workflow contracts', () => {
     expect(workflow).toContain("new URLSearchParams({ head_sha: sha, event, per_page: '100' })")
   })
 
-  it('hands post-merge validation off to staging promotion when automatic promotion is enabled', () => {
+  it('always hands green post-merge validation off to staging promotion', () => {
     const autoMerge = readFileSync(autoMergeWorkflow, 'utf8')
-    expect(autoMerge).toContain("vars.STAGING_AUTO_PROMOTE_ENABLED == 'true'")
+    expect(autoMerge).not.toContain("vars.STAGING_AUTO_PROMOTE_ENABLED == 'true'")
     expect(autoMerge).toContain('actions/workflows/staging-promote.yml/dispatches')
     expect(autoMerge).toContain('-f "inputs[commit_sha]=$sha"')
     expect(autoMerge).not.toContain('-f commit_sha="$sha"')
