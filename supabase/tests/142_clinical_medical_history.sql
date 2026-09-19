@@ -91,7 +91,7 @@ select is((
 ), 2, 'superseding creates revision two');
 
 select is((select count(*)::int from clinical.medical_histories), 2, 'superseding preserves original history');
-select throws_ok($
+select throws_ok($$
   select * from public.create_medical_history(
     '42000000-0000-0000-0000-000000000025',
     '42000000-0000-0000-0000-000000000010',
@@ -99,7 +99,7 @@ select throws_ok($
     'fork', 'iv', 'tag', 1, 'clinician_review', null,
     '42000000-0000-0000-0000-000000000020'
   )
-$, '23505', null, 'history revision cannot fork');
+$$, '23505', null, 'history revision cannot fork');
 
 select is((
   select count(*)::int from public.audit_events
@@ -140,7 +140,7 @@ reset role;
 create or replace function pg_temp.reject_medical_history_audit()
 returns trigger
 language plpgsql
-as $
+as $$
 begin
   if new.entity_type = 'medical_history'
     and new.entity_id = '42000000-0000-0000-0000-000000000027'::uuid then
@@ -148,7 +148,7 @@ begin
   end if;
   return new;
 end;
-$;
+$$;
 
 create trigger reject_medical_history_audit
 before insert on public.audit_events
@@ -157,14 +157,14 @@ for each row execute function pg_temp.reject_medical_history_audit();
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"42000000-0000-0000-0000-000000000001","aal":"aal2","role":"authenticated"}', true);
 
-select throws_ok($
+select throws_ok($$
   select * from public.create_medical_history(
     '42000000-0000-0000-0000-000000000027',
     '42000000-0000-0000-0000-000000000012',
     '42000000-0000-0000-0000-000000000001',
     'cipher-must-rollback', 'iv-rollback', 'tag-rollback', 1, 'clinician_review', null, null
   )
-$, 'P0001', 'MEDICAL_HISTORY_AUDIT_REJECTED', 'audit failure aborts medical history creation');
+$$, 'P0001', 'MEDICAL_HISTORY_AUDIT_REJECTED', 'audit failure aborts medical history creation');
 
 select is((
   select count(*)::int from clinical.medical_histories
