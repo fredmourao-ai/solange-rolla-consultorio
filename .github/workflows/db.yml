@@ -52,6 +52,16 @@ jobs:
           MIGRATION_BASE_REF: ${{ github.event.pull_request.base.sha || github.event.before }}
         run: npm run migrations:check
 
+      - name: Clean stale local Supabase runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          project=solange-rolla-consultorio
+          network="supabase_network_$project"
+          if docker ps -a --format '{{.Names}}' | grep -q "_$project$" && ! docker network inspect "$network" >/dev/null 2>&1; then
+            docker ps -a --format '{{.Names}}' | grep "_$project$" | xargs -r docker rm -f
+          fi
+
       - name: Start local database
         run: npx supabase@2.115.0 db start
 
