@@ -143,7 +143,7 @@ declare
   actor uuid := auth.uid();
   document_row public.fiscal_documents%rowtype;
   cancellation_id uuid;
-  idempotency_key text := 'fiscal-cancel:' || p_document_id::text;
+  v_idempotency_key text := 'fiscal-cancel:' || p_document_id::text;
 begin
   if actor is null
     or public.current_app_role() <> 'psychologist_owner'
@@ -170,7 +170,7 @@ begin
   select id
   into cancellation_id
   from public.fiscal_cancellation_events
-  where idempotency_key = cancel_mock_fiscal_document_atomic.idempotency_key;
+  where idempotency_key = v_idempotency_key;
 
   if cancellation_id is not null then
     if document_row.status = 'cancelled' then
@@ -193,7 +193,7 @@ begin
     fiscal_document_id,idempotency_key,reason,requested_by,
     provider_protocol,status,completed_at
   ) values (
-    p_document_id,idempotency_key,btrim(p_reason),actor,
+    p_document_id,v_idempotency_key,btrim(p_reason),actor,
     document_row.protocol,'cancelled',clock_timestamp()
   )
   returning id into cancellation_id;
