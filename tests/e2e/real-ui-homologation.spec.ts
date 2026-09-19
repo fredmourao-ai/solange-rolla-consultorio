@@ -1,5 +1,5 @@
 import { createHmac, randomUUID } from 'node:crypto'
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Page } from './fixtures'
 import { createClient } from '@supabase/supabase-js'
 import { signInDemo } from './demo-auth'
 import { runSql } from './db-command'

@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 import { signInDemo } from './demo-auth'
 
 test('dashboard remains operable on mobile at 200 percent zoom', async ({ page }) => {

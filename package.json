@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "bash scripts/run-next-build.sh",
     "start": "next start",
     "lint": "node scripts/run-eslint.mjs",
     "typecheck": "tsc --noEmit",

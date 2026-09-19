@@ -34,7 +34,9 @@ export function resolveE2eRuntime(env: Env = process.env): E2eRuntime {
       ? '**/real-ui-homologation.spec.ts'
       : externalSuite === 'historical-state-audit' && target === 'staging'
         ? '**/agenda-historical-state-transitions.spec.ts'
-        : undefined
+        : externalSuite === 'full-runtime-parity' && target === 'staging'
+          ? '**/*.spec.ts'
+          : undefined
     if (!projectTestMatch) throw new Error('E2E_EXTERNAL_SUITE_INVALID')
     return { baseURL: external, webServer: undefined, projectTestMatch, expectedBuildSha }
   }

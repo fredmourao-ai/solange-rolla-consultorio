@@ -84,7 +84,7 @@ export default async function FiscalOperationsPage() {
       {people.length === 0 ? <p>Nenhum tomador fiscal disponível para este perfil de acesso.</p> : null}
       <form action={issueMockNfseAction} className="stack-form">
         <label>Origem <select name="source_type">{treatments.filter((t) => t.issuance_rule !== 'not_issuable').map((t) => <option key={t.id} value={t.source_kind}>{sourceKindLabels[t.source_kind] ?? t.source_kind}</option>)}</select></label>
-        <label>ID da origem <input name="source_id" required pattern="[0-9a-fA-F-]{36}" /></label>
+        <label>ID da origem <input name="source_id" required pattern="[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}" /></label>
         <label>Paciente <select name="person_id" required>{people.map((person) => <option key={person.id} value={person.id}>{person.preferred_name || person.civil_name}</option>)}</select></label>
         <label>Tomador/pagador <select name="payer_person_id" required>{people.map((person) => <option key={person.id} value={person.id}>{person.preferred_name || person.civil_name} {person.cpf_normalized ? '' : '(CPF ausente)'}</option>)}</select></label>
         <label>Valor <input name="amount" inputMode="decimal" required /></label>

@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 import { signInDemo } from './demo-auth'
 
 const dbUrl = process.env.DB_URL ?? ''

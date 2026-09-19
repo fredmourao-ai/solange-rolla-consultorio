@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 import { signInDemo } from './demo-auth'
 const dbUrl=process.env.DB_URL??''; if(!dbUrl) throw new Error('local Supabase DB_URL is required')
 function sql(s:string){return execFileSync('psql',[dbUrl,'-At','-v','ON_ERROR_STOP=1','-c',s],{encoding:'utf8'}).trim()} function q(v:string){return `'${v.replaceAll("'","''")}'`}

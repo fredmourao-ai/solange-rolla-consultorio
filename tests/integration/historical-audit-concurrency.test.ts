@@ -11,4 +11,12 @@ describe('historical state audit concurrency', () => {
     expect(source).toContain("group: historical-state-audit-${{ github.event_name == 'workflow_dispatch' && 'manual' || 'automatic' }}")
     expect(source).toContain("cancel-in-progress: ${{ github.event_name == 'workflow_run' }}")
   })
+
+  it('runs the full published runtime parity suite against the exact staging SHA', () => {
+    const source = readFileSync(workflow, 'utf8')
+
+    expect(source).toContain("'E2E_EXTERNAL_SUITE': 'full-runtime-parity'")
+    expect(source).toContain("'E2E_EXPECTED_BUILD_SHA': expected_sha")
+    expect(source).toContain("'--project=chromium', '--workers=1'")
+  })
 })

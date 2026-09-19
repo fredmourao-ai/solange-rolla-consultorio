@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 import { signInDemo } from './demo-auth'
 
 const dbUrl = process.env.DB_URL ?? ''
@@ -11,7 +11,7 @@ function sql(statement: string): string {
 }
 function quote(value: string): string { return `'${value.replaceAll("'", "''")}'` }
 
-async function ensureAppointmentDetailsOpen(page: import('@playwright/test').Page, appointmentId: string) {
+async function ensureAppointmentDetailsOpen(page: import('./fixtures').Page, appointmentId: string) {
   const item = page.locator(`li.appointment-calendar__item[data-appointment-id="${appointmentId}"]`)
   const details = item.locator('details')
   if (!(await details.evaluate((element) => (element as HTMLDetailsElement).open))) {
