@@ -46,6 +46,8 @@ insert into public.receivables (
   'd0000000-0000-4000-8000-000000000001',
   10000,'atomic-adjustment-base','open'
 );
+insert into public.vendors (id,legal_name)
+values ('fa350000-0000-4000-8000-000000000001','Atomic Vendor');
 reset role;
 
 create or replace function public.test_reject_business_atomic_audit()
@@ -167,12 +169,14 @@ select is(
 );
 
 select throws_ok(
-  $$ insert into public.payables (
+  $ insert into public.payables (
     id,vendor_id,category_id,description,amount_cents,due_date,competence,idempotency_key
   ) select
-    gen_random_uuid(),v.id,c.id,'Rejected payable',1000,current_date+10,date_trunc('month',current_date)::date,'atomic-payable-reject'
-  from public.vendors v cross join public.expense_categories c
-  limit 1 $$,
+    gen_random_uuid(),'fa350000-0000-4000-8000-000000000001',c.id,
+    'Rejected payable',1000,current_date+10,date_trunc('month',current_date)::date,'atomic-payable-reject'
+  from public.expense_categories c
+  order by c.name
+  limit 1 $,
   '55000','SYNTHETIC_AUDIT_FAILURE',
   'payable audit failure aborts payable creation'
 );
