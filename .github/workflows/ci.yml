@@ -255,3 +255,7 @@ jobs:
           fi
           export E2E_REUSE_EXISTING_SERVER=true
           npm run test:e2e
+
+      - name: Stop isolated local Supabase
+        if: always()
+        run: npx supabase@2.115.0 stop --no-backup
