@@ -129,33 +129,26 @@ async function startCareAction(formData: FormData) {
   const appointment = toAppointment(row)
   const repository: AppointmentStatusRepository = {
     async updateStatus(id, status) {
-      const { data, error: updateError } = await client.from('appointments')
-        .update({ status })
-        .eq('id', id)
-        .eq('status', 'checked_in')
-        .select('id,person_id,service_id,starts_at,ends_at,status,policy_version,cancellation_deadline_at,cancellation_policy_snapshot')
-        .maybeSingle()
-      if (updateError || !data) throw new Error('CARE_START_CONFLICT')
-      const { error: historyError } = await client.from('appointment_status_history').insert({
-        appointment_id: id,
-        from_status: 'checked_in',
-        to_status: status,
-        changed_by_user_id: session.userId,
+      const rpc = client.rpc.bind(client) as unknown as (name: 'change_appointment_status_atomic', args: {
+        p_appointment_id: string; p_expected_status: string; p_next_status: string; p_command: string
+      }) => PromiseLike<{ error: { code: string } | null }>
+      const { error: mutationError } = await rpc('change_appointment_status_atomic', {
+        p_appointment_id: id,
+        p_expected_status: 'checked_in',
+        p_next_status: status,
+        p_command: 'start',
       })
-      if (historyError) throw new Error('CARE_STATUS_HISTORY_FAILED')
+      if (mutationError) throw new Error(`CARE_START_CONFLICT:${mutationError.code}`)
+      const { data, error: reloadError } = await client.from('appointments')
+        .select('id,person_id,service_id,starts_at,ends_at,status,policy_version,cancellation_deadline_at,cancellation_policy_snapshot')
+        .eq('id', id)
+        .single()
+      if (reloadError || !data) throw new Error('CARE_START_RELOAD_FAILED')
       return toAppointment(data)
     },
   }
 
   await changeAppointmentStatus(appointment, 'start', repository)
-  await recordAuditEvent({
-    actorId: session.userId,
-    action: 'appointment.care_started',
-    entityType: 'appointment',
-    entityId: appointmentId,
-    correlationId: appointmentId,
-    metadata: { personId: appointment.personId },
-  }, auditRepository(client))
   redirect(`/atendimentos/${appointmentId}`)
 }
 
@@ -280,32 +273,25 @@ async function finishCareAction(formData: FormData) {
   const appointment = toAppointment(row)
   const statusRepository: AppointmentStatusRepository = {
     async updateStatus(id, status) {
-      const { data, error: updateError } = await client.from('appointments')
-        .update({ status })
-        .eq('id', id)
-        .eq('status', 'in_progress')
-        .select('id,person_id,service_id,starts_at,ends_at,status,policy_version,cancellation_deadline_at,cancellation_policy_snapshot')
-        .maybeSingle()
-      if (updateError || !data) throw new Error('CARE_COMPLETE_CONFLICT')
-      const { error: historyError } = await client.from('appointment_status_history').insert({
-        appointment_id: id,
-        from_status: 'in_progress',
-        to_status: status,
-        changed_by_user_id: session.userId,
+      const rpc = client.rpc.bind(client) as unknown as (name: 'change_appointment_status_atomic', args: {
+        p_appointment_id: string; p_expected_status: string; p_next_status: string; p_command: string
+      }) => PromiseLike<{ error: { code: string } | null }>
+      const { error: mutationError } = await rpc('change_appointment_status_atomic', {
+        p_appointment_id: id,
+        p_expected_status: 'in_progress',
+        p_next_status: status,
+        p_command: 'complete',
       })
-      if (historyError) throw new Error('CARE_STATUS_HISTORY_FAILED')
+      if (mutationError) throw new Error(`CARE_COMPLETE_CONFLICT:${mutationError.code}`)
+      const { data, error: reloadError } = await client.from('appointments')
+        .select('id,person_id,service_id,starts_at,ends_at,status,policy_version,cancellation_deadline_at,cancellation_policy_snapshot')
+        .eq('id', id)
+        .single()
+      if (reloadError || !data) throw new Error('CARE_COMPLETE_RELOAD_FAILED')
       return toAppointment(data)
     },
   }
   await changeAppointmentStatus(appointment, 'complete', statusRepository)
-  await recordAuditEvent({
-    actorId: session.userId,
-    action: 'appointment.care_completed',
-    entityType: 'appointment',
-    entityId: appointmentId,
-    correlationId: appointmentId,
-    metadata: { personId },
-  }, auditRepository(client))
 
   redirect(`/pessoas/${personId}?status=care_completed`)
 }
