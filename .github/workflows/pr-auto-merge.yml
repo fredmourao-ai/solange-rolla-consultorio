@@ -175,9 +175,7 @@ jobs:
 
   staging-handoff:
     needs: merge-if-green
-    if: >-
-      needs.merge-if-green.outputs.main_sha != '' &&
-      vars.STAGING_AUTO_PROMOTE_ENABLED == 'true'
+    if: needs.merge-if-green.outputs.main_sha != ''
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
