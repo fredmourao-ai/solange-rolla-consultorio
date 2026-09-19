@@ -91,6 +91,10 @@ export async function runDocumentWorker(options: {
   while (!options.signal.aborted) {
     try {
       await options.dispatch?.()
+    } catch (error) {
+      options.logger?.('document_worker_dispatch_failed', { code: safeErrorCode(error) })
+    }
+    try {
       const completed = await options.drain()
       await options.heartbeat?.()
       options.logger?.('document_worker_poll_ok', { completed })
