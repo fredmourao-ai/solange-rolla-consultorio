@@ -79,6 +79,7 @@ function defaultWait(ms: number, signal: AbortSignal): Promise<void> {
 
 export async function runDocumentWorker(options: {
   signal: AbortSignal
+  dispatch?: () => Promise<unknown>
   drain: () => Promise<number>
   pollMs?: number
   wait?: (ms: number, signal: AbortSignal) => Promise<void>
@@ -89,6 +90,7 @@ export async function runDocumentWorker(options: {
   const wait = options.wait ?? defaultWait
   while (!options.signal.aborted) {
     try {
+      await options.dispatch?.()
       const completed = await options.drain()
       await options.heartbeat?.()
       options.logger?.('document_worker_poll_ok', { completed })
