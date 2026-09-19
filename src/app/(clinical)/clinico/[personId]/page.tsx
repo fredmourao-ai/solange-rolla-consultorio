@@ -1,7 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
-import { recordAuditEvent, type AuditEvent, type AuditEventRepository } from '@/modules/audit/public'
 import {
   getClinicalRecord,
   serializeMedicalHistory,
@@ -17,7 +16,6 @@ import {
 } from '@/modules/identity/public'
 import { createSensitiveDataCrypto } from '@/platform/crypto/aes-gcm'
 import { createServerSupabaseClient } from '@/platform/supabase/server'
-import type { Database } from '@/platform/supabase/types'
 import { PageHeader } from '@/shared/ui/page-header'
 
 export const dynamic = 'force-dynamic'
@@ -28,23 +26,6 @@ const dateTime = new Intl.DateTimeFormat('pt-BR', {
   timeStyle: 'short',
   timeZone: 'America/Sao_Paulo',
 })
-
-function auditRepository(client: Awaited<ReturnType<typeof createServerSupabaseClient>>): AuditEventRepository {
-  return {
-    async insert(event: AuditEvent): Promise<void> {
-      const { error } = await client.from('audit_events').insert({
-        actor_user_id: event.actorId,
-        action: event.action,
-        entity_type: event.entityType,
-        entity_id: event.entityId,
-        correlation_id: event.correlationId,
-        metadata: event.metadata as Database['public']['Tables']['audit_events']['Insert']['metadata'],
-        created_at: event.createdAt,
-      })
-      if (error) throw new Error('MEDICAL_HISTORY_AUDIT_FAILED')
-    },
-  }
-}
 
 function isUuid(value: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
@@ -108,20 +89,6 @@ async function saveMedicalHistoryAction(formData: FormData) {
   })
   const saved = data?.[0]
   if (error || !saved) throw new Error('MEDICAL_HISTORY_SAVE_FAILED')
-
-  await recordAuditEvent({
-    actorId: session.userId,
-    action: supersedesId ? 'medical_history.superseded' : 'medical_history.created',
-    entityType: 'medical_history',
-    entityId: id,
-    correlationId: id,
-    metadata: {
-      personId,
-      revision: saved.revision,
-      sourceType,
-      sourceReferenceId: sourceReferenceId || null,
-    },
-  }, auditRepository(client))
 
   redirect('/clinico/' + personId + '?history=saved')
 }
