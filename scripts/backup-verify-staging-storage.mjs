@@ -12,6 +12,8 @@ export const REQUIRED_PRIVATE_BUCKETS = [
   'clinical-private',
 ]
 
+const PROBE_BYTES = Buffer.from('solange-storage-recovery-probe-v1')
+
 function requireConfig() {
   const stagingRef = process.env.SUPABASE_STAGING_PROJECT_REF || ''
   const productionRef = process.env.SUPABASE_PRODUCTION_PROJECT_REF || ''
@@ -70,6 +72,11 @@ async function removeRestoreBucket(client, bucketName) {
   if (deleted.error) throw new Error('STAGING_STORAGE_RESTORE_BUCKET_DELETE_FAILED')
 }
 
+async function removeSourceProbe(client, probe) {
+  const removed = await client.storage.from(probe.bucket).remove([probe.path])
+  if (removed.error) throw new Error('STAGING_STORAGE_SOURCE_PROBE_CLEANUP_FAILED')
+}
+
 export async function backupAndVerifyStagingStorage({
   url,
   secretKey,
@@ -81,48 +88,63 @@ export async function backupAndVerifyStagingStorage({
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
   })
 
-  const bucketsResult = await client.storage.listBuckets()
-  if (bucketsResult.error) throw new Error('STAGING_STORAGE_BUCKET_LIST_FAILED')
-  const buckets = new Map((bucketsResult.data ?? []).map((bucket) => [bucket.id, bucket]))
-  for (const bucketName of REQUIRED_PRIVATE_BUCKETS) {
-    const bucket = buckets.get(bucketName)
-    if (!bucket) throw new Error('STAGING_STORAGE_REQUIRED_BUCKET_MISSING')
-    if (bucket.public) throw new Error('STAGING_STORAGE_PRIVATE_BUCKET_PUBLIC')
-  }
-
-  const manifest = []
-  for (const bucketName of REQUIRED_PRIVATE_BUCKETS) {
-    const source = client.storage.from(bucketName)
-    const objectPaths = await listObjectPaths(source)
-    const bucketRoot = path.join(destination, bucketName)
-    await mkdir(bucketRoot, { recursive: true, mode: 0o700 })
-    for (const objectPath of objectPaths) {
-      const downloaded = await source.download(objectPath)
-      if (downloaded.error || !downloaded.data) throw new Error('STAGING_STORAGE_DOWNLOAD_FAILED')
-      const bytes = Buffer.from(await downloaded.data.arrayBuffer())
-      const target = safeTarget(bucketRoot, objectPath)
-      await mkdir(path.dirname(target), { recursive: true, mode: 0o700 })
-      await writeFile(target, bytes, { mode: 0o600 })
-      manifest.push({
-        bucket: bucketName,
-        path: objectPath,
-        bytes: bytes.byteLength,
-        sha256: createHash('sha256').update(bytes).digest('hex'),
-      })
-    }
-  }
-
-  const manifestPath = path.join(destination, 'manifest.json')
-  const manifestBytes = Buffer.from(JSON.stringify({ version: 1, objects: manifest }, null, 2) + '\n')
-  await writeFile(manifestPath, manifestBytes, { mode: 0o600 })
-  await writeFile(
-    `${manifestPath}.sha256`,
-    `${createHash('sha256').update(manifestBytes).digest('hex')}  manifest.json\n`,
-    { mode: 0o600 },
-  )
-
   const restoreBuckets = []
+  const sourceProbes = []
+  let primaryError
+  let result
+
   try {
+    const bucketsResult = await client.storage.listBuckets()
+    if (bucketsResult.error) throw new Error('STAGING_STORAGE_BUCKET_LIST_FAILED')
+    const buckets = new Map((bucketsResult.data ?? []).map((bucket) => [bucket.id, bucket]))
+    for (const bucketName of REQUIRED_PRIVATE_BUCKETS) {
+      const bucket = buckets.get(bucketName)
+      if (!bucket) throw new Error('STAGING_STORAGE_REQUIRED_BUCKET_MISSING')
+      if (bucket.public) throw new Error('STAGING_STORAGE_PRIVATE_BUCKET_PUBLIC')
+    }
+
+    const manifest = []
+    for (const bucketName of REQUIRED_PRIVATE_BUCKETS) {
+      const source = client.storage.from(bucketName)
+      let objectPaths = await listObjectPaths(source)
+      if (objectPaths.length === 0) {
+        const probePath = `audit-recovery-probe/${randomUUID()}.txt`
+        const uploaded = await source.upload(probePath, PROBE_BYTES, {
+          upsert: false,
+          contentType: 'text/plain',
+        })
+        if (uploaded.error) throw new Error('STAGING_STORAGE_SOURCE_PROBE_UPLOAD_FAILED')
+        sourceProbes.push({ bucket: bucketName, path: probePath })
+        objectPaths = [probePath]
+      }
+
+      const bucketRoot = path.join(destination, bucketName)
+      await mkdir(bucketRoot, { recursive: true, mode: 0o700 })
+      for (const objectPath of objectPaths) {
+        const downloaded = await source.download(objectPath)
+        if (downloaded.error || !downloaded.data) throw new Error('STAGING_STORAGE_DOWNLOAD_FAILED')
+        const bytes = Buffer.from(await downloaded.data.arrayBuffer())
+        const target = safeTarget(bucketRoot, objectPath)
+        await mkdir(path.dirname(target), { recursive: true, mode: 0o700 })
+        await writeFile(target, bytes, { mode: 0o600 })
+        manifest.push({
+          bucket: bucketName,
+          path: objectPath,
+          bytes: bytes.byteLength,
+          sha256: createHash('sha256').update(bytes).digest('hex'),
+        })
+      }
+    }
+
+    const manifestPath = path.join(destination, 'manifest.json')
+    const manifestBytes = Buffer.from(JSON.stringify({ version: 1, objects: manifest }, null, 2) + '\n')
+    await writeFile(manifestPath, manifestBytes, { mode: 0o600 })
+    await writeFile(
+      `${manifestPath}.sha256`,
+      `${createHash('sha256').update(manifestBytes).digest('hex')}  manifest.json\n`,
+      { mode: 0o600 },
+    )
+
     for (let index = 0; index < REQUIRED_PRIVATE_BUCKETS.length; index += 1) {
       const sourceName = REQUIRED_PRIVATE_BUCKETS[index]
       const restoreName = `audit-restore-${randomUUID().slice(0, 8)}-${index}`
@@ -130,7 +152,9 @@ export async function backupAndVerifyStagingStorage({
       if (created.error) throw new Error('STAGING_STORAGE_RESTORE_BUCKET_CREATE_FAILED')
       restoreBuckets.push(restoreName)
       const restore = client.storage.from(restoreName)
-      for (const entry of manifest.filter((row) => row.bucket === sourceName)) {
+      const entries = manifest.filter((row) => row.bucket === sourceName)
+      if (entries.length === 0) throw new Error('STAGING_STORAGE_BUCKET_RECOVERY_NOT_EXERCISED')
+      for (const entry of entries) {
         const filePath = safeTarget(path.join(destination, sourceName), entry.path)
         const bytes = await readFile(filePath)
         const uploaded = await restore.upload(entry.path, bytes, {
@@ -147,22 +171,46 @@ export async function backupAndVerifyStagingStorage({
         }
       }
     }
-  } finally {
-    for (const bucketName of restoreBuckets.reverse()) await removeRestoreBucket(client, bucketName)
+
+    result = {
+      bucketCount: REQUIRED_PRIVATE_BUCKETS.length,
+      objectCount: manifest.length,
+      totalBytes: manifest.reduce((sum, entry) => sum + entry.bytes, 0),
+      probeCount: sourceProbes.length,
+    }
+  } catch (error) {
+    primaryError = error
   }
 
-  return {
-    bucketCount: REQUIRED_PRIVATE_BUCKETS.length,
-    objectCount: manifest.length,
-    totalBytes: manifest.reduce((sum, entry) => sum + entry.bytes, 0),
+  const cleanupErrors = []
+  for (const bucketName of restoreBuckets.reverse()) {
+    try {
+      await removeRestoreBucket(client, bucketName)
+    } catch (error) {
+      cleanupErrors.push(error)
+    }
   }
+  for (const probe of sourceProbes.reverse()) {
+    try {
+      await removeSourceProbe(client, probe)
+    } catch (error) {
+      cleanupErrors.push(error)
+    }
+  }
+
+  if (primaryError && cleanupErrors.length) {
+    throw new AggregateError([primaryError, ...cleanupErrors], 'STAGING_STORAGE_OPERATION_AND_CLEANUP_FAILED')
+  }
+  if (primaryError) throw primaryError
+  if (cleanupErrors.length) throw new AggregateError(cleanupErrors, 'STAGING_STORAGE_CLEANUP_FAILED')
+  return result
 }
 
 async function main() {
   const config = requireConfig()
   const result = await backupAndVerifyStagingStorage(config)
   process.stdout.write(
-    `staging_storage_backup_restore_ok buckets=${result.bucketCount} objects=${result.objectCount} bytes=${result.totalBytes}\n`,
+    `staging_storage_backup_restore_ok buckets=${result.bucketCount} objects=${result.objectCount} bytes=${result.totalBytes} probes=${result.probeCount}\n`,
   )
 }
 
