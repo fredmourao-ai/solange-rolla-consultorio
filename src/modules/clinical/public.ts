@@ -10,11 +10,15 @@ export type {
 } from './domain/clinical-record'
 export {
   CLINICAL_KIND_LABELS,
+  medicalHistoryFields,
   parseClinicalPayload,
+  parseMedicalHistoryPayload,
+  serializeMedicalHistory,
   serializeSessionEvolution,
 } from './domain/clinical-content'
 export type {
   ClinicalRecordKind,
+  MedicalHistoryPayload,
   SessionEvolutionPayload,
 } from './domain/clinical-content'
 export { listClinicalRecords } from './application/list-clinical-records'

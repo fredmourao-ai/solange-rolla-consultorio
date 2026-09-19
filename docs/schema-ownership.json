@@ -26,6 +26,10 @@
       "audit",
       "clinical"
     ],
+    "clinical_medical_history": [
+      "clinical",
+      "people"
+    ],
     "appointments_confirmation": [
       "appointments",
       "forms"
@@ -156,6 +160,7 @@
   "objects": {
     "clinical.attachments": "clinical",
     "clinical.records": "clinical",
+    "clinical.medical_histories": "clinical",
     "clinical.reject_clinical_record_mutation": "clinical",
     "clinical.__schema__": "clinical",
     "platform.extensions": "platform",
@@ -180,8 +185,11 @@
     "public.fiscal_profiles": "fiscal",
     "public.fiscal_treatments": "fiscal",
     "public.create_clinical_record": "clinical",
+    "public.create_medical_history": "clinical",
     "public.get_clinical_record_envelope": "clinical",
+    "public.get_medical_history_envelope": "clinical",
     "public.list_clinical_record_metadata": "clinical",
+    "public.list_medical_history_metadata": "clinical",
     "public.form_submission_versions": "forms",
     "public.form_submissions": "forms",
     "public.form_template_versions": "forms",

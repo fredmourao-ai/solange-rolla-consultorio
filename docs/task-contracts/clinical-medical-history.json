@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "status": "approved",
+  "issue": 192,
+  "migration": "20260919010000_clinical_medical_history.sql",
+  "owners": [
+    "clinical",
+    "people"
+  ],
+  "objects": [
+    {
+      "name": "clinical.medical_histories",
+      "owner": "clinical"
+    },
+    {
+      "name": "public.create_medical_history",
+      "owner": "clinical"
+    },
+    {
+      "name": "public.list_medical_history_metadata",
+      "owner": "clinical"
+    },
+    {
+      "name": "public.get_medical_history_envelope",
+      "owner": "clinical"
+    },
+    {
+      "name": "public.people",
+      "owner": "people"
+    }
+  ]
+}
