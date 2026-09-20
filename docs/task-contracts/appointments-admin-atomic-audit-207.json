@@ -5,7 +5,8 @@
   "migration": "20260919223000_appointments_admin_atomic_audit.sql",
   "owners": [
     "appointments",
-    "audit"
+    "audit",
+    "identity"
   ],
   "objects": [
     {
@@ -39,6 +40,10 @@
     {
       "name": "public.cancellation_policies",
       "owner": "appointments"
+    },
+    {
+      "name": "public.has_permission",
+      "owner": "identity"
     }
   ]
 }
