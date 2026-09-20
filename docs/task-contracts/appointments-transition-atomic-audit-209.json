@@ -5,8 +5,7 @@
   "migration": "20260919224000_appointment_transition_atomic_audit.sql",
   "owners": [
     "appointments",
-    "audit",
-    "identity"
+    "audit"
   ],
   "objects": [
     {
@@ -24,10 +23,6 @@
     {
       "name": "public.audit_events",
       "owner": "audit"
-    },
-    {
-      "name": "public.has_permission",
-      "owner": "identity"
     }
   ]
 }
