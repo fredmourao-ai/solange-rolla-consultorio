@@ -1,4 +1,4 @@
--- owners: audit,clinical,identity,people
+-- owners: audit,clinical,people
 -- cross-module-task: docs/task-contracts/clinical-medical-history.json
 -- allow-static-routines: true
 
