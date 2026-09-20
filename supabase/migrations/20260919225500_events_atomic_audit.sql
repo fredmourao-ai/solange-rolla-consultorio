@@ -1,4 +1,4 @@
--- owners: audit,events,identity,receivables
+-- owners: audit,events,receivables
 -- cross-module-task: docs/task-contracts/events-atomic-audit-210.json
 -- allow-static-routines: true
 
