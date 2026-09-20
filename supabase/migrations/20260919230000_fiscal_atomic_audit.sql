@@ -1,4 +1,4 @@
--- owners: audit,fiscal
+-- owners: audit,fiscal,identity
 -- cross-module-task: docs/task-contracts/fiscal-atomic-audit-225.json
 -- allow-static-routines: true
 
