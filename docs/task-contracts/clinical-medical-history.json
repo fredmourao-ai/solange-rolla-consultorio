@@ -32,10 +32,6 @@
     {
       "name": "public.audit_events",
       "owner": "audit"
-    },
-    {
-      "name": "clinical.reject_clinical_record_mutation",
-      "owner": "clinical"
     }
   ]
 }
