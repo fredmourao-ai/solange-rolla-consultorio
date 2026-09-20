@@ -14,10 +14,9 @@ describe('workflow continuity under rapid PR updates', () => {
     expect(governance).toContain('cancel-in-progress: true')
   })
 
-  it('coalesces duplicate auto-merge triggers per immutable PR head off private CI runners', () => {
-    expect(autoMerge).toContain('group: pr-auto-merge-${{ github.event.workflow_run.head_sha }}')
-    expect(autoMerge).toContain('runs-on: ubuntu-latest')
-    expect(autoMerge).not.toContain('solange-control')
+  it('coalesces stale auto-merge evaluations repository-wide on private CI runners', () => {
+    expect(autoMerge).toContain('group: pr-auto-merge-${{ github.repository }}')
+    expect(autoMerge).toContain('runs-on: [self-hosted, Linux, ARM64, solange-ci]')
     expect(autoMerge).toContain('cancel-in-progress: true')
   })
 
