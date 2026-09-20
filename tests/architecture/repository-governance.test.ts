@@ -7,7 +7,7 @@ const root = fileURLToPath(new URL('../../', import.meta.url))
 const requiredRunnerLabels = ['self-hosted', 'Linux', 'ARM64', 'solange-ci']
 // Stateful staging workflows are pinned when they need access to persisted homologation state.
 const runnerLabelExceptionsByFile: Record<string, string[][]> = {
-  'pr-auto-merge.yml': [requiredRunnerLabels, requiredRunnerLabels],
+  'pr-auto-merge.yml': [['ubuntu-latest'], ['ubuntu-latest']],
   'staging-promote.yml': [requiredRunnerLabels, [...requiredRunnerLabels, 'solange-staging-host']],
   'diag-staging-host.yml': [[...requiredRunnerLabels, 'solange-staging-host']],
   'historical-state-audit.yml': [[...requiredRunnerLabels, 'solange-staging-host'], [...requiredRunnerLabels, 'solange-staging-host']],
@@ -107,14 +107,15 @@ describe('repository governance contract', () => {
     }
   })
 
-  it('bootstraps a verified GitHub CLI for self-hosted auto-merge', () => {
+  it('keeps auto-merge orchestration on the GitHub-hosted control plane', () => {
     const workflow = projectFile('.github/workflows/pr-auto-merge.yml')
 
-    expect(runsOnLabels(workflow)).toEqual([requiredRunnerLabels, requiredRunnerLabels])
-    expect(workflow).toContain('GH_VERSION: 2.98.0')
-    expect(workflow).toContain('GH_SHA256: cf689084f3a3618f7eae4a2420d335d74626d65f5e594b9828d125d69f800d86')
-    expect(workflow).toContain('sha256sum -c -')
-    expect(workflow).toContain('$GITHUB_PATH')
+    expect(runsOnLabels(workflow)).toEqual([['ubuntu-latest'], ['ubuntu-latest']])
+    expect(workflow).toContain('gh api')
+    expect(workflow).toContain('gh pr merge')
+    expect(workflow).not.toContain('GH_VERSION:')
+    expect(workflow).not.toContain('GH_SHA256:')
+    expect(workflow).not.toContain('$GITHUB_PATH')
   })
 
   it('gates auto-merge through complete REST checks and statuses', () => {
