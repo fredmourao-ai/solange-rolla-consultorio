@@ -14,7 +14,7 @@ jobs:
       - name: Inspect staging deploy root (read-only)
         shell: bash
         run: |
-          set -uo pipefail
+          set -euo pipefail
           ROOT=/home/ubuntu/solange-client-demo
           echo "--- ls ROOT ---"
           ls -la "$ROOT" 2>&1
@@ -32,14 +32,19 @@ jobs:
           ls -la "$ROOT/state" 2>&1
           cat "$ROOT/state/deployed-sha.txt" 2>&1 || echo "no deployed-sha.txt"
           echo "--- health check via container ---"
-          curl -fsS --max-time 5 http://127.0.0.1:3000/api/health 2>&1 || echo "health check failed/unreachable"
+          STAGING_PORT=3200
+          curl -fsS --max-time 5 "http://127.0.0.1:$STAGING_PORT/api/health" | tee /tmp/solange-staging-health.json
+          test "$(jq -r '.status // empty' /tmp/solange-staging-health.json)" = ok
           echo "--- root-owned file count in app ---"
           find "$ROOT/app" -not -user "$(id -un)" 2>/dev/null | wc -l || true
           find "$ROOT/app-previous" -not -user "$(id -un)" 2>/dev/null | wc -l || true
           echo "--- passwordless sudo available? ---"
           sudo -n true 2>&1 && echo "SUDO_NOPASSWD_AVAILABLE" || echo "SUDO_NOPASSWD_UNAVAILABLE"
           echo "--- disk space ---"
-          df -h "$ROOT" 2>&1 || true
+          df -h "$ROOT"
+          DISK_USED=$(df -P "$ROOT" | awk 'NR==2 {gsub(/%/,"",$5); print $5}')
+          echo "disk_used_percent=$DISK_USED"
+          test "$DISK_USED" -lt 95 || { echo "disk usage critical: $DISK_USED%" >&2; exit 1; }
           echo "--- web container status and crash logs ---"
           docker inspect solange-client-demo-web --format '{{.State.Status}} exit={{.State.ExitCode}} error={{.State.Error}}' 2>&1 || true
           docker logs --tail 80 solange-client-demo-web 2>&1 || true

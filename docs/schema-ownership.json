@@ -156,6 +156,11 @@
     "payables_recurring_atomic_creation": [
       "audit",
       "payables"
+    ],
+    "clinical_medical_history": [
+      "audit",
+      "clinical",
+      "people"
     ]
   },
   "objects": {
@@ -242,6 +247,10 @@
     "public.record_payable_payment_atomic": "payables",
     "public.tasks": "identity",
     "public.audit_person_updated": "audit",
-    "public.create_recurring_payable_atomic": "payables"
+    "public.create_recurring_payable_atomic": "payables",
+    "clinical.medical_histories": "clinical",
+    "public.create_medical_history": "clinical",
+    "public.get_medical_history_envelope": "clinical",
+    "public.list_medical_history_metadata": "clinical"
   }
 }

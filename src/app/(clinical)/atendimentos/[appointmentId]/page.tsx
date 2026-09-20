@@ -20,6 +20,7 @@ import {
 } from '@/modules/clinical/public'
 import { CareSessionEditor } from '@/modules/clinical/ui/care-session-editor'
 import { ClinicalHistory, type ReadableClinicalRecord } from '@/modules/clinical/ui/clinical-history'
+import { ClinicalSummary } from '@/modules/clinical/ui/clinical-summary'
 import {
   AuthorizationError,
   authorizeStaffPermission,
@@ -440,6 +441,12 @@ export default async function CareWorkspacePage({
         <button className="ui-button ui-button--primary" type="submit">Iniciar atendimento</button>
       </form>
     </section> : null}
+
+    <section className="ui-card" aria-labelledby="clinical-summary-title">
+      <h2 id="clinical-summary-title" className="ui-card__title">Resumo clínico longitudinal</h2>
+      <p className="ui-card__description">Informações de saúde e continuidade revisadas pela profissional. Conteúdo protegido por MFA e cifrado no prontuário.</p>
+      <ClinicalSummary records={history} />
+    </section>
 
     <section className="ui-card" aria-labelledby="clinical-history-title">
       <h2 className="ui-card__title" id="clinical-history-title">Histórico clínico</h2>
