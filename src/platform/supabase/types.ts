@@ -2067,10 +2067,7 @@ export type Database = {
         }
         Returns: boolean
       }
-      create_vendor_atomic: {
-        Args: { p_legal_name: string }
-        Returns: string
-      }
+      create_vendor_atomic: { Args: { p_legal_name: string }; Returns: string }
       current_aal: { Args: never; Returns: string }
       current_app_role: {
         Args: never
