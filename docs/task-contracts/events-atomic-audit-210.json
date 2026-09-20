@@ -2,11 +2,12 @@
   "version": 1,
   "status": "approved",
   "issue": 210,
-  "migration": "20260919226000_events_atomic_audit.sql",
+  "migration": "20260919225500_events_atomic_audit.sql",
   "owners": [
     "audit",
     "events",
-    "receivables"
+    "receivables",
+    "identity"
   ],
   "objects": [
     {
@@ -48,6 +49,10 @@
     {
       "name": "public.audit_events",
       "owner": "audit"
+    },
+    {
+      "name": "public.has_permission",
+      "owner": "identity"
     }
   ]
 }
