@@ -41,7 +41,7 @@ const issuerKindLabels: Record<string, string> = {
 
 export default async function FiscalOperationsPage() {
   const session = await getStaffSession()
-  const authorized = authorizeStaffSession(session, ['psychologist_owner', 'accounting'])
+  const authorized = authorizeStaffSession(session, ['psychologist_owner', 'secretary', 'accounting'])
   const client = await createServerSupabaseClient()
   const canIssue = hasSessionPermission(session, 'fiscal.issue')
   const canCancel = hasSessionPermission(session, 'fiscal.cancel')
