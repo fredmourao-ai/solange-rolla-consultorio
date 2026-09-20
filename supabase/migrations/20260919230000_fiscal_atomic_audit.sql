@@ -131,7 +131,8 @@ declare
 begin
   if actor is null
     or public.current_app_role() not in ('psychologist_owner','secretary')
-    or not public.has_permission('fiscal.issue') then
+    or not public.has_permission('fiscal.issue')
+    or not public.has_permission('fiscal.read') then
     raise exception 'FISCAL_ISSUE_FORBIDDEN' using errcode = '42501';
   end if;
 
@@ -308,7 +309,8 @@ declare
 begin
   if actor is null
     or public.current_app_role() not in ('psychologist_owner','secretary')
-    or not public.has_permission('fiscal.issue') then
+    or not public.has_permission('fiscal.issue')
+    or not public.has_permission('fiscal.read') then
     raise exception 'FISCAL_ISSUE_FORBIDDEN' using errcode = '42501';
   end if;
   if p_document_id is null or p_issued_at is null then
@@ -332,6 +334,18 @@ begin
   end if;
   if document_row.status <> 'processing' then
     raise exception 'FISCAL_ISSUE_INVALID_STATE' using errcode = '55000';
+  end if;
+
+  if not exists (
+    select 1 from storage.objects
+    where bucket_id = 'fiscal-documents-private'
+      and name = document_row.xml_path
+  ) or not exists (
+    select 1 from storage.objects
+    where bucket_id = 'fiscal-documents-private'
+      and name = document_row.pdf_path
+  ) then
+    raise exception 'FISCAL_ARTIFACTS_MISSING' using errcode = '55000';
   end if;
 
   select max(attempt_number)
@@ -394,7 +408,8 @@ declare
 begin
   if actor is null
     or public.current_app_role() not in ('psychologist_owner','secretary')
-    or not public.has_permission('fiscal.issue') then
+    or not public.has_permission('fiscal.issue')
+    or not public.has_permission('fiscal.read') then
     raise exception 'FISCAL_ISSUE_FORBIDDEN' using errcode = '42501';
   end if;
   if p_document_id is null
