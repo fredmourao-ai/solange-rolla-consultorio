@@ -565,3 +565,22 @@ Regra principal: **um chat = um namespace de sessao CLI isolado; nunca reutiliza
 
 ## AUDITORIA_ARQUITETURA_DEPLOY_V1
 Toda Auditoria Extrema deve incluir `docs/quality/ARCHITECTURE_DEPLOY_AUDIT_V1.md` e tratar melhorias arquiteturais materiais como parte da auditoria, inclusive tempo de deploy, runners, artifacts, cache, provisionamento, restarts, contratos cross-repo, hotspots, rollback e blast radius.
+
+
+<!-- BROWSER_SESSION_POLICY_V1 -->
+<!-- GLOBAL_BROWSER_VM_POLICY_V2 -->
+## Politica global de navegador, host e ciclo de vida de sessoes
+
+Esta politica vale para todos os agentes e prevalece sobre qualquer instrucao antiga de escolher/perguntar host para navegacao.
+
+- Qualquer navegador, sessao grafica, automacao browser, Playwright/Selenium/CDP, Chrome/Chromium/Edge/Opera, CAPTCHA, MFA, consentimento ou validacao visual deve executar por padrao e obrigatoriamente na VM backend `always-free-arm-1787907847-26` (`10.0.1.38`) usando o Browser Worker privado.
+- Para intervencao humana em MFA/CAPTCHA/consentimento, usar a interface autenticada `https://shopvivaliz.com.br/admin/browser-worker.php`.
+- Fred-Win (`LAPTOP-NIG4IFUU`) e `DESKTOP-KOCEPSV` sao proibidos como destino ou fallback de navegacao/browser. Nao usar relays Windows, Chrome/Edge/Opera local, Playwright/Selenium local ou CDP nesses hosts para navegacao.
+- O agente nao deve perguntar qual maquina usar para browser: o destino canonico e a VM backend. Excecao somente quando o proprietario ordenar explicitamente, na tarefa atual, o uso de um Windows especifico para aquela navegacao.
+- Se a VM/browser worker estiver indisponivel, reparar via OCI Bastion, tunel privado ou control plane canonico. Se houver bloqueio externo real, registrar o bloqueio; nunca fazer fallback silencioso para Windows.
+- Workflows, scripts e bridges de browser que ainda apontem para Fred-Win/KOCEPSV sao legado: nao executar como caminho normal ou fallback; migrar para a VM antes do proximo uso.
+- Windows continua permitido para tarefas nao-browser que dependam especificamente de Windows/hardware local; esta politica proibe seu uso para navegacao e automacao grafica/browser.
+- Toda sessao invisivel/headless transitoria iniciada por agente deve ter identidade e ownership rastreaveis e TTL padrao de 2 horas renovavel por heartbeat.
+- Ao concluir ou abandonar a tarefa, limpar sessoes/processos/perfis temporarios da execucao; nunca usar kill global por nome de processo.
+
+Regra principal: **browser/navegacao sempre na VM backend; Windows nunca e fallback.**
