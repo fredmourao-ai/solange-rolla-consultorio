@@ -38,6 +38,16 @@ describe('staging recovery hardening', () => {
     expect(backupWorkflow).toContain('NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}')
   })
 
+  it('keeps the protected staging database credential out of process argv', () => {
+    expect(recoveryScript).toContain('process.env.SUPABASE_DB_URL')
+    expect(recoveryScript).toContain('SUPABASE_DB_PASSWORD=$(node')
+    expect(recoveryScript).toContain('export SUPABASE_DB_PASSWORD')
+    expect(recoveryScript).toContain('unset SUPABASE_DB_URL')
+    expect(recoveryScript).toContain('--project-ref "$SUPABASE_STAGING_PROJECT_REF"')
+    expect(recoveryScript).not.toContain('node - "$SUPABASE_DB_URL"')
+    expect(recoveryScript).not.toContain('--db-url "$SUPABASE_DB_URL"')
+  })
+
   it('validates restored auth relationships instead of only table presence', () => {
     expect(recoveryScript).toContain('--schema public,clinical,auth')
     expect(restoreScript).toContain("to_regclass('auth.users')")
