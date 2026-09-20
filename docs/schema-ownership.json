@@ -159,7 +159,9 @@
     ],
     "fiscal_atomic_audit": [
       "audit",
-      "fiscal"
+      "fiscal",
+      "identity",
+      "platform"
     ]
   },
   "objects": {
@@ -247,7 +249,9 @@
     "public.tasks": "identity",
     "public.audit_person_updated": "audit",
     "public.create_recurring_payable_atomic": "payables",
-    "public.issue_mock_fiscal_document_atomic": "fiscal",
-    "public.cancel_mock_fiscal_document_atomic": "fiscal"
+    "public.cancel_mock_fiscal_document_atomic": "fiscal",
+    "public.begin_mock_fiscal_document_issue_atomic": "fiscal",
+    "public.complete_mock_fiscal_document_issue_atomic": "fiscal",
+    "public.fail_mock_fiscal_document_issue_atomic": "fiscal"
   }
 }
