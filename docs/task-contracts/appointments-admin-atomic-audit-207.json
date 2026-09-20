@@ -31,6 +31,14 @@
     {
       "name": "public.audit_events",
       "owner": "audit"
+    },
+    {
+      "name": "public.services",
+      "owner": "appointments"
+    },
+    {
+      "name": "public.cancellation_policies",
+      "owner": "appointments"
     }
   ]
 }
