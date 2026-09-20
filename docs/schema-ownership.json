@@ -156,6 +156,11 @@
     "payables_recurring_atomic_creation": [
       "audit",
       "payables"
+    ],
+    "events_atomic_audit": [
+      "audit",
+      "events",
+      "receivables"
     ]
   },
   "objects": {
@@ -242,6 +247,10 @@
     "public.record_payable_payment_atomic": "payables",
     "public.tasks": "identity",
     "public.audit_person_updated": "audit",
-    "public.create_recurring_payable_atomic": "payables"
+    "public.create_recurring_payable_atomic": "payables",
+    "public.create_event_atomic": "events",
+    "public.update_event_atomic": "events",
+    "public.update_event_registration_atomic": "events",
+    "public.create_event_expense_atomic": "events"
   }
 }
