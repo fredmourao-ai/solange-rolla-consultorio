@@ -1,6 +1,6 @@
 begin;
 
-select plan(23);
+select plan(24);
 
 insert into auth.users (id,aud,role,email,encrypted_password,email_confirmed_at,raw_app_meta_data,raw_user_meta_data)
 values
@@ -107,14 +107,14 @@ reset role;
 set local role authenticated;
 select set_config(
   'request.jwt.claims',
-  '{"sub":"fb000000-0000-4000-8000-000000000002","aal":"aal1","role":"authenticated"}',
+  '{"sub":"fb000000-0000-4000-8000-000000000001","aal":"aal2","role":"authenticated"}',
   true
 );
 select lives_ok(
-  $$ select public.create_event_expense_atomic(
+  $ select public.create_event_expense_atomic(
     'fb100000-0000-4000-8000-000000000001','atomic expense',1200,null
-  ) $$,
-  'accounting may create event expense atomically'
+  ) $,
+  'authorized event manager may create event expense atomically'
 );
 select is(
   (select count(*)::int from public.audit_events
@@ -220,20 +220,35 @@ reset role;
 set local role authenticated;
 select set_config(
   'request.jwt.claims',
-  '{"sub":"fb000000-0000-4000-8000-000000000002","aal":"aal1","role":"authenticated"}',
+  '{"sub":"fb000000-0000-4000-8000-000000000001","aal":"aal2","role":"authenticated"}',
   true
 );
 select throws_ok(
-  $$ select public.create_event_expense_atomic(
+  $ select public.create_event_expense_atomic(
     'fb100000-0000-4000-8000-000000000001','rollback expense',1300,null
-  ) $$,
+  ) $,
   '55000','SYNTHETIC_EVENT_AUDIT_FAILURE',
   'audit failure rolls back expense'
 );
 select is((select count(*)::int from public.event_expenses where description='rollback expense'),0,'failed expense leaves no row');
 
+reset role;
+set local role authenticated;
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"fb000000-0000-4000-8000-000000000002","aal":"aal1","role":"authenticated"}',
+  true
+);
 select throws_ok(
-  $$ select public.create_event_atomic(
+  $ select public.create_event_expense_atomic(
+    'fb100000-0000-4000-8000-000000000001','accounting forbidden expense',1400,null
+  ) $,
+  '42501','EVENT_EXPENSE_FORBIDDEN',
+  'accounting cannot mutate event expenses'
+);
+
+select throws_ok(
+  $ select public.create_event_atomic(
     'Accounting Forbidden Event','forbidden','group',
     '2035-03-02T18:00:00Z','2035-03-02T20:00:00Z','Room F','online',4,1000
   ) $$,
