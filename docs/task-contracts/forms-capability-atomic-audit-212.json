@@ -5,8 +5,7 @@
   "migration": "20260919225600_forms_capability_atomic_audit.sql",
   "owners": [
     "audit",
-    "forms",
-    "identity"
+    "forms"
   ],
   "objects": [
     {
@@ -36,10 +35,6 @@
     {
       "name": "public.audit_events",
       "owner": "audit"
-    },
-    {
-      "name": "public.has_permission",
-      "owner": "identity"
     }
   ]
 }
