@@ -5,16 +5,25 @@ set -Eeuo pipefail
 : "${SUPABASE_DB_URL:?SUPABASE_DB_URL is required}"
 RUNTIME_REF=${SUPABASE_PROJECT_REF:-$SUPABASE_STAGING_PROJECT_REF}
 [ "$RUNTIME_REF" = "$SUPABASE_STAGING_PROJECT_REF" ] || { echo 'staging_recovery_failed project_ref_mismatch' >&2; exit 1; }
-node - "$SUPABASE_DB_URL" "$SUPABASE_STAGING_PROJECT_REF" <<'NODE'
-const [rawUrl, projectRef] = process.argv.slice(2)
+
+SUPABASE_DB_PASSWORD=$(node <<'NODE'
+const rawUrl = process.env.SUPABASE_DB_URL || ''
+const projectRef = process.env.SUPABASE_STAGING_PROJECT_REF || ''
 let parsed
 try { parsed = new URL(rawUrl) } catch { throw new Error('staging_recovery_failed invalid_db_url') }
 if (!['postgres:', 'postgresql:'].includes(parsed.protocol)) throw new Error('staging_recovery_failed invalid_db_protocol')
 if (['127.0.0.1', 'localhost', '::1'].includes(parsed.hostname)) throw new Error('staging_recovery_failed local_db_url_forbidden')
 const identity = `${parsed.hostname} ${decodeURIComponent(parsed.username)}`
 if (!identity.includes(projectRef)) throw new Error('staging_recovery_failed db_project_ref_mismatch')
-process.stdout.write('staging_recovery_db_proven=true\\n')
+const password = decodeURIComponent(parsed.password)
+if (!password) throw new Error('staging_recovery_failed db_password_missing')
+process.stdout.write(password)
 NODE
+)
+export SUPABASE_DB_PASSWORD
+unset SUPABASE_DB_URL
+echo 'staging_recovery_db_proven=true'
+
 ROOT=${STAGING_DEPLOY_ROOT:-/home/ubuntu/solange-client-demo}
 DEST=${STAGING_RECOVERY_BACKUP_DEST:-$ROOT/managed-staging-backups}
 mkdir -p "$DEST"
@@ -36,10 +45,10 @@ SCHEMA="$DEST/staging-linked-schema-$TS.sql"
 DATA="$DEST/staging-linked-data-$TS.sql"
 SCHEMA_TMP="$SCHEMA.partial"
 DATA_TMP="$DATA.partial"
-cleanup(){ rm -f "$SCHEMA_TMP" "$DATA_TMP"; }
+cleanup(){ rm -f "$SCHEMA_TMP" "$DATA_TMP"; unset SUPABASE_DB_PASSWORD; }
 trap cleanup EXIT INT TERM
-npx supabase@2.115.0 db dump --db-url "$SUPABASE_DB_URL" --schema public,clinical,auth --file "$SCHEMA_TMP" --yes
-npx supabase@2.115.0 db dump --db-url "$SUPABASE_DB_URL" --schema public,clinical,auth --data-only --use-copy --file "$DATA_TMP" --yes
+npx supabase@2.115.0 db dump --project-ref "$SUPABASE_STAGING_PROJECT_REF" --schema public,clinical,auth --file "$SCHEMA_TMP" --yes
+npx supabase@2.115.0 db dump --project-ref "$SUPABASE_STAGING_PROJECT_REF" --schema public,clinical,auth --data-only --use-copy --file "$DATA_TMP" --yes
 [ -s "$SCHEMA_TMP" ] && [ -s "$DATA_TMP" ] || { echo 'staging_recovery_failed empty_logical_dump' >&2; exit 1; }
 chmod 600 "$SCHEMA_TMP" "$DATA_TMP"
 mv "$SCHEMA_TMP" "$SCHEMA"
