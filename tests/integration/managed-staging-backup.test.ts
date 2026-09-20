@@ -65,8 +65,11 @@ describe('staging logical recovery fallback', () => {
   it('exports the exact linked staging project and restore-verifies it', () => {
     expect(recoveryScript).toContain('SUPABASE_STAGING_PROJECT_REF')
     expect(recoveryScript).toContain('SUPABASE_DB_URL')
-    expect(recoveryScript).toContain('db dump --db-url "$SUPABASE_DB_URL"')
-    expect(recoveryScript).not.toContain('db dump --project-ref')
+    expect(recoveryScript).toContain('process.env.SUPABASE_DB_URL')
+    expect(recoveryScript).toContain('export SUPABASE_DB_PASSWORD')
+    expect(recoveryScript).toContain('unset SUPABASE_DB_URL')
+    expect(recoveryScript).toContain('db dump --project-ref "$SUPABASE_STAGING_PROJECT_REF"')
+    expect(recoveryScript).not.toContain('db dump --db-url "$SUPABASE_DB_URL"')
     expect(recoveryScript).toContain('staging_recovery_failed local_db_url_forbidden')
     expect(recoveryScript).toContain('db_project_ref_mismatch')
     expect(recoveryScript).toContain('--schema public,clinical,auth')
