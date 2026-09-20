@@ -1,4 +1,4 @@
--- owners: appointments,audit
+-- owners: appointments,audit,identity
 -- cross-module-task: docs/task-contracts/appointments-transition-atomic-audit-209.json
 -- allow-static-routines: true
 
