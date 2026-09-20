@@ -19,7 +19,7 @@ permissions:
 
 concurrency:
   # Collapse duplicate required-check completions for the same immutable PR head.
-  # A dedicated control runner keeps merge orchestration out of the CI runner queue.
+  # GitHub-hosted control plane keeps merge orchestration out of the private CI runner queue.
   group: pr-auto-merge-${{ github.event.workflow_run.head_sha }}
   cancel-in-progress: true
 
@@ -29,24 +29,11 @@ jobs:
       github.event.workflow_run.event == 'pull_request' &&
       (github.event.workflow_run.conclusion == 'success' ||
        github.event.workflow_run.conclusion == 'skipped')
-    runs-on: [self-hosted, Linux, ARM64, solange-control]
+    runs-on: ubuntu-latest
     timeout-minutes: 30
     outputs:
       main_sha: ${{ steps.revalidate.outputs.sha }}
     steps:
-      - name: Bootstrap verified GitHub CLI
-        env:
-          GH_VERSION: 2.98.0
-          GH_SHA256: cf689084f3a3618f7eae4a2420d335d74626d65f5e594b9828d125d69f800d86
-        shell: bash
-        run: |
-          set -Eeuo pipefail
-          archive="$RUNNER_TEMP/gh_${GH_VERSION}_linux_arm64.tar.gz"
-          curl -fsSL --retry 3 "https://github.com/cli/cli/releases/download/v${GH_VERSION}/gh_${GH_VERSION}_linux_arm64.tar.gz" -o "$archive"
-          printf '%s  %s\n' "$GH_SHA256" "$archive" | sha256sum -c -
-          tar -xzf "$archive" -C "$RUNNER_TEMP"
-          echo "$RUNNER_TEMP/gh_${GH_VERSION}_linux_arm64/bin" >> "$GITHUB_PATH"
-
       - name: Resolve eligible same-repository PR
         id: pr
         env:
