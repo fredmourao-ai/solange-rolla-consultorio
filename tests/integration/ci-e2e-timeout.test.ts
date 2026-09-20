@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
-const workflow = readFileSync(join(process.cwd(), '.github/workflows/ci.yml'), 'utf8')
+const workflow = readFileSync(join(process.cwd(), '.github/workflows/ci.yml'), 'utf8').replace(/\r\n/g, '\n')
 
 function e2eJobTimeoutMinutes(source: string): number {
   const match = source.match(/\n  e2e:\n[\s\S]*?\n    timeout-minutes:\s*(\d+)/)

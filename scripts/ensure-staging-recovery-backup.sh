@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+: "${SUPABASE_ACCESS_TOKEN:?SUPABASE_ACCESS_TOKEN is required}"
+: "${SUPABASE_STAGING_PROJECT_REF:?SUPABASE_STAGING_PROJECT_REF is required}"
+: "${SUPABASE_DB_URL:?SUPABASE_DB_URL is required}"
+RUNTIME_REF=${SUPABASE_PROJECT_REF:-$SUPABASE_STAGING_PROJECT_REF}
+[ "$RUNTIME_REF" = "$SUPABASE_STAGING_PROJECT_REF" ] || { echo 'staging_recovery_failed project_ref_mismatch' >&2; exit 1; }
+node - "$SUPABASE_DB_URL" "$SUPABASE_STAGING_PROJECT_REF" <<'NODE'
+const [rawUrl, projectRef] = process.argv.slice(2)
+let parsed
+try { parsed = new URL(rawUrl) } catch { throw new Error('staging_recovery_failed invalid_db_url') }
+if (!['postgres:', 'postgresql:'].includes(parsed.protocol)) throw new Error('staging_recovery_failed invalid_db_protocol')
+if (['127.0.0.1', 'localhost', '::1'].includes(parsed.hostname)) throw new Error('staging_recovery_failed local_db_url_forbidden')
+const identity = `${parsed.hostname} ${decodeURIComponent(parsed.username)}`
+if (!identity.includes(projectRef)) throw new Error('staging_recovery_failed db_project_ref_mismatch')
+process.stdout.write('staging_recovery_db_proven=true\\n')
+NODE
+ROOT=${STAGING_DEPLOY_ROOT:-/home/ubuntu/solange-client-demo}
+DEST=${STAGING_RECOVERY_BACKUP_DEST:-$ROOT/managed-staging-backups}
+mkdir -p "$DEST"
+chmod 700 "$DEST"
+set +e
+MANAGED_OUTPUT=$(node scripts/check-managed-staging-backup.mjs 2>&1)
+MANAGED_RC=$?
+set -e
+if [ "$MANAGED_RC" -eq 0 ]; then
+  printf '%s\n' "$MANAGED_OUTPUT"
+elif printf '%s' "$MANAGED_OUTPUT" | grep -Eq 'STAGING_BACKUP_COMPLETED_NOT_FOUND|STAGING_BACKUP_STALE'; then
+  echo 'managed_staging_backup_unavailable logical_export_required=true'
+else
+  printf '%s\n' "$MANAGED_OUTPUT" >&2
+  exit "$MANAGED_RC"
+fi
+TS=$(date -u +%Y%m%dT%H%M%SZ)
+SCHEMA="$DEST/staging-linked-schema-$TS.sql"
+DATA="$DEST/staging-linked-data-$TS.sql"
+SCHEMA_TMP="$SCHEMA.partial"
+DATA_TMP="$DATA.partial"
+cleanup(){ rm -f "$SCHEMA_TMP" "$DATA_TMP"; }
+trap cleanup EXIT INT TERM
+npx supabase@2.115.0 db dump --db-url "$SUPABASE_DB_URL" --schema public,clinical,auth --file "$SCHEMA_TMP" --yes
+npx supabase@2.115.0 db dump --db-url "$SUPABASE_DB_URL" --schema public,clinical,auth --data-only --use-copy --file "$DATA_TMP" --yes
+[ -s "$SCHEMA_TMP" ] && [ -s "$DATA_TMP" ] || { echo 'staging_recovery_failed empty_logical_dump' >&2; exit 1; }
+chmod 600 "$SCHEMA_TMP" "$DATA_TMP"
+mv "$SCHEMA_TMP" "$SCHEMA"
+mv "$DATA_TMP" "$DATA"
+sha256sum "$SCHEMA" > "$SCHEMA.sha256"
+sha256sum "$DATA" > "$DATA.sha256"
+chmod 600 "$SCHEMA.sha256" "$DATA.sha256"
+SCHEMA_FILE="$SCHEMA" DATA_FILE="$DATA" bash scripts/verify-staging-logical-backup-docker.sh
+STORAGE_DIR="$DEST/staging-storage-$TS"
+STAGING_STORAGE_BACKUP_DEST="$STORAGE_DIR" node scripts/backup-verify-staging-storage.mjs
+printf '%s source=supabase-linked project_ref=%s schema=%s data=%s storage=%s\n' "$(date -u +%FT%TZ)" "$SUPABASE_STAGING_PROJECT_REF" "$(basename "$SCHEMA")" "$(basename "$DATA")" "$(basename "$STORAGE_DIR")" > "$DEST/LAST_SUCCESS"
+chmod 600 "$DEST/LAST_SUCCESS"
+find "$DEST" -maxdepth 1 -type f -name 'staging-linked-*' -mtime +7 -delete
+find "$DEST" -mindepth 1 -maxdepth 1 -type d -name 'staging-storage-*' -mtime +7 -exec rm -rf -- {} +
+echo "staging_recovery_backup_ok source=supabase-linked schema=$(basename "$SCHEMA") data=$(basename "$DATA") storage=$(basename "$STORAGE_DIR")"

@@ -159,6 +159,18 @@ jobs:
           npm run environment:check
           node scripts/staging-lock.mjs
 
+      - name: Create and restore-verify staging recovery point
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_STAGING_PROJECT_REF }}
+          SUPABASE_STAGING_PROJECT_REF: ${{ secrets.SUPABASE_STAGING_PROJECT_REF }}
+          SUPABASE_PRODUCTION_PROJECT_REF: ${{ secrets.SUPABASE_PRODUCTION_PROJECT_REF }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          STAGING_BACKUP_MAX_AGE_SECONDS: 90000
+        run: STAGING_DEPLOY_ROOT="$STAGING_DEPLOY_ROOT" bash scripts/ensure-staging-recovery-backup.sh
+
       - name: Apply forward migrations
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
@@ -178,6 +190,16 @@ jobs:
           SUPABASE_PRODUCTION_PROJECT_REF: ${{ secrets.SUPABASE_PRODUCTION_PROJECT_REF }}
         run: node scripts/seed-staging-project.mjs
 
+      - name: Rotate and verify staging demo credential
+        env:
+          SUPABASE_STAGING_PROJECT_REF: ${{ secrets.SUPABASE_STAGING_PROJECT_REF }}
+          SUPABASE_PRODUCTION_PROJECT_REF: ${{ secrets.SUPABASE_PRODUCTION_PROJECT_REF }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          STAGING_DEMO_PASSWORD: ${{ secrets.STAGING_DEMO_PASSWORD }}
+        run: node scripts/rotate-staging-demo-credential.mjs
+
       - name: Deploy exact SHA to homologation
         shell: bash
         env:
@@ -187,6 +209,7 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          STAGING_DEMO_PASSWORD: ${{ secrets.STAGING_DEMO_PASSWORD }}
           WHATSAPP_LIVE_ENABLED: ${{ vars.WHATSAPP_LIVE_ENABLED }}
           EMAIL_LIVE_ENABLED: ${{ vars.EMAIL_LIVE_ENABLED }}
           NFSE_LIVE_ENABLED: ${{ vars.NFSE_LIVE_ENABLED }}
@@ -205,7 +228,6 @@ jobs:
           RECONCILER=solange-demo-reconciler
           TUNNEL=solange-demo-tunnel
           RECONCILER_PREVIOUS="$ROOT/reconcile-previous.sh"
-          STAGING_DB_CONTAINER=supabase_db_solange-client-demo
           TRANSACTION="$ROOT/state/deploy-transaction-$PROMOTE_SHA"
           APP_SWAPPED=0
           WEB_SWAPPED=0
@@ -264,10 +286,12 @@ jobs:
               fi
               if [ "$RECONCILER_SWAPPED" -eq 1 ] && [ -f "$RECONCILER_PREVIOUS" ]; then
                 mv "$RECONCILER_PREVIOUS" "$ROOT/reconcile.sh"
-                docker restart "$RECONCILER" >/dev/null 2>&1 || true
               else
                 rm -f "$RECONCILER_PREVIOUS"
               fi
+              rm -f "$ROOT/state/public-exposure-enabled"
+              docker update --restart=no solange-demo-tunnel "$RECONCILER" >/dev/null 2>&1 || true
+              docker stop solange-demo-tunnel "$RECONCILER" >/dev/null 2>&1 || true
               rm -f "$TRANSACTION"
             fi
             cleanup_stage
@@ -281,9 +305,9 @@ jobs:
           test -f "$ROOT/reconcile.sh"
           rm -f "$TRANSACTION" "$RECONCILER_PREVIOUS"
           cp -p "$ROOT/reconcile.sh" "$RECONCILER_PREVIOUS"
-          mkdir -p "$ROOT/backups"
-          chmod 700 "$ROOT/backups"
-          SOLANGE_BACKUP_DEST="$ROOT/backups" scripts/backup-homologation.sh
+          # Runtime data lives in the managed Supabase staging project. The local
+          # Docker database is not a recovery source for this release and must never
+          # be presented as its backup. Managed backup provenance is gated above.
 
           force_rm "$STAGE" "$PREVIOUS" "$CANDIDATE_STATE"
           mkdir -p "$STAGE" "$CANDIDATE_STATE/document" "$CANDIDATE_STATE/messaging" "$CANDIDATE_STATE/recurring"
@@ -304,6 +328,9 @@ jobs:
           parsed_app_url = urlsplit(app_url)
           if parsed_app_url.scheme not in {'http', 'https'} or not parsed_app_url.netloc:
               raise SystemExit('current staging URL is invalid')
+          staging_demo_password = os.environ.get('STAGING_DEMO_PASSWORD') or ''
+          if len(staging_demo_password) < 32:
+              raise SystemExit('protected staging demo credential is missing or too short')
           values = {}
           for raw in source.read_text().splitlines():
               line = raw.strip()
@@ -311,6 +338,7 @@ jobs:
                   continue
               key, value = line.split('=', 1)
               values[key] = value
+          values.pop('DB_URL', None)
           overrides = {
               'APP_ENV': 'staging',
               'APP_URL': app_url,
@@ -322,6 +350,8 @@ jobs:
               'NEXT_PUBLIC_SUPABASE_URL': os.environ['NEXT_PUBLIC_SUPABASE_URL'],
               'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY': os.environ['NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY'],
               'SUPABASE_SECRET_KEY': os.environ['SUPABASE_SECRET_KEY'],
+              'DEMO_LOCAL_PASSWORD': staging_demo_password,
+              'NEXT_PUBLIC_TEMP_ADMIN_LOGIN_ENABLED': 'false',
               'WHATSAPP_LIVE_ENABLED': os.environ.get('WHATSAPP_LIVE_ENABLED') or 'false',
               'EMAIL_LIVE_ENABLED': os.environ.get('EMAIL_LIVE_ENABLED') or 'false',
               'NFSE_LIVE_ENABLED': os.environ.get('NFSE_LIVE_ENABLED') or 'false',
@@ -355,64 +385,12 @@ jobs:
           subprocess.run(['npm', 'run', 'environment:check'], cwd=sys.argv[2], env=env, check=True)
           PY
 
-          read -r DB_HOST DB_PORT DB_USER < <(python3 - "$RUNTIME_ENV" <<'PY'
-          import pathlib, sys
-          from urllib.parse import urlsplit
-          values = {}
-          for raw in pathlib.Path(sys.argv[1]).read_text().splitlines():
-              if raw and not raw.startswith('#') and '=' in raw:
-                  key, value = raw.split('=', 1)
-                  values[key] = value
-          parsed = urlsplit(values.get('DB_URL', ''))
-          if not parsed.hostname:
-              raise SystemExit('DB_URL missing host for staging readiness check')
-          print(parsed.hostname, parsed.port or 5432, parsed.username or 'postgres')
-          PY
-          )
-          if [ "$DB_HOST" = 127.0.0.1 ] || [ "$DB_HOST" = localhost ]; then
-            if ! pg_isready -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" >/dev/null 2>&1; then
-              echo "staging database endpoint unavailable; repairing Docker publication" >&2
-              docker inspect "$STAGING_DB_CONTAINER" >/dev/null
-              docker restart -t 30 "$STAGING_DB_CONTAINER" >/dev/null
-              ready=0
-              for _ in $(seq 1 30); do
-                if pg_isready -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" >/dev/null 2>&1; then
-                  ready=1
-                  break
-                fi
-                sleep 1
-              done
-              if [ "$ready" -ne 1 ]; then
-                echo "staging database endpoint unavailable after repair" >&2
-                exit 1
-              fi
-            fi
-          fi
+          # Migrations are already applied to the exact managed staging project
+          # through scripts/apply-staging-migrations.mjs. The inherited local
+          # Docker DB_URL is deliberately excluded from managed staging.
 
-          python3 - "$RUNTIME_ENV" <<'PY'
-          import pathlib, subprocess, sys
-          from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
-          values = {}
-          for raw in pathlib.Path(sys.argv[1]).read_text().splitlines():
-              if raw and not raw.startswith('#') and '=' in raw:
-                  key, value = raw.split('=', 1)
-                  values[key] = value
-          db_url = values.get('DB_URL')
-          if not db_url:
-              raise SystemExit('DB_URL missing from staging runtime env')
-          parsed = urlsplit(db_url)
-          if parsed.hostname in {'127.0.0.1', 'localhost'}:
-              query = dict(parse_qsl(parsed.query, keep_blank_values=True))
-              query['sslmode'] = 'disable'
-              db_url = urlunsplit((parsed.scheme, parsed.netloc, parsed.path, urlencode(query), parsed.fragment))
-          result = subprocess.run(['npx', 'supabase@2.115.0', 'db', 'push', '--db-url', db_url, '--include-all', '--yes'])
-          if result.returncode:
-              print('staging migration push failed', file=sys.stderr)
-              raise SystemExit(result.returncode)
-          PY
-
-          docker run --rm --network host --user "$(id -u):$(id -g)" -e HOME=/tmp -e npm_config_cache=/tmp/.npm -v "$STAGE:/app" -w /app node:24-bookworm-slim npm ci
-          docker run --rm --network host --user "$(id -u):$(id -g)" -e HOME=/tmp -e npm_config_cache=/tmp/.npm -v "$STAGE:/app" -w /app node:24-bookworm-slim npm run build
+          docker run --rm --network host --user "$(id -u):$(id -g)" -e HOME=/tmp -e npm_config_cache=/tmp/.npm -v "$STAGE:/app" -w /app node:24.19.0-bookworm-slim npm ci
+          docker run --rm --network host --user "$(id -u):$(id -g)" -e HOME=/tmp -e npm_config_cache=/tmp/.npm -v "$STAGE:/app" -w /app node:24.19.0-bookworm-slim npm run build
           test -f "$STAGE/package.json"
           test -f "$STAGE/.env.production.local"
           test -s "$STAGE/.next/BUILD_ID"
@@ -438,10 +416,7 @@ jobs:
             --env-file "$RUNTIME_ENV" \
             -v "$APP:/app" \
             -w /app \
-            node:24-bookworm-slim npm run start -- --hostname 127.0.0.1 --port 3200 >/dev/null
-          docker update --restart unless-stopped "$RECONCILER" "$TUNNEL" >/dev/null
-          docker restart "$RECONCILER" >/dev/null
-
+            node:24.19.0-bookworm-slim npm run start -- --hostname 127.0.0.1 --port 3200 >/dev/null
           docker rm -f "${DOC}-previous" "${MSG}-previous" "${REC}-previous" >/dev/null 2>&1 || true
           WORKERS_SWAPPED=1
           if docker inspect "$DOC" >/dev/null 2>&1; then docker rename "$DOC" "${DOC}-previous"; fi
@@ -471,21 +446,42 @@ jobs:
         run: |
           set -Eeuo pipefail
           ROOT="$STAGING_DEPLOY_ROOT"
+          RECONCILER=solange-demo-reconciler
+          TUNNEL=solange-demo-tunnel
           test "$(cat "$ROOT/state/deployed-sha.txt")" = "$PROMOTE_SHA"
-          URL=$(cat "$ROOT/state/current-url.txt")
+
+          # Keep staging private until the exact candidate proves healthy locally.
+          local_payload=$(curl --fail --silent --show-error --max-time 10 http://127.0.0.1:3200/api/health)
+          test "$(printf '%s' "$local_payload" | jq -r '.status // empty')" = ok
+          test "$(printf '%s' "$local_payload" | jq -r '.buildSha // empty')" = "$PROMOTE_SHA"
+
+          printf '%s\n' true > "$ROOT/state/public-exposure-enabled"
+          chmod 600 "$ROOT/state/public-exposure-enabled"
+          docker update --restart unless-stopped "$RECONCILER" "$TUNNEL" >/dev/null
+          docker restart "$RECONCILER" >/dev/null
+
+          URL=''
           actual=''
-          for _ in $(seq 1 30); do
-            payload=$(curl --fail --silent --show-error "$URL/api/health" || true)
-            actual=$(printf '%s' "$payload" | jq -r '.buildSha // empty' 2>/dev/null || true)
-            [ "$actual" = "$PROMOTE_SHA" ] && break
+          for _ in $(seq 1 60); do
+            candidate_url=$(cat "$ROOT/state/current-url.txt" 2>/dev/null || true)
+            if [ -n "$candidate_url" ]; then
+              payload=$(curl --fail --silent --show-error --max-time 10 "$candidate_url/api/health" || true)
+              actual=$(printf '%s' "$payload" | jq -r '.buildSha // empty' 2>/dev/null || true)
+              status=$(printf '%s' "$payload" | jq -r '.status // empty' 2>/dev/null || true)
+              if [ "$actual" = "$PROMOTE_SHA" ] && [ "$status" = ok ]; then
+                URL="$candidate_url"
+                break
+              fi
+            fi
             sleep 2
           done
+          test -n "$URL"
           test "$actual" = "$PROMOTE_SHA"
           test "$(sed -n 's/^APP_URL=//p' "$ROOT/app/.env.production.local" | tail -1)" = "$URL"
           test "$(docker inspect -f '{{.HostConfig.RestartPolicy.Name}}' solange-client-demo-web)" = unless-stopped
-          test "$(docker inspect -f '{{.HostConfig.RestartPolicy.Name}}' solange-demo-reconciler)" = unless-stopped
-          test "$(docker inspect -f '{{.HostConfig.RestartPolicy.Name}}' solange-demo-tunnel)" = unless-stopped
-          test "$(docker inspect -f '{{.State.Status}}' solange-demo-reconciler)" = running
+          test "$(docker inspect -f '{{.HostConfig.RestartPolicy.Name}}' "$RECONCILER")" = unless-stopped
+          test "$(docker inspect -f '{{.HostConfig.RestartPolicy.Name}}' "$TUNNEL")" = unless-stopped
+          test "$(docker inspect -f '{{.State.Status}}' "$RECONCILER")" = running
           case "$(sed -n 's/^NEXT_PUBLIC_SUPABASE_URL=//p' "$ROOT/app/.env.production.local" | tail -1)" in
             *.trycloudflare.com*) echo 'Supabase URL must not point at the staging tunnel' >&2; exit 1 ;;
           esac
@@ -546,12 +542,6 @@ jobs:
           )
           PY
 
-      - name: Refresh durable backup scheduler
-        shell: bash
-        run: |
-          set -Eeuo pipefail
-          ROOT="$GITHUB_WORKSPACE" DEMO="$STAGING_DEPLOY_ROOT" bash ops/backup/run-demo-scheduler.sh
-
       - name: Rollback staging release after failed validation
         if: failure()
         shell: bash
@@ -585,7 +575,9 @@ jobs:
           if [ -f "$RECONCILER_PREVIOUS" ]; then
             mv "$RECONCILER_PREVIOUS" "$ROOT/reconcile.sh"
           fi
-          docker restart "$RECONCILER" >/dev/null 2>&1 || true
+          rm -f "$ROOT/state/public-exposure-enabled"
+          docker update --restart=no solange-demo-tunnel "$RECONCILER" >/dev/null 2>&1 || true
+          docker stop solange-demo-tunnel "$RECONCILER" >/dev/null 2>&1 || true
           if docker inspect "${DOC}-previous" >/dev/null 2>&1; then
             docker rm -f "$DOC" >/dev/null 2>&1 || true
             docker rename "${DOC}-previous" "$DOC"
