@@ -1,4 +1,4 @@
--- owners: audit,forms,identity
+-- owners: audit,forms
 -- cross-module-task: docs/task-contracts/forms-capability-atomic-audit-212.json
 -- allow-static-routines: true
 
