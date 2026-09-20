@@ -6,7 +6,6 @@ import {
   type Appointment,
   type AppointmentStatusRepository,
 } from '@/modules/appointments/public'
-import { type AuditEvent, type AuditEventRepository } from '@/modules/audit/public'
 import {
   completeAppointmentWithHandoff,
   getClinicalRecord,
@@ -31,7 +30,6 @@ import {
 import type { Task, TaskRepository } from '@/modules/tasks/public'
 import { createSensitiveDataCrypto } from '@/platform/crypto/aes-gcm'
 import { createServerSupabaseClient } from '@/platform/supabase/server'
-import type { Database } from '@/platform/supabase/types'
 import { PageHeader } from '@/shared/ui/page-header'
 
 export const dynamic = 'force-dynamic'
@@ -54,23 +52,6 @@ function ageFrom(date: string) {
   if (now.getUTCMonth() < birth.getUTCMonth()
     || (now.getUTCMonth() === birth.getUTCMonth() && now.getUTCDate() < birth.getUTCDate())) age -= 1
   return Math.max(age, 0)
-}
-
-function auditRepository(client: Awaited<ReturnType<typeof createServerSupabaseClient>>): AuditEventRepository {
-  return {
-    async insert(event: AuditEvent): Promise<void> {
-      const { error } = await client.from('audit_events').insert({
-        actor_user_id: event.actorId,
-        action: event.action,
-        entity_type: event.entityType,
-        entity_id: event.entityId,
-        correlation_id: event.correlationId,
-        metadata: event.metadata as Database['public']['Tables']['audit_events']['Insert']['metadata'],
-        created_at: event.createdAt,
-      })
-      if (error) throw new Error('CARE_AUDIT_FAILED')
-    },
-  }
 }
 
 async function requireClinicalSession(returnTo: string, permission: 'clinical.read' | 'clinical.create') {
