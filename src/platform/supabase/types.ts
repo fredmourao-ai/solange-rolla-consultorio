@@ -2037,7 +2037,7 @@ export type Database = {
           p_amount_cents: number
           p_description: string
           p_event_id: string
-          p_paid_at: string
+          p_paid_at?: string
         }
         Returns: string
       }
