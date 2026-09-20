@@ -6,8 +6,7 @@
   "owners": [
     "audit",
     "clinical",
-    "people",
-    "identity"
+    "people"
   ],
   "objects": [
     {
@@ -33,10 +32,6 @@
     {
       "name": "public.audit_events",
       "owner": "audit"
-    },
-    {
-      "name": "public.has_permission",
-      "owner": "identity"
     },
     {
       "name": "clinical.reject_clinical_record_mutation",
