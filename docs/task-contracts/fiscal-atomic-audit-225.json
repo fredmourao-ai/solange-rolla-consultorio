@@ -5,7 +5,8 @@
   "migration": "20260919230000_fiscal_atomic_audit.sql",
   "owners": [
     "audit",
-    "fiscal"
+    "fiscal",
+    "identity"
   ],
   "objects": [
     {
@@ -39,6 +40,10 @@
     {
       "name": "public.fiscal_treatments",
       "owner": "fiscal"
+    },
+    {
+      "name": "public.has_permission",
+      "owner": "identity"
     }
   ]
 }
