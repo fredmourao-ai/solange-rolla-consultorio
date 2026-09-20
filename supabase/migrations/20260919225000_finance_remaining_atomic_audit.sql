@@ -1,4 +1,4 @@
--- owners: audit,payables,receivables
+-- owners: audit,identity,payables,receivables
 -- cross-module-task: docs/task-contracts/finance-remaining-atomic-audit-211.json
 -- allow-static-routines: true
 
