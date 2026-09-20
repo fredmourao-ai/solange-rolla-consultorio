@@ -6,7 +6,7 @@ import {
   type Appointment,
   type AppointmentStatusRepository,
 } from '@/modules/appointments/public'
-import { recordAuditEvent, type AuditEvent, type AuditEventRepository } from '@/modules/audit/public'
+import { type AuditEvent, type AuditEventRepository } from '@/modules/audit/public'
 import {
   completeAppointmentWithHandoff,
   getClinicalRecord,
@@ -116,7 +116,7 @@ function toAppointment(row: {
 async function startCareAction(formData: FormData) {
   'use server'
   const appointmentId = String(formData.get('appointment_id') ?? '')
-  const session = await requireClinicalSession(`/atendimentos/${appointmentId}`, 'clinical.create')
+  await requireClinicalSession(`/atendimentos/${appointmentId}`, 'clinical.create')
   const client = await createServerSupabaseClient()
   const { data: row, error } = await client.from('appointments')
     .select('id,person_id,service_id,starts_at,ends_at,status,policy_version,cancellation_deadline_at,cancellation_policy_snapshot')
@@ -129,33 +129,17 @@ async function startCareAction(formData: FormData) {
   const appointment = toAppointment(row)
   const repository: AppointmentStatusRepository = {
     async updateStatus(id, status) {
-      const { data, error: updateError } = await client.from('appointments')
-        .update({ status })
-        .eq('id', id)
-        .eq('status', 'checked_in')
-        .select('id,person_id,service_id,starts_at,ends_at,status,policy_version,cancellation_deadline_at,cancellation_policy_snapshot')
-        .maybeSingle()
-      if (updateError || !data) throw new Error('CARE_START_CONFLICT')
-      const { error: historyError } = await client.from('appointment_status_history').insert({
-        appointment_id: id,
-        from_status: 'checked_in',
-        to_status: status,
-        changed_by_user_id: session.userId,
+      const { data, error: updateError } = await client.rpc('transition_appointment_status_atomic', {
+        p_appointment_id: id,
+        p_command: 'start',
       })
-      if (historyError) throw new Error('CARE_STATUS_HISTORY_FAILED')
-      return toAppointment(data)
+      if (updateError) throw new Error('CARE_START_CONFLICT')
+      if (String(data) !== status) throw new Error('CARE_START_TRANSITION_DRIFT')
+      return { ...appointment, status }
     },
   }
 
   await changeAppointmentStatus(appointment, 'start', repository)
-  await recordAuditEvent({
-    actorId: session.userId,
-    action: 'appointment.care_started',
-    entityType: 'appointment',
-    entityId: appointmentId,
-    correlationId: appointmentId,
-    metadata: { personId: appointment.personId },
-  }, auditRepository(client))
   redirect(`/atendimentos/${appointmentId}`)
 }
 
@@ -279,32 +263,16 @@ async function finishCareAction(formData: FormData) {
   const appointment = toAppointment(row)
   const statusRepository: AppointmentStatusRepository = {
     async updateStatus(id, status) {
-      const { data, error: updateError } = await client.from('appointments')
-        .update({ status })
-        .eq('id', id)
-        .eq('status', 'in_progress')
-        .select('id,person_id,service_id,starts_at,ends_at,status,policy_version,cancellation_deadline_at,cancellation_policy_snapshot')
-        .maybeSingle()
-      if (updateError || !data) throw new Error('CARE_COMPLETE_CONFLICT')
-      const { error: historyError } = await client.from('appointment_status_history').insert({
-        appointment_id: id,
-        from_status: 'in_progress',
-        to_status: status,
-        changed_by_user_id: session.userId,
+      const { data, error: updateError } = await client.rpc('transition_appointment_status_atomic', {
+        p_appointment_id: id,
+        p_command: 'complete',
       })
-      if (historyError) throw new Error('CARE_STATUS_HISTORY_FAILED')
-      return toAppointment(data)
+      if (updateError) throw new Error('CARE_COMPLETE_CONFLICT')
+      if (String(data) !== status) throw new Error('CARE_COMPLETE_TRANSITION_DRIFT')
+      return { ...appointment, status }
     },
   }
   await changeAppointmentStatus(appointment, 'complete', statusRepository)
-  await recordAuditEvent({
-    actorId: session.userId,
-    action: 'appointment.care_completed',
-    entityType: 'appointment',
-    entityId: appointmentId,
-    correlationId: appointmentId,
-    metadata: { personId },
-  }, auditRepository(client))
 
   redirect(`/pessoas/${personId}?status=care_completed`)
 }
