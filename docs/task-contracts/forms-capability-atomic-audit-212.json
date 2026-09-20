@@ -2,10 +2,11 @@
   "version": 1,
   "status": "approved",
   "issue": 212,
-  "migration": "20260919227000_forms_capability_atomic_audit.sql",
+  "migration": "20260919225600_forms_capability_atomic_audit.sql",
   "owners": [
     "audit",
-    "forms"
+    "forms",
+    "identity"
   ],
   "objects": [
     {
@@ -35,6 +36,10 @@
     {
       "name": "public.audit_events",
       "owner": "audit"
+    },
+    {
+      "name": "public.has_permission",
+      "owner": "identity"
     }
   ]
 }
