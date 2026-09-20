@@ -11,7 +11,7 @@ language plpgsql
 stable
 security invoker
 set search_path = public, pg_temp
-as $
+as $$
 declare
   v_countable_hours integer;
   v_excluded_weekdays jsonb;
@@ -70,7 +70,7 @@ begin
 
   return (v_candidate_date + v_local_start::time) at time zone v_timezone;
 end;
-$;
+$$;
 
 revoke all on function public.appointment_cancellation_deadline_from_snapshot(timestamptz, jsonb) from public, anon;
 grant execute on function public.appointment_cancellation_deadline_from_snapshot(timestamptz, jsonb) to authenticated;
