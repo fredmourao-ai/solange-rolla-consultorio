@@ -6,8 +6,7 @@
   "owners": [
     "audit",
     "payables",
-    "receivables",
-    "identity"
+    "receivables"
   ],
   "objects": [
     {
@@ -65,10 +64,6 @@
     {
       "name": "public.audit_events",
       "owner": "audit"
-    },
-    {
-      "name": "public.has_permission",
-      "owner": "identity"
     }
   ]
 }
