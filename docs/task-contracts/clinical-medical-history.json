@@ -2,11 +2,12 @@
   "version": 1,
   "status": "approved",
   "issue": 192,
-  "migration": "20260919010000_clinical_medical_history.sql",
+  "migration": "20260919204500_clinical_medical_history.sql",
   "owners": [
     "audit",
     "clinical",
-    "people"
+    "people",
+    "identity"
   ],
   "objects": [
     {
@@ -32,6 +33,14 @@
     {
       "name": "public.audit_events",
       "owner": "audit"
+    },
+    {
+      "name": "public.has_permission",
+      "owner": "identity"
+    },
+    {
+      "name": "clinical.reject_clinical_record_mutation",
+      "owner": "clinical"
     }
   ]
 }
