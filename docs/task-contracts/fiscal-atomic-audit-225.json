@@ -6,7 +6,8 @@
   "owners": [
     "audit",
     "fiscal",
-    "identity"
+    "identity",
+    "platform"
   ],
   "objects": [
     {
@@ -19,10 +20,6 @@
     },
     {
       "name": "public.fiscal_cancellation_events",
-      "owner": "fiscal"
-    },
-    {
-      "name": "public.issue_mock_fiscal_document_atomic",
       "owner": "fiscal"
     },
     {
@@ -44,6 +41,22 @@
     {
       "name": "public.has_permission",
       "owner": "identity"
+    },
+    {
+      "name": "public.begin_mock_fiscal_document_issue_atomic",
+      "owner": "fiscal"
+    },
+    {
+      "name": "public.complete_mock_fiscal_document_issue_atomic",
+      "owner": "fiscal"
+    },
+    {
+      "name": "public.fail_mock_fiscal_document_issue_atomic",
+      "owner": "fiscal"
+    },
+    {
+      "name": "storage.objects",
+      "owner": "platform"
     }
   ]
 }
