@@ -15,4 +15,19 @@ type EventRegistrationRpc = (name: 'register_event_participant_atomic', args: { 
 
 export async function registerParticipantAction(formData: FormData) { const { client } = await ctx(['psychologist_owner','secretary']); const eventId = txt(formData,'event_id'); const personId = txt(formData,'person_id'); const { data: event, error: eventError } = await client.from('events').select('default_price_cents').eq('id',eventId).single(); if(eventError) throw new Error(`EVENT_READ_FAILED:${eventError.code}`); if(!event) throw new Error('EVENT_NOT_OPEN'); const priceCents = formData.get('price') ? cents(formData.get('price')) : event.default_price_cents; const status = priceCents > 0 ? 'pending_payment' : 'confirmed'; const eventRpc = client.rpc.bind(client) as unknown as EventRegistrationRpc; const { data: registrationIds, error } = await eventRpc('register_event_participant_atomic',{p_event_id:eventId,p_person_id:personId,p_price_cents:priceCents,p_status:status}); if(error){ if(error.message.includes('EVENT_FULL')) redirect('/eventos/operacoes?error=event_full'); if(error.message.includes('EVENT_NOT_OPEN')) throw new Error('EVENT_NOT_OPEN'); throw new Error(`EVENT_REGISTRATION_FAILED:${error.code}`) } const registrationId = registrationIds?.[0]; if(!registrationId) throw new Error('EVENT_REGISTRATION_FAILED'); redirect('/eventos/operacoes') }
 export async function updateRegistrationAction(formData: FormData) { const { client } = await ctx(['psychologist_owner','secretary']); const id=txt(formData,'registration_id'); const status=txt(formData,'status'); const attendance=txt(formData,'attendance_status'); if(!['confirmed','pending_payment','waitlisted','cancelled'].includes(status)||!['present','absent','unknown'].includes(attendance)) throw new Error('EVENT_REGISTRATION_STATE_INVALID'); const { error }=await client.rpc('update_event_registration_atomic',{p_registration_id:id,p_status:status,p_attendance_status:attendance}); if(error) throw new Error('EVENT_REGISTRATION_UPDATE_FAILED'); redirect('/eventos/operacoes') }
-export async function addExpenseAction(formData: FormData) { const { client }=await ctx(['psychologist_owner','accounting']); const eventId=txt(formData,'event_id'); const description=txt(formData,'description'); const amountCents=cents(formData.get('amount')); if(amountCents<=0) throw new Error('EVENT_EXPENSE_INVALID'); const { error }=await client.rpc('create_event_expense_atomic',{p_event_id:eventId,p_description:description,p_amount_cents:amountCents,p_paid_at:formData.get('paid')==='yes'?new Date().toISOString():null}); if(error) throw new Error('EVENT_EXPENSE_FAILED'); redirect('/eventos/operacoes') }
+export async function addExpenseAction(formData: FormData) {
+  const { client } = await ctx(['psychologist_owner','secretary'])
+  const eventId = txt(formData,'event_id')
+  const description = txt(formData,'description')
+  const amountCents = cents(formData.get('amount'))
+  if (amountCents <= 0) throw new Error('EVENT_EXPENSE_INVALID')
+  const paidAt = formData.get('paid') === 'yes' ? new Date().toISOString() : undefined
+  const { error } = await client.rpc('create_event_expense_atomic', {
+    p_event_id: eventId,
+    p_description: description,
+    p_amount_cents: amountCents,
+    ...(paidAt ? { p_paid_at: paidAt } : {}),
+  })
+  if (error) throw new Error('EVENT_EXPENSE_FAILED')
+  redirect('/eventos/operacoes')
+}
