@@ -31,6 +31,14 @@
     {
       "name": "public.audit_events",
       "owner": "audit"
+    },
+    {
+      "name": "public.fiscal_profiles",
+      "owner": "fiscal"
+    },
+    {
+      "name": "public.fiscal_treatments",
+      "owner": "fiscal"
     }
   ]
 }
