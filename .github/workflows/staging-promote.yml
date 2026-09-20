@@ -543,7 +543,7 @@ jobs:
           PY
 
       - name: Rollback staging release after failed validation
-        if: failure()
+        if: failure() || cancelled()
         shell: bash
         run: |
           set -Eeuo pipefail

@@ -48,6 +48,12 @@ describe('staging recovery hardening', () => {
     expect(recoveryScript).not.toContain('--db-url "$SUPABASE_DB_URL"')
   })
 
+  it('rolls back public exposure on validation failure or workflow cancellation', () => {
+    expect(promoteWorkflow).toContain('if: failure() || cancelled()')
+    expect(promoteWorkflow).toContain('rm -f "$ROOT/state/public-exposure-enabled"')
+    expect(promoteWorkflow).toContain('docker update --restart=no solange-demo-tunnel "$RECONCILER"')
+  })
+
   it('validates restored auth relationships instead of only table presence', () => {
     expect(recoveryScript).toContain('--schema public,clinical,auth')
     expect(restoreScript).toContain("to_regclass('auth.users')")
