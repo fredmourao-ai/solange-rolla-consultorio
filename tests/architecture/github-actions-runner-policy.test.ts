@@ -15,6 +15,7 @@ const runnerLineExceptions: Record<string, string> = {
   'staging-promote.yml': `runs-on: [${[...runnerLabels, 'solange-staging-host'].join(', ')}]`,
   'diag-staging-host.yml': `runs-on: [${[...runnerLabels, 'solange-staging-host'].join(', ')}]`,
   'historical-state-audit.yml': `runs-on: [${[...runnerLabels, 'solange-staging-host'].join(', ')}]`,
+  'host-disk-guard.yml': `runs-on: [${[...runnerLabels, 'solange-staging-host'].join(', ')}]`,
 }
 const sameRepoGuard = 'github.event.pull_request.head.repo.full_name == github.repository'
 type PullRequestEvent = 'pull_request' | 'pull_request_target'
