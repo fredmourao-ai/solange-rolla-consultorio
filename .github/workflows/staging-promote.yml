@@ -8,7 +8,7 @@ on:
         required: true
         type: string
   workflow_run:
-    workflows: [CI, Database, Repository Governance Gate]
+    workflows: [CI, Database, Repository Governance Gate, Absolute Audit Main Guard]
     types: [completed]
 
 permissions:
@@ -48,7 +48,7 @@ jobs:
           const token = process.env.GITHUB_TOKEN
           const eventName = process.env.GITHUB_EVENT_NAME
           const output = process.env.GITHUB_OUTPUT
-          const required = ['CI', 'Database', 'Repository Governance Gate']
+          const required = ['CI', 'Database', 'Repository Governance Gate', 'Absolute Audit Main Guard']
           const headers = {
             Accept: 'application/vnd.github+json',
             Authorization: `Bearer ${token}`,
