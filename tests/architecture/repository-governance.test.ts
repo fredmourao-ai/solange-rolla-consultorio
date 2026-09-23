@@ -169,7 +169,7 @@ describe('repository governance contract', () => {
 
     expect(workflow).toContain('Re-validate merged main at its exact SHA')
     expect(workflow).toContain('repos/$REPO/git/ref/heads/main')
-    expect(workflow).toContain('for workflow in ci.yml db.yml repository-governance.yml')
+    expect(workflow).toContain('for workflow in ci.yml db.yml repository-governance.yml absolute-audit-main-guard.yml')
     expect(workflow).toContain('actions/workflows/$workflow/dispatches')
   })
 
