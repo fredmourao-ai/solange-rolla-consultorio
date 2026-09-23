@@ -15,4 +15,13 @@ describe('post-merge main revalidation', () => {
     expect(workflow).toContain('event=workflow_dispatch')
     expect(workflow).toContain('Skipping already-dispatched')
   })
+
+  it('dispatches and waits for the Absolute Audit Main Guard before staging handoff', () => {
+    expect(workflow).toContain(
+      'for workflow in ci.yml db.yml repository-governance.yml absolute-audit-main-guard.yml',
+    )
+    expect(workflow).toContain(
+      "required=('CI' 'Database' 'Repository Governance Gate' 'Absolute Audit Main Guard')",
+    )
+  })
 })
