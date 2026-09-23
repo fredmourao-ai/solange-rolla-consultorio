@@ -141,12 +141,12 @@ jobs:
         id: revalidate
         # The squash merge above is pushed with GITHUB_TOKEN, which GitHub
         # does not treat as a `push` event trigger. Without this step,
-        # ci.yml/db.yml/repository-governance.yml's `push` triggers never
-        # fire for the resulting main commit, so it can never accumulate the
-        # push-gated check runs that staging-promote.yml requires before it
-        # will deploy an exact SHA. Re-dispatch those three workflows against
-        # the new main tip so the commit gets validated in its final,
-        # merged form instead of only as a pre-merge PR head.
+        # the canonical post-merge workflows' `push` triggers never fire for
+        # the resulting main commit, so it can never accumulate the check runs
+        # that staging-promote.yml requires before it will deploy an exact SHA.
+        # Re-dispatch all canonical validation workflows against the new main tip
+        # so the commit gets validated in its final, merged form instead of only
+        # as a pre-merge PR head.
         if: steps.pr.outputs.pr_number != '' || steps.pr.outputs.merged_main_sha != ''
         env:
           GH_TOKEN: ${{ github.token }}
