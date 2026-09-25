@@ -1,6 +1,6 @@
 'use server'
 
-import { createHash } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import { redirect } from 'next/navigation'
 import { authorizeStaffPermission, getStaffSession } from '@/modules/identity/public'
 import { createServerSupabaseClient } from '@/platform/supabase/server'
@@ -31,13 +31,39 @@ async function context(permission: 'fiscal.issue' | 'fiscal.cancel') {
 async function recordIssueFailure(
   client: Awaited<ReturnType<typeof createServerSupabaseClient>>,
   documentId: string,
+  attemptId: string,
   errorCode: string,
 ) {
   const { error } = await client.rpc('fail_mock_fiscal_document_issue_atomic', {
     p_document_id: documentId,
+    p_attempt_id: attemptId,
     p_error_code: errorCode,
   })
   if (error) throw new Error(`FISCAL_ISSUE_RECOVERY_RECORD_FAILED:${error.code}`)
+}
+
+type MockIssueLease = {
+  state: 'issued' | 'process'
+  documentId: string
+  attemptId: string | null
+  previousAttemptId: string | null
+}
+
+function parseMockIssueLease(value: unknown): MockIssueLease {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('FISCAL_ISSUE_LEASE_INVALID')
+  const row = value as Record<string, unknown>
+  if (
+    (row.state !== 'issued' && row.state !== 'process')
+    || typeof row.documentId !== 'string'
+    || (row.attemptId !== null && typeof row.attemptId !== 'string')
+    || (row.previousAttemptId !== null && typeof row.previousAttemptId !== 'string')
+  ) throw new Error('FISCAL_ISSUE_LEASE_INVALID')
+  return {
+    state: row.state,
+    documentId: row.documentId,
+    attemptId: row.attemptId,
+    previousAttemptId: row.previousAttemptId,
+  }
 }
 
 export async function issueMockNfseAction(formData: FormData) {
@@ -79,17 +105,19 @@ export async function issueMockNfseAction(formData: FormData) {
   const idempotencyKey = `${sourceType}:${sourceId}:${profile.version}:${treatment.version}`
   const digest = createHash('sha256').update(idempotencyKey).digest('hex')
   const id = stableUuid(createHash('sha256').update(`fiscal-mock:${idempotencyKey}`).digest('hex'))
+  const attemptId = randomUUID()
   const externalId = `mock-nfse-${digest.slice(0, 20)}`
   const protocol = `mock-protocol-${digest.slice(0, 20)}`
   const xml = new TextEncoder().encode(`<NFS-e synthetic="true" id="${externalId}" amountCents="${amountCents}"/>`)
   const pdf = new TextEncoder().encode(`NFS-e MOCK/SANDBOX\n${externalId}\nValor: ${amountCents}\nSEM VALIDADE FISCAL`)
-  const xmlPath = `${id}/nfse.xml`
-  const pdfPath = `${id}/nfse.pdf`
+  const xmlPath = `${id}/${attemptId}/nfse.xml`
+  const pdfPath = `${id}/${attemptId}/nfse.pdf`
   const xmlSha256 = createHash('sha256').update(xml).digest('hex')
   const pdfSha256 = createHash('sha256').update(pdf).digest('hex')
 
-  const { data: begunId, error: beginError } = await client.rpc('begin_mock_fiscal_document_issue_atomic', {
+  const { data: beginData, error: beginError } = await client.rpc('begin_mock_fiscal_document_issue_atomic', {
     p_document_id: id,
+    p_attempt_id: attemptId,
     p_source_type: sourceType,
     p_source_id: sourceId,
     p_person_id: personId,
@@ -109,9 +137,14 @@ export async function issueMockNfseAction(formData: FormData) {
     p_pdf_sha256: pdfSha256,
     p_pdf_byte_length: pdf.byteLength,
   })
-  if (beginError || begunId !== id) {
-    throw new Error(`FISCAL_ISSUE_BEGIN_FAILED:${beginError?.code ?? 'identity_drift'}`)
+  if (beginError) {
+    const known = beginError.message.includes('FISCAL_ISSUE_IN_PROGRESS') ? 'FISCAL_ISSUE_IN_PROGRESS' : beginError.code
+    throw new Error(`FISCAL_ISSUE_BEGIN_FAILED:${known}`)
   }
+  const lease = parseMockIssueLease(beginData)
+  if (lease.documentId !== id) throw new Error('FISCAL_ISSUE_LEASE_IDENTITY_DRIFT')
+  if (lease.state === 'issued') redirect('/fiscal/operacoes')
+  if (lease.attemptId !== attemptId) throw new Error('FISCAL_ISSUE_LEASE_IDENTITY_DRIFT')
 
   const { data: durable, error: durableError } = await client
     .from('fiscal_documents')
@@ -124,24 +157,33 @@ export async function issueMockNfseAction(formData: FormData) {
 
   const bucket = client.storage.from('fiscal-documents-private')
 
-  // A previous interrupted processing attempt may have left one or both artifacts.
-  // Removing only processing/retryable paths is authorized by the Storage policy.
+  if (lease.previousAttemptId) {
+    const previousXmlPath = `${id}/${lease.previousAttemptId}/nfse.xml`
+    const previousPdfPath = `${id}/${lease.previousAttemptId}/nfse.pdf`
+    const previousCleanup = await bucket.remove([previousXmlPath, previousPdfPath])
+    if (previousCleanup.error) {
+      await recordIssueFailure(client, id, attemptId, 'PREVIOUS_ARTIFACT_CLEANUP_FAILED')
+      throw new Error('FISCAL_PREVIOUS_ARTIFACT_CLEANUP_FAILED')
+    }
+  }
+
+  // Re-entry using the same lease is safe and removes only the active attempt paths.
   const staleCleanup = await bucket.remove([xmlPath, pdfPath])
   if (staleCleanup.error) {
-    await recordIssueFailure(client, id, 'ARTIFACT_PREP_CLEANUP_FAILED')
+    await recordIssueFailure(client, id, attemptId, 'ARTIFACT_PREP_CLEANUP_FAILED')
     throw new Error('FISCAL_ARTIFACT_PREP_CLEANUP_FAILED')
   }
 
   const xmlUpload = await bucket.upload(xmlPath, xml, { contentType: 'application/xml', upsert: false })
   if (xmlUpload.error) {
-    await recordIssueFailure(client, id, 'XML_STORAGE_FAILED')
+    await recordIssueFailure(client, id, attemptId, 'XML_STORAGE_FAILED')
     throw new Error('FISCAL_XML_STORAGE_FAILED')
   }
 
   const pdfUpload = await bucket.upload(pdfPath, pdf, { contentType: 'application/pdf', upsert: false })
   if (pdfUpload.error) {
     const cleanup = await bucket.remove([xmlPath])
-    await recordIssueFailure(client, id, cleanup.error ? 'ARTIFACT_CLEANUP_FAILED' : 'PDF_STORAGE_FAILED')
+    await recordIssueFailure(client, id, attemptId, cleanup.error ? 'ARTIFACT_CLEANUP_FAILED' : 'PDF_STORAGE_FAILED')
     if (cleanup.error) throw new Error('FISCAL_ARTIFACT_CLEANUP_FAILED')
     throw new Error('FISCAL_PDF_STORAGE_FAILED')
   }
@@ -149,6 +191,7 @@ export async function issueMockNfseAction(formData: FormData) {
   const issuedAt = new Date().toISOString()
   const { data: completedId, error: completeError } = await client.rpc('complete_mock_fiscal_document_issue_atomic', {
     p_document_id: id,
+    p_attempt_id: attemptId,
     p_issued_at: issuedAt,
   })
   if (!completeError && completedId === id) redirect('/fiscal/operacoes')
@@ -162,7 +205,7 @@ export async function issueMockNfseAction(formData: FormData) {
 
   if (!stateError && finalState?.status === 'processing') {
     const cleanup = await bucket.remove([xmlPath, pdfPath])
-    await recordIssueFailure(client, id, cleanup.error ? 'FINALIZE_FAILED_CLEANUP_PENDING' : 'FINALIZE_FAILED')
+    await recordIssueFailure(client, id, attemptId, cleanup.error ? 'FINALIZE_FAILED_CLEANUP_PENDING' : 'FINALIZE_FAILED')
     throw new Error(cleanup.error ? 'FISCAL_FINALIZE_FAILED_CLEANUP_PENDING' : 'FISCAL_FINALIZE_FAILED')
   }
 
