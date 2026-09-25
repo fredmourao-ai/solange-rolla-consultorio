@@ -209,7 +209,7 @@ jobs:
       - name: Build application
         run: npm run build
       - name: Install Playwright browser
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install chromium
       - name: End-to-end tests
         shell: bash
         run: |
