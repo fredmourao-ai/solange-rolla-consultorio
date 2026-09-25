@@ -1972,6 +1972,7 @@ export type Database = {
       begin_mock_fiscal_document_issue_atomic: {
         Args: {
           p_amount_cents: number
+          p_attempt_id: string
           p_document_id: string
           p_external_id: string
           p_idempotency_key: string
@@ -1991,7 +1992,7 @@ export type Database = {
           p_xml_path: string
           p_xml_sha256: string
         }
-        Returns: string
+        Returns: Json
       }
       cancel_mock_fiscal_document_atomic: {
         Args: {
@@ -2012,7 +2013,11 @@ export type Database = {
         Returns: undefined
       }
       complete_mock_fiscal_document_issue_atomic: {
-        Args: { p_document_id: string; p_issued_at: string }
+        Args: {
+          p_attempt_id: string
+          p_document_id: string
+          p_issued_at: string
+        }
         Returns: string
       }
       consume_public_rate_limit: {
@@ -2082,7 +2087,11 @@ export type Database = {
         }[]
       }
       fail_mock_fiscal_document_issue_atomic: {
-        Args: { p_document_id: string; p_error_code: string }
+        Args: {
+          p_attempt_id: string
+          p_document_id: string
+          p_error_code: string
+        }
         Returns: string
       }
       get_clinical_record_envelope: {
