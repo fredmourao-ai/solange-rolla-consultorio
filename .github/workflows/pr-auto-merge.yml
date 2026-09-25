@@ -141,12 +141,11 @@ jobs:
         id: revalidate
         # The squash merge above is pushed with GITHUB_TOKEN, which GitHub
         # does not treat as a `push` event trigger. Without this step,
-        # ci.yml/db.yml/repository-governance.yml's `push` triggers never
-        # fire for the resulting main commit, so it can never accumulate the
-        # push-gated check runs that staging-promote.yml requires before it
-        # will deploy an exact SHA. Re-dispatch those three workflows against
-        # the new main tip so the commit gets validated in its final,
-        # merged form instead of only as a pre-merge PR head.
+        # ci.yml/db.yml/repository-governance.yml and the Absolute Audit Main
+        # Guard's `push` triggers never fire for the resulting main commit.
+        # Re-dispatch all four workflows against the new main tip so the commit
+        # gets validated in its final, merged form before staging promotion,
+        # instead of only as a pre-merge PR head.
         if: steps.pr.outputs.pr_number != '' || steps.pr.outputs.merged_main_sha != ''
         env:
           GH_TOKEN: ${{ github.token }}
@@ -163,7 +162,7 @@ jobs:
           fi
           existing="$(gh api "repos/$REPO/actions/runs?head_sha=$sha&event=workflow_dispatch&per_page=100")"
           echo "Ensuring post-merge validation for main@$sha"
-          for workflow in ci.yml db.yml repository-governance.yml; do
+          for workflow in ci.yml db.yml repository-governance.yml absolute-audit-main-guard.yml; do
             path=".github/workflows/$workflow"
             if jq -e --arg path "$path" '.workflow_runs[] | select(.path == $path)' <<<"$existing" >/dev/null; then
               echo "Skipping already-dispatched $workflow for main@$sha"
@@ -191,7 +190,7 @@ jobs:
           sha="$MAIN_SHA"
           current_main="$(gh api "repos/$REPO/git/ref/heads/main" --jq .object.sha)"
           [ "$current_main" = "$sha" ] || { echo "Main advanced to $current_main; refusing stale staging handoff $sha."; exit 0; }
-          required=('CI' 'Database' 'Repository Governance Gate')
+          required=('CI' 'Database' 'Repository Governance Gate' 'Absolute Audit Main Guard')
           required_json="$(printf '%s\n' "${required[@]}" | jq -R . | jq -s .)"
           for attempt in $(seq 1 "$STAGING_HANDOFF_MAX_ATTEMPTS"); do
             runs="$(gh api "repos/$REPO/actions/runs?head_sha=$sha&event=workflow_dispatch&per_page=100")"
