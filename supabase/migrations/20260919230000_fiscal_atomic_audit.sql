@@ -112,6 +112,7 @@ using (
 create or replace function public.begin_mock_fiscal_document_issue_atomic(
   p_document_id uuid,
   p_attempt_id uuid,
+  p_review_ack boolean,
   p_source_type text,
   p_source_id uuid,
   p_person_id uuid,
@@ -153,6 +154,7 @@ begin
 
   if p_document_id is null
     or p_attempt_id is null
+    or p_review_ack is null
     or p_source_type not in (
       'appointment_completed','appointment_late_cancellation',
       'appointment_no_show','event_registration','other_service'
@@ -191,6 +193,8 @@ begin
     where id = p_profile_id
       and version = p_profile_version
       and active
+      and effective_from <= clock_timestamp()
+      and (effective_until is null or effective_until > clock_timestamp())
   ) then
     raise exception 'FISCAL_PROFILE_INVALID' using errcode = '22023';
   end if;
@@ -201,7 +205,11 @@ begin
     where id = p_treatment_id
       and source_kind = p_source_type
       and version = p_treatment_version
+      and approved
+      and effective_from <= clock_timestamp()
+      and (effective_until is null or effective_until > clock_timestamp())
       and issuance_rule <> 'not_issuable'
+      and (issuance_rule <> 'manual_review' or p_review_ack)
   ) then
     raise exception 'FISCAL_TREATMENT_INVALID' using errcode = '22023';
   end if;
@@ -697,11 +705,11 @@ end;
 $$;
 
 revoke all on function public.begin_mock_fiscal_document_issue_atomic(
-  uuid,uuid,text,uuid,uuid,uuid,bigint,uuid,integer,uuid,integer,text,text,text,
+  uuid,uuid,boolean,text,uuid,uuid,uuid,bigint,uuid,integer,uuid,integer,text,text,text,
   text,text,text,bigint,text,bigint
 ) from public,anon;
 grant execute on function public.begin_mock_fiscal_document_issue_atomic(
-  uuid,uuid,text,uuid,uuid,uuid,bigint,uuid,integer,uuid,integer,text,text,text,
+  uuid,uuid,boolean,text,uuid,uuid,uuid,bigint,uuid,integer,uuid,integer,text,text,text,
   text,text,text,bigint,text,bigint
 ) to authenticated;
 
