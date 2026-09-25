@@ -2,6 +2,7 @@
 
 import { createHash, randomUUID } from 'node:crypto'
 import { redirect } from 'next/navigation'
+import { evaluateFiscalReadiness, type FiscalIssuanceRule, type FiscalIssuerKind, type FiscalSourceKind } from '@/modules/fiscal/public'
 import { authorizeStaffPermission, getStaffSession } from '@/modules/identity/public'
 import { createServerSupabaseClient } from '@/platform/supabase/server'
 
@@ -69,9 +70,16 @@ function parseMockIssueLease(value: unknown): MockIssueLease {
 export async function issueMockNfseAction(formData: FormData) {
   const { session, client } = await context('fiscal.issue')
   authorizeStaffPermission(session, 'fiscal.read')
-  if (formData.get('review_ack') !== 'yes') throw new Error('FISCAL_REVIEW_ACK_REQUIRED')
-
   const sourceType = text(formData, 'source_type')
+  const sourceKinds: readonly FiscalSourceKind[] = [
+    'appointment_completed',
+    'appointment_late_cancellation',
+    'appointment_no_show',
+    'event_registration',
+    'other_service',
+  ]
+  if (!sourceKinds.includes(sourceType as FiscalSourceKind)) throw new Error('FISCAL_SOURCE_TYPE_INVALID')
+  const sourceKind = sourceType as FiscalSourceKind
   const sourceId = text(formData, 'source_id')
   const personId = text(formData, 'person_id')
   const payerPersonId = text(formData, 'payer_person_id')
@@ -80,8 +88,8 @@ export async function issueMockNfseAction(formData: FormData) {
   const treatmentId = text(formData, 'treatment_id')
 
   const [profileResult, treatmentResult, payerResult] = await Promise.all([
-    client.from('fiscal_profiles').select('id,version,active,issuer_document,municipality_code,service_code,tax_regime,fiscal_address').eq('id', profileId).single(),
-    client.from('fiscal_treatments').select('id,source_kind,version,issuance_rule,service_code,approved,enabled_for_live').eq('id', treatmentId).single(),
+    client.from('fiscal_profiles').select('id,version,active,issuer_kind,issuer_document,municipality_code,service_code,tax_regime,fiscal_address,effective_from,effective_until').eq('id', profileId).single(),
+    client.from('fiscal_treatments').select('id,source_kind,version,issuance_rule,service_code,approved,enabled_for_live,effective_from,effective_until').eq('id', treatmentId).single(),
     client.from('people').select('id,cpf_normalized,fiscal_address').eq('id', payerPersonId).single(),
   ])
   if (profileResult.error) throw new Error(`FISCAL_PROFILE_READ_FAILED:${profileResult.error.code}`)
@@ -92,15 +100,40 @@ export async function issueMockNfseAction(formData: FormData) {
   const treatment = treatmentResult.data
   const payer = payerResult.data
 
-  if (!profile?.active || !profile.issuer_document || !profile.municipality_code || !profile.service_code || !profile.tax_regime) {
-    throw new Error('FISCAL_PROFILE_INCOMPLETE')
-  }
-  if (!treatment || treatment.source_kind !== sourceType || treatment.issuance_rule === 'not_issuable') {
-    throw new Error('FISCAL_TREATMENT_NOT_ISSUABLE')
-  }
-  if (!payer?.cpf_normalized || !payer.fiscal_address || Object.keys(payer.fiscal_address as Record<string, unknown>).length === 0) {
-    throw new Error('FISCAL_PAYER_NOT_CONFIGURED')
-  }
+  const payerAddress = payer?.fiscal_address && typeof payer.fiscal_address === 'object' && !Array.isArray(payer.fiscal_address)
+    ? payer.fiscal_address as Record<string, unknown>
+    : null
+  const readiness = evaluateFiscalReadiness({
+    sourceKind,
+    amountCents,
+    profile: profile ? {
+      version: profile.version,
+      issuerKind: profile.issuer_kind as FiscalIssuerKind,
+      issuerDocument: profile.issuer_document,
+      municipalityCode: profile.municipality_code,
+      serviceCode: profile.service_code,
+      taxRegime: profile.tax_regime,
+      effectiveFrom: profile.effective_from,
+      effectiveUntil: profile.effective_until ?? undefined,
+      fiscalAddress: profile.fiscal_address && typeof profile.fiscal_address === 'object' && !Array.isArray(profile.fiscal_address)
+        ? profile.fiscal_address as Record<string, string>
+        : undefined,
+      active: profile.active,
+    } : null,
+    treatment: treatment ? {
+      sourceKind: treatment.source_kind as FiscalSourceKind,
+      version: treatment.version,
+      issuanceRule: treatment.issuance_rule as FiscalIssuanceRule,
+      serviceCode: treatment.service_code ?? undefined,
+      enabledForLive: treatment.enabled_for_live,
+      effectiveFrom: treatment.effective_from,
+      approved: treatment.approved,
+    } : null,
+    payer: payer ? { document: payer.cpf_normalized, address: payerAddress } : null,
+  })
+  if (readiness.status === 'not_ready') throw new Error(readiness.blockers[0] ?? 'FISCAL_NOT_READY')
+  const reviewAck = formData.get('review_ack') === 'yes'
+  if (readiness.status === 'review' && !reviewAck) throw new Error('FISCAL_REVIEW_ACK_REQUIRED')
 
   const idempotencyKey = `${sourceType}:${sourceId}:${profile.version}:${treatment.version}`
   const digest = createHash('sha256').update(idempotencyKey).digest('hex')
@@ -118,7 +151,8 @@ export async function issueMockNfseAction(formData: FormData) {
   const { data: beginData, error: beginError } = await client.rpc('begin_mock_fiscal_document_issue_atomic', {
     p_document_id: id,
     p_attempt_id: attemptId,
-    p_source_type: sourceType,
+    p_review_ack: reviewAck,
+    p_source_type: sourceKind,
     p_source_id: sourceId,
     p_person_id: personId,
     p_payer_person_id: payerPersonId,
