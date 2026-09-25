@@ -68,12 +68,16 @@ to authenticated
 with check (
   bucket_id <> 'fiscal-documents-private'
   or (
-    public.current_app_role() in ('psychologist_owner','secretary')
-    and public.has_permission('fiscal.issue')
+    public.has_permission('fiscal.issue')
     and exists (
       select 1
       from public.fiscal_documents d
+      join public.fiscal_attempts a
+        on a.fiscal_document_id = d.id
+       and a.operation = 'issue'
+       and a.status = 'started'
       where d.id::text = split_part(storage.objects.name, '/', 1)
+        and a.correlation_id::text = split_part(storage.objects.name, '/', 2)
         and d.status = 'processing'
         and storage.objects.name in (d.xml_path, d.pdf_path)
     )
@@ -87,19 +91,27 @@ for delete
 to authenticated
 using (
   bucket_id = 'fiscal-documents-private'
-  and public.current_app_role() in ('psychologist_owner','secretary')
   and public.has_permission('fiscal.issue')
   and exists (
     select 1
     from public.fiscal_documents d
+    join public.fiscal_attempts a
+      on a.fiscal_document_id = d.id
+     and a.operation = 'issue'
+     and a.status in ('started','retryable_failure')
     where d.id::text = split_part(storage.objects.name, '/', 1)
+      and a.correlation_id::text = split_part(storage.objects.name, '/', 2)
       and d.status in ('processing','failed_retryable')
-      and storage.objects.name in (d.xml_path, d.pdf_path)
+      and storage.objects.name in (
+        d.id::text || '/' || a.correlation_id::text || '/nfse.xml',
+        d.id::text || '/' || a.correlation_id::text || '/nfse.pdf'
+      )
   )
 );
 
 create or replace function public.begin_mock_fiscal_document_issue_atomic(
   p_document_id uuid,
+  p_attempt_id uuid,
   p_source_type text,
   p_source_id uuid,
   p_person_id uuid,
@@ -119,7 +131,7 @@ create or replace function public.begin_mock_fiscal_document_issue_atomic(
   p_pdf_sha256 text,
   p_pdf_byte_length bigint
 )
-returns uuid
+returns jsonb
 language plpgsql
 security definer
 set search_path = public, pg_temp
@@ -128,15 +140,19 @@ declare
   actor uuid := auth.uid();
   existing_row public.fiscal_documents%rowtype;
   next_attempt integer;
+  active_attempt integer;
+  active_attempt_id uuid;
+  active_started_at timestamptz;
+  previous_attempt_id uuid;
 begin
   if actor is null
-    or public.current_app_role() not in ('psychologist_owner','secretary')
     or not public.has_permission('fiscal.issue')
     or not public.has_permission('fiscal.read') then
     raise exception 'FISCAL_ISSUE_FORBIDDEN' using errcode = '42501';
   end if;
 
   if p_document_id is null
+    or p_attempt_id is null
     or p_source_type not in (
       'appointment_completed','appointment_late_cancellation',
       'appointment_no_show','event_registration','other_service'
@@ -150,8 +166,8 @@ begin
     or p_idempotency_key is null or btrim(p_idempotency_key) = ''
     or p_external_id is null or btrim(p_external_id) = ''
     or p_protocol is null or btrim(p_protocol) = ''
-    or p_xml_path <> p_document_id::text || '/nfse.xml'
-    or p_pdf_path <> p_document_id::text || '/nfse.pdf'
+    or p_xml_path <> p_document_id::text || '/' || p_attempt_id::text || '/nfse.xml'
+    or p_pdf_path <> p_document_id::text || '/' || p_attempt_id::text || '/nfse.pdf'
     or p_xml_sha256 is null or p_xml_sha256 !~ '^[a-f0-9]{64}$'
     or p_pdf_sha256 is null or p_pdf_sha256 !~ '^[a-f0-9]{64}$'
     or p_xml_byte_length is null or p_xml_byte_length <= 0
@@ -210,8 +226,6 @@ begin
       or existing_row.provider <> 'mock'
       or existing_row.external_id <> p_external_id
       or existing_row.protocol <> p_protocol
-      or existing_row.xml_path <> p_xml_path
-      or existing_row.pdf_path <> p_pdf_path
       or existing_row.xml_sha256 <> p_xml_sha256
       or existing_row.xml_byte_length <> p_xml_byte_length
       or existing_row.pdf_sha256 <> p_pdf_sha256
@@ -220,20 +234,82 @@ begin
     end if;
 
     if existing_row.status = 'issued' then
-      return existing_row.id;
+      return jsonb_build_object(
+        'state','issued',
+        'documentId',existing_row.id,
+        'attemptId',null,
+        'previousAttemptId',null
+      );
     end if;
 
     if existing_row.status = 'processing' then
-      return existing_row.id;
+      select attempt_number, correlation_id, started_at
+      into active_attempt, active_attempt_id, active_started_at
+      from public.fiscal_attempts
+      where fiscal_document_id = existing_row.id
+        and operation = 'issue'
+        and status = 'started'
+      order by attempt_number desc
+      limit 1
+      for update;
+
+      if active_attempt is null or active_attempt_id is null then
+        raise exception 'FISCAL_ISSUE_ATTEMPT_MISSING' using errcode = '55000';
+      end if;
+
+      if active_attempt_id = p_attempt_id then
+        return jsonb_build_object(
+          'state','process',
+          'documentId',existing_row.id,
+          'attemptId',p_attempt_id,
+          'previousAttemptId',null
+        );
+      end if;
+
+      if active_started_at > clock_timestamp() - interval '5 minutes' then
+        raise exception 'FISCAL_ISSUE_IN_PROGRESS' using errcode = '55P03';
+      end if;
+
+      update public.fiscal_attempts
+      set status = 'retryable_failure',
+          provider_status = 'lease_expired',
+          error_code = 'PROCESSING_LEASE_EXPIRED',
+          finished_at = clock_timestamp()
+      where fiscal_document_id = existing_row.id
+        and operation = 'issue'
+        and attempt_number = active_attempt
+        and correlation_id = active_attempt_id
+        and status = 'started';
+
+      insert into public.audit_events (
+        actor_user_id,action,entity_type,entity_id,correlation_id,metadata
+      ) values (
+        actor,'fiscal.mock_issue_lease_expired','fiscal_document',
+        existing_row.id,existing_row.id::text,
+        jsonb_build_object('attempt',active_attempt,'provider','mock','synthetic',true)
+      );
+
+      previous_attempt_id := active_attempt_id;
+      update public.fiscal_documents
+      set status = 'failed_retryable'
+      where id = existing_row.id;
+      existing_row.status := 'failed_retryable';
     end if;
 
     if existing_row.status <> 'failed_retryable' then
       raise exception 'FISCAL_ISSUE_INVALID_STATE' using errcode = '55000';
     end if;
 
-    update public.fiscal_documents
-    set status = 'processing'
-    where id = existing_row.id;
+    if previous_attempt_id is null then
+      select correlation_id
+      into previous_attempt_id
+      from public.fiscal_attempts
+      where fiscal_document_id = existing_row.id
+        and operation = 'issue'
+        and status = 'retryable_failure'
+      order by attempt_number desc
+      limit 1;
+    end if;
 
     select coalesce(max(attempt_number), 0) + 1
     into next_attempt
@@ -241,10 +317,16 @@ begin
     where fiscal_document_id = existing_row.id
       and operation = 'issue';
 
+    update public.fiscal_documents
+    set status = 'processing',
+        xml_path = p_xml_path,
+        pdf_path = p_pdf_path
+    where id = existing_row.id;
+
     insert into public.fiscal_attempts (
       fiscal_document_id,attempt_number,operation,status,provider_status,correlation_id
     ) values (
-      existing_row.id,next_attempt,'issue','started','storage_pending',gen_random_uuid()
+      existing_row.id,next_attempt,'issue','started','storage_pending',p_attempt_id
     );
 
     insert into public.audit_events (
@@ -254,7 +336,12 @@ begin
       jsonb_build_object('attempt',next_attempt,'provider','mock','synthetic',true)
     );
 
-    return existing_row.id;
+    return jsonb_build_object(
+      'state','process',
+      'documentId',existing_row.id,
+      'attemptId',p_attempt_id,
+      'previousAttemptId',previous_attempt_id
+    );
   end if;
 
   insert into public.fiscal_documents (
@@ -272,7 +359,7 @@ begin
   insert into public.fiscal_attempts (
     fiscal_document_id,attempt_number,operation,status,provider_status,correlation_id
   ) values (
-    p_document_id,1,'issue','started','storage_pending',gen_random_uuid()
+    p_document_id,1,'issue','started','storage_pending',p_attempt_id
   );
 
   insert into public.audit_events (
@@ -283,18 +370,25 @@ begin
       'sourceType',p_source_type,
       'sourceId',p_source_id,
       'amountCents',p_amount_cents,
+      'attempt',1,
       'provider','mock',
       'synthetic',true,
       'liveEnabled',false
     )
   );
 
-  return p_document_id;
+  return jsonb_build_object(
+    'state','process',
+    'documentId',p_document_id,
+    'attemptId',p_attempt_id,
+    'previousAttemptId',null
+  );
 end;
 $$;
 
 create or replace function public.complete_mock_fiscal_document_issue_atomic(
   p_document_id uuid,
+  p_attempt_id uuid,
   p_issued_at timestamptz
 )
 returns uuid
@@ -306,14 +400,14 @@ declare
   actor uuid := auth.uid();
   document_row public.fiscal_documents%rowtype;
   current_attempt integer;
+  current_attempt_id uuid;
 begin
   if actor is null
-    or public.current_app_role() not in ('psychologist_owner','secretary')
     or not public.has_permission('fiscal.issue')
     or not public.has_permission('fiscal.read') then
     raise exception 'FISCAL_ISSUE_FORBIDDEN' using errcode = '42501';
   end if;
-  if p_document_id is null or p_issued_at is null then
+  if p_document_id is null or p_attempt_id is null or p_issued_at is null then
     raise exception 'FISCAL_ISSUE_INPUT_INVALID' using errcode = '22023';
   end if;
 
@@ -336,6 +430,27 @@ begin
     raise exception 'FISCAL_ISSUE_INVALID_STATE' using errcode = '55000';
   end if;
 
+  select attempt_number, correlation_id
+  into current_attempt, current_attempt_id
+  from public.fiscal_attempts
+  where fiscal_document_id = p_document_id
+    and operation = 'issue'
+    and status = 'started'
+  order by attempt_number desc
+  limit 1
+  for update;
+
+  if current_attempt is null or current_attempt_id is null then
+    raise exception 'FISCAL_ISSUE_ATTEMPT_MISSING' using errcode = '55000';
+  end if;
+  if current_attempt_id <> p_attempt_id then
+    raise exception 'FISCAL_ISSUE_LEASE_LOST' using errcode = '55P03';
+  end if;
+  if document_row.xml_path <> p_document_id::text || '/' || p_attempt_id::text || '/nfse.xml'
+    or document_row.pdf_path <> p_document_id::text || '/' || p_attempt_id::text || '/nfse.pdf' then
+    raise exception 'FISCAL_ISSUE_LEASE_PATH_MISMATCH' using errcode = '55000';
+  end if;
+
   if not exists (
     select 1 from storage.objects
     where bucket_id = 'fiscal-documents-private'
@@ -346,17 +461,6 @@ begin
       and name = document_row.pdf_path
   ) then
     raise exception 'FISCAL_ARTIFACTS_MISSING' using errcode = '55000';
-  end if;
-
-  select max(attempt_number)
-  into current_attempt
-  from public.fiscal_attempts
-  where fiscal_document_id = p_document_id
-    and operation = 'issue'
-    and status = 'started';
-
-  if current_attempt is null then
-    raise exception 'FISCAL_ISSUE_ATTEMPT_MISSING' using errcode = '55000';
   end if;
 
   update public.fiscal_documents
@@ -371,6 +475,7 @@ begin
   where fiscal_document_id = p_document_id
     and operation = 'issue'
     and attempt_number = current_attempt
+    and correlation_id = p_attempt_id
     and status = 'started';
 
   insert into public.audit_events (
@@ -394,6 +499,7 @@ $$;
 
 create or replace function public.fail_mock_fiscal_document_issue_atomic(
   p_document_id uuid,
+  p_attempt_id uuid,
   p_error_code text
 )
 returns uuid
@@ -405,14 +511,16 @@ declare
   actor uuid := auth.uid();
   document_row public.fiscal_documents%rowtype;
   current_attempt integer;
+  current_attempt_id uuid;
+  failed_attempt_id uuid;
 begin
   if actor is null
-    or public.current_app_role() not in ('psychologist_owner','secretary')
     or not public.has_permission('fiscal.issue')
     or not public.has_permission('fiscal.read') then
     raise exception 'FISCAL_ISSUE_FORBIDDEN' using errcode = '42501';
   end if;
   if p_document_id is null
+    or p_attempt_id is null
     or p_error_code is null
     or p_error_code !~ '^[A-Z0-9_]{1,80}$' then
     raise exception 'FISCAL_ISSUE_FAILURE_INPUT_INVALID' using errcode = '22023';
@@ -430,22 +538,41 @@ begin
   if document_row.provider <> 'mock' then
     raise exception 'FISCAL_MOCK_ONLY' using errcode = '22023';
   end if;
+
   if document_row.status = 'failed_retryable' then
-    return document_row.id;
+    select correlation_id
+    into failed_attempt_id
+    from public.fiscal_attempts
+    where fiscal_document_id = p_document_id
+      and operation = 'issue'
+      and status = 'retryable_failure'
+    order by attempt_number desc
+    limit 1;
+    if failed_attempt_id = p_attempt_id then
+      return document_row.id;
+    end if;
+    raise exception 'FISCAL_ISSUE_LEASE_LOST' using errcode = '55P03';
   end if;
+
   if document_row.status <> 'processing' then
     raise exception 'FISCAL_ISSUE_INVALID_STATE' using errcode = '55000';
   end if;
 
-  select max(attempt_number)
-  into current_attempt
+  select attempt_number, correlation_id
+  into current_attempt, current_attempt_id
   from public.fiscal_attempts
   where fiscal_document_id = p_document_id
     and operation = 'issue'
-    and status = 'started';
+    and status = 'started'
+  order by attempt_number desc
+  limit 1
+  for update;
 
-  if current_attempt is null then
+  if current_attempt is null or current_attempt_id is null then
     raise exception 'FISCAL_ISSUE_ATTEMPT_MISSING' using errcode = '55000';
+  end if;
+  if current_attempt_id <> p_attempt_id then
+    raise exception 'FISCAL_ISSUE_LEASE_LOST' using errcode = '55P03';
   end if;
 
   update public.fiscal_documents
@@ -460,6 +587,7 @@ begin
   where fiscal_document_id = p_document_id
     and operation = 'issue'
     and attempt_number = current_attempt
+    and correlation_id = p_attempt_id
     and status = 'started';
 
   insert into public.audit_events (
@@ -494,7 +622,6 @@ declare
   v_idempotency_key text := 'fiscal-cancel:' || p_document_id::text;
 begin
   if actor is null
-    or public.current_app_role() <> 'psychologist_owner'
     or not public.has_permission('fiscal.cancel') then
     raise exception 'FISCAL_CANCEL_FORBIDDEN' using errcode = '42501';
   end if;
@@ -570,22 +697,22 @@ end;
 $$;
 
 revoke all on function public.begin_mock_fiscal_document_issue_atomic(
-  uuid,text,uuid,uuid,uuid,bigint,uuid,integer,uuid,integer,text,text,text,
+  uuid,uuid,text,uuid,uuid,uuid,bigint,uuid,integer,uuid,integer,text,text,text,
   text,text,text,bigint,text,bigint
 ) from public,anon;
 grant execute on function public.begin_mock_fiscal_document_issue_atomic(
-  uuid,text,uuid,uuid,uuid,bigint,uuid,integer,uuid,integer,text,text,text,
+  uuid,uuid,text,uuid,uuid,uuid,bigint,uuid,integer,uuid,integer,text,text,text,
   text,text,text,bigint,text,bigint
 ) to authenticated;
 
-revoke all on function public.complete_mock_fiscal_document_issue_atomic(uuid,timestamptz)
+revoke all on function public.complete_mock_fiscal_document_issue_atomic(uuid,uuid,timestamptz)
 from public,anon;
-grant execute on function public.complete_mock_fiscal_document_issue_atomic(uuid,timestamptz)
+grant execute on function public.complete_mock_fiscal_document_issue_atomic(uuid,uuid,timestamptz)
 to authenticated;
 
-revoke all on function public.fail_mock_fiscal_document_issue_atomic(uuid,text)
+revoke all on function public.fail_mock_fiscal_document_issue_atomic(uuid,uuid,text)
 from public,anon;
-grant execute on function public.fail_mock_fiscal_document_issue_atomic(uuid,text)
+grant execute on function public.fail_mock_fiscal_document_issue_atomic(uuid,uuid,text)
 to authenticated;
 
 revoke all on function public.cancel_mock_fiscal_document_atomic(uuid,text)
