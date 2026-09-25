@@ -156,6 +156,12 @@
     "payables_recurring_atomic_creation": [
       "audit",
       "payables"
+    ],
+    "fiscal_atomic_audit": [
+      "audit",
+      "fiscal",
+      "identity",
+      "platform"
     ]
   },
   "objects": {
@@ -242,6 +248,10 @@
     "public.record_payable_payment_atomic": "payables",
     "public.tasks": "identity",
     "public.audit_person_updated": "audit",
-    "public.create_recurring_payable_atomic": "payables"
+    "public.create_recurring_payable_atomic": "payables",
+    "public.cancel_mock_fiscal_document_atomic": "fiscal",
+    "public.begin_mock_fiscal_document_issue_atomic": "fiscal",
+    "public.complete_mock_fiscal_document_issue_atomic": "fiscal",
+    "public.fail_mock_fiscal_document_issue_atomic": "fiscal"
   }
 }

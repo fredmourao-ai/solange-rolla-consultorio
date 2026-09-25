@@ -1969,6 +1969,39 @@ export type Database = {
           id: string
         }[]
       }
+      begin_mock_fiscal_document_issue_atomic: {
+        Args: {
+          p_amount_cents: number
+          p_attempt_id: string
+          p_document_id: string
+          p_review_ack: boolean
+          p_external_id: string
+          p_idempotency_key: string
+          p_payer_person_id: string
+          p_pdf_byte_length: number
+          p_pdf_path: string
+          p_pdf_sha256: string
+          p_person_id: string
+          p_profile_id: string
+          p_profile_version: number
+          p_protocol: string
+          p_source_id: string
+          p_source_type: string
+          p_treatment_id: string
+          p_treatment_version: number
+          p_xml_byte_length: number
+          p_xml_path: string
+          p_xml_sha256: string
+        }
+        Returns: Json
+      }
+      cancel_mock_fiscal_document_atomic: {
+        Args: {
+          p_document_id: string
+          p_reason: string
+        }
+        Returns: string
+      }
       claim_document_jobs: {
         Args: { p_limit?: number }
         Returns: {
@@ -1979,6 +2012,14 @@ export type Database = {
       clear_user_permission_override: {
         Args: { p_permission_key: string; p_user_id: string }
         Returns: undefined
+      }
+      complete_mock_fiscal_document_issue_atomic: {
+        Args: {
+          p_attempt_id: string
+          p_document_id: string
+          p_issued_at: string
+        }
+        Returns: string
       }
       consume_public_rate_limit: {
         Args: {
@@ -2045,6 +2086,14 @@ export type Database = {
           subject_id: string
           subject_type: string
         }[]
+      }
+      fail_mock_fiscal_document_issue_atomic: {
+        Args: {
+          p_attempt_id: string
+          p_document_id: string
+          p_error_code: string
+        }
+        Returns: string
       }
       get_clinical_record_envelope: {
         Args: { record_id: string }

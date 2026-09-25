@@ -2,44 +2,258 @@
 
 import { createHash, randomUUID } from 'node:crypto'
 import { redirect } from 'next/navigation'
-import { authorizeStaffSession, getStaffSession } from '@/modules/identity/public'
+import { evaluateFiscalReadiness, type FiscalIssuanceRule, type FiscalIssuerKind, type FiscalSourceKind } from '@/modules/fiscal/public'
+import { authorizeStaffPermission, getStaffSession } from '@/modules/identity/public'
 import { createServerSupabaseClient } from '@/platform/supabase/server'
-import type { Json } from '@/platform/supabase/types'
 
-function text(formData: FormData, key: string): string { const value=String(formData.get(key)??'').trim(); if(!value) throw new Error(`FISCAL_${key.toUpperCase()}_REQUIRED`); return value }
-function cents(value: FormDataEntryValue|null): number { const n=Math.round(Number(String(value??'').replace(',','.'))*100); if(!Number.isSafeInteger(n)||n<=0) throw new Error('FISCAL_AMOUNT_INVALID'); return n }
-async function context(){ const session=await getStaffSession(); const authorized=authorizeStaffSession(session,['psychologist_owner','accounting']); return {authorized,client:await createServerSupabaseClient()} }
-async function audit(client:Awaited<ReturnType<typeof createServerSupabaseClient>>,actorId:string,action:string,entityType:string,entityId:string,metadata:{[key:string]:Json|undefined}){ const {error}=await client.from('audit_events').insert({actor_user_id:actorId,action,entity_type:entityType,entity_id:entityId,correlation_id:entityId,metadata}); if(error) throw new Error('FISCAL_AUDIT_FAILED') }
-
-export async function issueMockNfseAction(formData:FormData){
- const {authorized,client}=await context(); if(formData.get('review_ack')!=='yes') throw new Error('FISCAL_REVIEW_ACK_REQUIRED')
- const sourceType=text(formData,'source_type'); const sourceId=text(formData,'source_id'); const personId=text(formData,'person_id'); const payerPersonId=text(formData,'payer_person_id'); const amountCents=cents(formData.get('amount')); const profileId=text(formData,'profile_id'); const treatmentId=text(formData,'treatment_id')
- const payerQuery=authorized.role==='accounting'
-  ? client.from('accounting_people_view').select('id,cpf_normalized,fiscal_address').eq('id',payerPersonId).single()
-  : client.from('people').select('id,cpf_normalized,fiscal_address').eq('id',payerPersonId).single()
- const [profileResult,treatmentResult,payerResult]=await Promise.all([client.from('fiscal_profiles').select('id,version,active,issuer_document,municipality_code,service_code,tax_regime,fiscal_address').eq('id',profileId).single(),client.from('fiscal_treatments').select('id,source_kind,version,issuance_rule,service_code,approved,enabled_for_live').eq('id',treatmentId).single(),payerQuery])
- if(profileResult.error) throw new Error(`FISCAL_PROFILE_READ_FAILED:${profileResult.error.code}`)
- if(treatmentResult.error) throw new Error(`FISCAL_TREATMENT_READ_FAILED:${treatmentResult.error.code}`)
- if(payerResult.error) throw new Error(`FISCAL_PAYER_READ_FAILED:${payerResult.error.code}`)
- const profile=profileResult.data; const treatment=treatmentResult.data; const payer=payerResult.data
- if(!profile?.active||!profile.issuer_document||!profile.municipality_code||!profile.service_code||!profile.tax_regime) throw new Error('FISCAL_PROFILE_INCOMPLETE')
- if(!treatment||treatment.source_kind!==sourceType||treatment.issuance_rule==='not_issuable') throw new Error('FISCAL_TREATMENT_NOT_ISSUABLE')
- if(!payer?.cpf_normalized||!payer.fiscal_address||Object.keys(payer.fiscal_address as Record<string,unknown>).length===0) throw new Error('FISCAL_PAYER_NOT_CONFIGURED')
- const idempotencyKey=`${sourceType}:${sourceId}:${profile.version}:${treatment.version}`; const {data:existing}=await client.from('fiscal_documents').select('id').eq('idempotency_key',idempotencyKey).maybeSingle(); if(existing) redirect('/fiscal/operacoes')
- const id=randomUUID(); const digest=createHash('sha256').update(idempotencyKey).digest('hex'); const externalId=`mock-nfse-${digest.slice(0,20)}`; const protocol=`mock-protocol-${digest.slice(0,20)}`
- const xml=new TextEncoder().encode(`<NFS-e synthetic="true" id="${externalId}" amountCents="${amountCents}"/>`); const pdf=new TextEncoder().encode(`NFS-e MOCK/SANDBOX\n${externalId}\nValor: ${amountCents}\nSEM VALIDADE FISCAL`); const xmlPath=`${id}/nfse.xml`; const pdfPath=`${id}/nfse.pdf`; const bucket=client.storage.from('fiscal-documents-private')
- const xmlUpload=await bucket.upload(xmlPath,xml,{contentType:'application/xml',upsert:false}); if(xmlUpload.error) throw new Error('FISCAL_XML_STORAGE_FAILED'); const pdfUpload=await bucket.upload(pdfPath,pdf,{contentType:'application/pdf',upsert:false}); if(pdfUpload.error){await bucket.remove([xmlPath]); throw new Error('FISCAL_PDF_STORAGE_FAILED')}
- const {error}=await client.from('fiscal_documents').insert({id,source_type:sourceType,source_id:sourceId,person_id:personId,payer_person_id:payerPersonId,amount_cents:amountCents,profile_id:profileId,profile_version:profile.version,treatment_id:treatmentId,treatment_version:treatment.version,provider:'mock',idempotency_key:idempotencyKey,external_id:externalId,protocol,status:'issued',issued_at:new Date().toISOString(),xml_path:xmlPath,pdf_path:pdfPath,xml_sha256:createHash('sha256').update(xml).digest('hex'),xml_byte_length:xml.byteLength,pdf_sha256:createHash('sha256').update(pdf).digest('hex'),pdf_byte_length:pdf.byteLength}); if(error){await bucket.remove([xmlPath,pdfPath]); if(error.code==='23505') redirect('/fiscal/operacoes'); throw new Error('FISCAL_DOCUMENT_CREATE_FAILED')}
- const {error:attemptError}=await client.from('fiscal_attempts').insert({fiscal_document_id:id,attempt_number:1,operation:'issue',status:'succeeded',provider_status:'issued',correlation_id:randomUUID(),finished_at:new Date().toISOString()}); if(attemptError) throw new Error('FISCAL_ATTEMPT_CREATE_FAILED')
- await audit(client,authorized.userId,'fiscal.mock_issued','fiscal_document',id,{sourceType,sourceId,amountCents,provider:'mock',synthetic:true,liveEnabled:false}); redirect('/fiscal/operacoes')
+function text(formData: FormData, key: string): string {
+  const value = String(formData.get(key) ?? '').trim()
+  if (!value) throw new Error(`FISCAL_${key.toUpperCase()}_REQUIRED`)
+  return value
 }
 
-export async function cancelMockNfseAction(formData:FormData){
- const {authorized,client}=await context(); const id=text(formData,'fiscal_document_id'); const reason=text(formData,'reason'); const key=`fiscal-cancel:${id}`; const {data:doc,error:docError}=await client.from('fiscal_documents').select('id,status,provider,protocol').eq('id',id).single(); if(docError) throw new Error(`FISCAL_DOCUMENT_READ_FAILED:${docError.code}`); if(!doc||doc.provider!=='mock') throw new Error('FISCAL_MOCK_ONLY'); if(doc.status==='cancelled') redirect('/fiscal/operacoes'); if(doc.status!=='issued'&&doc.status!=='cancel_requested') throw new Error('FISCAL_CANCELLATION_INVALID_STATE')
- const {data:existing}=await client.from('fiscal_cancellation_events').select('id').eq('idempotency_key',key).maybeSingle(); if(existing) redirect('/fiscal/operacoes')
- if(doc.status==='issued'){const {error}=await client.from('fiscal_documents').update({status:'cancel_requested'}).eq('id',id); if(error) throw new Error('FISCAL_CANCEL_REQUEST_FAILED')}
- const {error:eventError}=await client.from('fiscal_cancellation_events').insert({fiscal_document_id:id,idempotency_key:key,reason,requested_by:authorized.userId,provider_protocol:doc.protocol,status:'cancelled',completed_at:new Date().toISOString()}); if(eventError) throw new Error('FISCAL_CANCEL_EVENT_FAILED')
- const {error:updateError}=await client.from('fiscal_documents').update({status:'cancelled',cancelled_at:new Date().toISOString()}).eq('id',id); if(updateError) throw new Error('FISCAL_CANCEL_FAILED')
- const {error:attemptError}=await client.from('fiscal_attempts').insert({fiscal_document_id:id,attempt_number:1,operation:'cancel',status:'succeeded',provider_status:'cancelled',correlation_id:randomUUID(),finished_at:new Date().toISOString()}); if(attemptError) throw new Error('FISCAL_CANCEL_ATTEMPT_FAILED')
- await audit(client,authorized.userId,'fiscal.mock_cancelled','fiscal_document',id,{reason,provider:'mock'}); redirect('/fiscal/operacoes')
+function cents(value: FormDataEntryValue | null): number {
+  const parsed = Math.round(Number(String(value ?? '').replace(',', '.')) * 100)
+  if (!Number.isSafeInteger(parsed) || parsed <= 0) throw new Error('FISCAL_AMOUNT_INVALID')
+  return parsed
+}
+
+function stableUuid(hex: string): string {
+  const value = hex.slice(0, 32)
+  return `${value.slice(0, 8)}-${value.slice(8, 12)}-${value.slice(12, 16)}-${value.slice(16, 20)}-${value.slice(20, 32)}`
+}
+
+async function context(permission: 'fiscal.issue' | 'fiscal.cancel') {
+  const session = await getStaffSession()
+  authorizeStaffPermission(session, permission)
+  return { session, client: await createServerSupabaseClient() }
+}
+
+async function recordIssueFailure(
+  client: Awaited<ReturnType<typeof createServerSupabaseClient>>,
+  documentId: string,
+  attemptId: string,
+  errorCode: string,
+) {
+  const { error } = await client.rpc('fail_mock_fiscal_document_issue_atomic', {
+    p_document_id: documentId,
+    p_attempt_id: attemptId,
+    p_error_code: errorCode,
+  })
+  if (error) throw new Error(`FISCAL_ISSUE_RECOVERY_RECORD_FAILED:${error.code}`)
+}
+
+type MockIssueLease = {
+  state: 'issued' | 'process'
+  documentId: string
+  attemptId: string | null
+  previousAttemptId: string | null
+}
+
+function parseMockIssueLease(value: unknown): MockIssueLease {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('FISCAL_ISSUE_LEASE_INVALID')
+  const row = value as Record<string, unknown>
+  if (
+    (row.state !== 'issued' && row.state !== 'process')
+    || typeof row.documentId !== 'string'
+    || (row.attemptId !== null && typeof row.attemptId !== 'string')
+    || (row.previousAttemptId !== null && typeof row.previousAttemptId !== 'string')
+  ) throw new Error('FISCAL_ISSUE_LEASE_INVALID')
+  return {
+    state: row.state,
+    documentId: row.documentId,
+    attemptId: row.attemptId,
+    previousAttemptId: row.previousAttemptId,
+  }
+}
+
+export async function issueMockNfseAction(formData: FormData) {
+  const { session, client } = await context('fiscal.issue')
+  authorizeStaffPermission(session, 'fiscal.read')
+  const sourceType = text(formData, 'source_type')
+  const sourceKinds: readonly FiscalSourceKind[] = [
+    'appointment_completed',
+    'appointment_late_cancellation',
+    'appointment_no_show',
+    'event_registration',
+    'other_service',
+  ]
+  if (!sourceKinds.includes(sourceType as FiscalSourceKind)) throw new Error('FISCAL_SOURCE_TYPE_INVALID')
+  const sourceKind = sourceType as FiscalSourceKind
+  const sourceId = text(formData, 'source_id')
+  const personId = text(formData, 'person_id')
+  const payerPersonId = text(formData, 'payer_person_id')
+  const amountCents = cents(formData.get('amount'))
+  const profileId = text(formData, 'profile_id')
+  const treatmentId = text(formData, 'treatment_id')
+
+  const [profileResult, treatmentResult, payerResult] = await Promise.all([
+    client.from('fiscal_profiles').select('id,version,active,issuer_kind,issuer_document,municipality_code,service_code,tax_regime,fiscal_address,effective_from,effective_until').eq('id', profileId).single(),
+    client.from('fiscal_treatments').select('id,source_kind,version,issuance_rule,service_code,approved,enabled_for_live,effective_from,effective_until').eq('id', treatmentId).single(),
+    client.from('people').select('id,cpf_normalized,fiscal_address').eq('id', payerPersonId).single(),
+  ])
+  if (profileResult.error) throw new Error(`FISCAL_PROFILE_READ_FAILED:${profileResult.error.code}`)
+  if (treatmentResult.error) throw new Error(`FISCAL_TREATMENT_READ_FAILED:${treatmentResult.error.code}`)
+  if (payerResult.error) throw new Error(`FISCAL_PAYER_READ_FAILED:${payerResult.error.code}`)
+
+  const profile = profileResult.data
+  const treatment = treatmentResult.data
+  const payer = payerResult.data
+
+  const payerAddress = payer?.fiscal_address && typeof payer.fiscal_address === 'object' && !Array.isArray(payer.fiscal_address)
+    ? payer.fiscal_address as Record<string, unknown>
+    : null
+  const readiness = evaluateFiscalReadiness({
+    sourceKind,
+    amountCents,
+    profile: profile ? {
+      version: profile.version,
+      issuerKind: profile.issuer_kind as FiscalIssuerKind,
+      issuerDocument: profile.issuer_document,
+      municipalityCode: profile.municipality_code,
+      serviceCode: profile.service_code,
+      taxRegime: profile.tax_regime,
+      effectiveFrom: profile.effective_from,
+      effectiveUntil: profile.effective_until ?? undefined,
+      fiscalAddress: profile.fiscal_address && typeof profile.fiscal_address === 'object' && !Array.isArray(profile.fiscal_address)
+        ? profile.fiscal_address as Record<string, string>
+        : undefined,
+      active: profile.active,
+    } : null,
+    treatment: treatment ? {
+      sourceKind: treatment.source_kind as FiscalSourceKind,
+      version: treatment.version,
+      issuanceRule: treatment.issuance_rule as FiscalIssuanceRule,
+      serviceCode: treatment.service_code ?? undefined,
+      enabledForLive: treatment.enabled_for_live,
+      effectiveFrom: treatment.effective_from,
+      approved: treatment.approved,
+    } : null,
+    payer: payer ? { document: payer.cpf_normalized, address: payerAddress } : null,
+  })
+  if (readiness.status === 'not_ready') throw new Error(readiness.blockers[0] ?? 'FISCAL_NOT_READY')
+  const reviewAck = formData.get('review_ack') === 'yes'
+  if (readiness.status === 'review' && !reviewAck) throw new Error('FISCAL_REVIEW_ACK_REQUIRED')
+
+  const idempotencyKey = `${sourceType}:${sourceId}:${profile.version}:${treatment.version}`
+  const digest = createHash('sha256').update(idempotencyKey).digest('hex')
+  const id = stableUuid(createHash('sha256').update(`fiscal-mock:${idempotencyKey}`).digest('hex'))
+  const attemptId = randomUUID()
+  const externalId = `mock-nfse-${digest.slice(0, 20)}`
+  const protocol = `mock-protocol-${digest.slice(0, 20)}`
+  const xml = new TextEncoder().encode(`<NFS-e synthetic="true" id="${externalId}" amountCents="${amountCents}"/>`)
+  const pdf = new TextEncoder().encode(`NFS-e MOCK/SANDBOX\n${externalId}\nValor: ${amountCents}\nSEM VALIDADE FISCAL`)
+  const xmlPath = `${id}/${attemptId}/nfse.xml`
+  const pdfPath = `${id}/${attemptId}/nfse.pdf`
+  const xmlSha256 = createHash('sha256').update(xml).digest('hex')
+  const pdfSha256 = createHash('sha256').update(pdf).digest('hex')
+
+  const { data: beginData, error: beginError } = await client.rpc('begin_mock_fiscal_document_issue_atomic', {
+    p_document_id: id,
+    p_attempt_id: attemptId,
+    p_review_ack: reviewAck,
+    p_source_type: sourceKind,
+    p_source_id: sourceId,
+    p_person_id: personId,
+    p_payer_person_id: payerPersonId,
+    p_amount_cents: amountCents,
+    p_profile_id: profileId,
+    p_profile_version: profile.version,
+    p_treatment_id: treatmentId,
+    p_treatment_version: treatment.version,
+    p_idempotency_key: idempotencyKey,
+    p_external_id: externalId,
+    p_protocol: protocol,
+    p_xml_path: xmlPath,
+    p_pdf_path: pdfPath,
+    p_xml_sha256: xmlSha256,
+    p_xml_byte_length: xml.byteLength,
+    p_pdf_sha256: pdfSha256,
+    p_pdf_byte_length: pdf.byteLength,
+  })
+  if (beginError) {
+    const known = beginError.message.includes('FISCAL_ISSUE_IN_PROGRESS') ? 'FISCAL_ISSUE_IN_PROGRESS' : beginError.code
+    throw new Error(`FISCAL_ISSUE_BEGIN_FAILED:${known}`)
+  }
+  const lease = parseMockIssueLease(beginData)
+  if (lease.documentId !== id) throw new Error('FISCAL_ISSUE_LEASE_IDENTITY_DRIFT')
+  if (lease.state === 'issued') redirect('/fiscal/operacoes')
+  if (lease.attemptId !== attemptId) throw new Error('FISCAL_ISSUE_LEASE_IDENTITY_DRIFT')
+
+  const { data: durable, error: durableError } = await client
+    .from('fiscal_documents')
+    .select('status')
+    .eq('id', id)
+    .single()
+  if (durableError || !durable) throw new Error(`FISCAL_ISSUE_STATE_READ_FAILED:${durableError?.code ?? 'missing'}`)
+  if (durable.status === 'issued') redirect('/fiscal/operacoes')
+  if (durable.status !== 'processing') throw new Error(`FISCAL_ISSUE_STATE_INVALID:${durable.status}`)
+
+  const bucket = client.storage.from('fiscal-documents-private')
+
+  if (lease.previousAttemptId) {
+    const previousXmlPath = `${id}/${lease.previousAttemptId}/nfse.xml`
+    const previousPdfPath = `${id}/${lease.previousAttemptId}/nfse.pdf`
+    const previousCleanup = await bucket.remove([previousXmlPath, previousPdfPath])
+    if (previousCleanup.error) {
+      await recordIssueFailure(client, id, attemptId, 'PREVIOUS_ARTIFACT_CLEANUP_FAILED')
+      throw new Error('FISCAL_PREVIOUS_ARTIFACT_CLEANUP_FAILED')
+    }
+  }
+
+  // Re-entry using the same lease is safe and removes only the active attempt paths.
+  const staleCleanup = await bucket.remove([xmlPath, pdfPath])
+  if (staleCleanup.error) {
+    await recordIssueFailure(client, id, attemptId, 'ARTIFACT_PREP_CLEANUP_FAILED')
+    throw new Error('FISCAL_ARTIFACT_PREP_CLEANUP_FAILED')
+  }
+
+  const xmlUpload = await bucket.upload(xmlPath, xml, { contentType: 'application/xml', upsert: false })
+  if (xmlUpload.error) {
+    await recordIssueFailure(client, id, attemptId, 'XML_STORAGE_FAILED')
+    throw new Error('FISCAL_XML_STORAGE_FAILED')
+  }
+
+  const pdfUpload = await bucket.upload(pdfPath, pdf, { contentType: 'application/pdf', upsert: false })
+  if (pdfUpload.error) {
+    const cleanup = await bucket.remove([xmlPath])
+    await recordIssueFailure(client, id, attemptId, cleanup.error ? 'ARTIFACT_CLEANUP_FAILED' : 'PDF_STORAGE_FAILED')
+    if (cleanup.error) throw new Error('FISCAL_ARTIFACT_CLEANUP_FAILED')
+    throw new Error('FISCAL_PDF_STORAGE_FAILED')
+  }
+
+  const issuedAt = new Date().toISOString()
+  const { data: completedId, error: completeError } = await client.rpc('complete_mock_fiscal_document_issue_atomic', {
+    p_document_id: id,
+    p_attempt_id: attemptId,
+    p_issued_at: issuedAt,
+  })
+  if (!completeError && completedId === id) redirect('/fiscal/operacoes')
+
+  const { data: finalState, error: stateError } = await client
+    .from('fiscal_documents')
+    .select('status')
+    .eq('id', id)
+    .single()
+  if (!stateError && finalState?.status === 'issued') redirect('/fiscal/operacoes')
+
+  if (!stateError && finalState?.status === 'processing') {
+    const cleanup = await bucket.remove([xmlPath, pdfPath])
+    await recordIssueFailure(client, id, attemptId, cleanup.error ? 'FINALIZE_FAILED_CLEANUP_PENDING' : 'FINALIZE_FAILED')
+    throw new Error(cleanup.error ? 'FISCAL_FINALIZE_FAILED_CLEANUP_PENDING' : 'FISCAL_FINALIZE_FAILED')
+  }
+
+  throw new Error(`FISCAL_ISSUE_RECOVERY_REQUIRED:${completeError?.code ?? stateError?.code ?? 'unknown'}`)
+}
+
+export async function cancelMockNfseAction(formData: FormData) {
+  const { client } = await context('fiscal.cancel')
+  const id = text(formData, 'fiscal_document_id')
+  const reason = text(formData, 'reason')
+  const { error } = await client.rpc('cancel_mock_fiscal_document_atomic', {
+    p_document_id: id,
+    p_reason: reason,
+  })
+  if (error) throw new Error(`FISCAL_CANCEL_FAILED:${error.code}`)
+  redirect('/fiscal/operacoes')
 }
