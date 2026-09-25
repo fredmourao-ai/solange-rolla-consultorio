@@ -1974,6 +1974,7 @@ export type Database = {
           p_amount_cents: number
           p_attempt_id: string
           p_document_id: string
+          p_review_ack: boolean
           p_external_id: string
           p_idempotency_key: string
           p_payer_person_id: string
