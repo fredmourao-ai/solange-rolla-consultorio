@@ -156,6 +156,10 @@
     "payables_recurring_atomic_creation": [
       "audit",
       "payables"
+    ],
+    "forms_capability_atomic_audit": [
+      "audit",
+      "forms"
     ]
   },
   "objects": {
@@ -242,6 +246,8 @@
     "public.record_payable_payment_atomic": "payables",
     "public.tasks": "identity",
     "public.audit_person_updated": "audit",
-    "public.create_recurring_payable_atomic": "payables"
+    "public.create_recurring_payable_atomic": "payables",
+    "public.create_form_template_atomic": "forms",
+    "public.issue_form_capability_atomic": "forms"
   }
 }

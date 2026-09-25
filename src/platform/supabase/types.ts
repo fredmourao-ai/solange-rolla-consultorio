@@ -2018,6 +2018,16 @@ export type Database = {
           supersedes_id: string
         }[]
       }
+      create_form_template_atomic: {
+        Args: {
+          p_classification: string
+          p_name: string
+          p_schema: Json
+          p_template_id: string
+          p_version_id: string
+        }
+        Returns: string
+      }
       create_recurring_payable_atomic: {
         Args: {
           p_amount_cents: number
@@ -2061,6 +2071,17 @@ export type Database = {
         }[]
       }
       has_permission: { Args: { p_permission_key: string }; Returns: boolean }
+      issue_form_capability_atomic: {
+        Args: {
+          p_capability_id: string
+          p_expires_at: string
+          p_person_id: string
+          p_submission_id: string
+          p_template_version_id: string
+          p_token_hash: string
+        }
+        Returns: string
+      }
       list_clinical_record_metadata: {
         Args: { p_person_id: string }
         Returns: {
