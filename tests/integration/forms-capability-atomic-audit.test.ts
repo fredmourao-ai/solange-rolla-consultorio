@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
 const source = readFileSync('src/app/(protected)/formularios/actions.ts', 'utf8')
-const migration = readFileSync('supabase/migrations/20260919227000_forms_capability_atomic_audit.sql', 'utf8')
+const migration = readFileSync('supabase/migrations/20260919225600_forms_capability_atomic_audit.sql', 'utf8')
 
 describe('forms capability atomicity contract', () => {
   it('uses atomic RPCs and generates capability material only in server memory', () => {
