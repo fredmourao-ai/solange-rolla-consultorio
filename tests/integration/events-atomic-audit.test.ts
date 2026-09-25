@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
 const source = readFileSync('src/app/(protected)/eventos/operacoes/actions.ts', 'utf8')
-const migration = readFileSync('supabase/migrations/20260919226000_events_atomic_audit.sql', 'utf8')
+const migration = readFileSync('supabase/migrations/20260919225500_events_atomic_audit.sql', 'utf8')
 
 describe('event audit atomicity contract', () => {
   it('routes all event operation writes through atomic RPCs', () => {
