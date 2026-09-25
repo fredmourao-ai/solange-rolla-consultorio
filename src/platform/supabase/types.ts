@@ -2018,6 +2018,29 @@ export type Database = {
           supersedes_id: string
         }[]
       }
+      create_event_atomic: {
+        Args: {
+          p_capacity: number
+          p_default_price_cents: number
+          p_description: string
+          p_ends_at: string
+          p_location: string
+          p_modality: string
+          p_starts_at: string
+          p_title: string
+          p_type: string
+        }
+        Returns: string
+      }
+      create_event_expense_atomic: {
+        Args: {
+          p_amount_cents: number
+          p_description: string
+          p_event_id: string
+          p_paid_at?: string
+        }
+        Returns: string
+      }
       create_recurring_payable_atomic: {
         Args: {
           p_amount_cents: number
@@ -2248,6 +2271,27 @@ export type Database = {
           result_submission_version_id: string
           result_typed_name: string
         }[]
+      }
+      update_event_atomic: {
+        Args: {
+          p_capacity: number
+          p_default_price_cents: number
+          p_ends_at: string
+          p_event_id: string
+          p_location: string
+          p_modality: string
+          p_starts_at: string
+          p_title: string
+        }
+        Returns: string
+      }
+      update_event_registration_atomic: {
+        Args: {
+          p_attendance_status: string
+          p_registration_id: string
+          p_status: string
+        }
+        Returns: string
       }
       upsert_staff_profile: {
         Args: {
