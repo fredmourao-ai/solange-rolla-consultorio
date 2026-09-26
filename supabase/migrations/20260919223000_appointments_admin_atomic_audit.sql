@@ -21,14 +21,15 @@ declare
   v_remaining_days integer;
   v_consumed_days integer := 0;
   v_weekday integer;
+  v_index integer;
 begin
-  if jsonb_typeof(p_snapshot) is distinct from 'object'
-    or jsonb_typeof(p_snapshot -> 'policyVersion') is distinct from 'number'
-    or jsonb_typeof(p_snapshot -> 'countableHours') is distinct from 'number'
-    or jsonb_typeof(p_snapshot -> 'excludedWeekdays') is distinct from 'array'
-    or jsonb_typeof(p_snapshot -> 'businessTimezone') is distinct from 'string'
-    or jsonb_typeof(p_snapshot -> 'lateCancellationChargeEnabled') is distinct from 'boolean'
-    or jsonb_typeof(p_snapshot -> 'noShowChargeEnabled') is distinct from 'boolean' then
+  if coalesce(jsonb_typeof(p_snapshot), '') <> 'object'
+    or coalesce(jsonb_typeof(p_snapshot -> 'policyVersion'), '') <> 'number'
+    or coalesce(jsonb_typeof(p_snapshot -> 'countableHours'), '') <> 'number'
+    or coalesce(jsonb_typeof(p_snapshot -> 'excludedWeekdays'), '') <> 'array'
+    or coalesce(jsonb_typeof(p_snapshot -> 'businessTimezone'), '') <> 'string'
+    or coalesce(jsonb_typeof(p_snapshot -> 'lateCancellationChargeEnabled'), '') <> 'boolean'
+    or coalesce(jsonb_typeof(p_snapshot -> 'noShowChargeEnabled'), '') <> 'boolean' then
     raise exception 'AGENDA_POLICY_SNAPSHOT_INVALID' using errcode = '23514';
   end if;
 
@@ -43,14 +44,12 @@ begin
     raise exception 'AGENDA_POLICY_SNAPSHOT_INVALID' using errcode = '23514';
   end if;
 
-  if exists (
-    select 1
-    from jsonb_array_elements(v_excluded_weekdays) value
-    where jsonb_typeof(value) is distinct from 'number'
-       or (value #>> '{}')::integer not between 0 and 6
-  ) then
-    raise exception 'AGENDA_POLICY_SNAPSHOT_INVALID' using errcode = '23514';
-  end if;
+  for v_index in 0..jsonb_array_length(v_excluded_weekdays) - 1 loop
+    if coalesce(jsonb_typeof(v_excluded_weekdays -> v_index), '') <> 'number'
+      or (v_excluded_weekdays ->> v_index)::integer not between 0 and 6 then
+      raise exception 'AGENDA_POLICY_SNAPSHOT_INVALID' using errcode = '23514';
+    end if;
+  end loop;
 
   v_local_start := p_starts_at at time zone v_timezone;
   v_candidate_date := v_local_start::date;
@@ -58,12 +57,8 @@ begin
 
   while v_consumed_days < v_remaining_days loop
     v_candidate_date := v_candidate_date - 1;
-    v_weekday := extract(dow from v_candidate_date)::integer;
-    if not exists (
-      select 1
-      from jsonb_array_elements(v_excluded_weekdays) value
-      where (value #>> '{}')::integer = v_weekday
-    ) then
+    v_weekday := date_part('dow', v_candidate_date)::integer;
+    if not (v_excluded_weekdays @> jsonb_build_array(v_weekday)) then
       v_consumed_days := v_consumed_days + 1;
     end if;
   end loop;
