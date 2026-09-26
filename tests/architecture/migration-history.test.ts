@@ -640,10 +640,10 @@ describe('migration history', () => {
     expect(workflow).toContain('name: Migration history')
     expect(workflow).toContain('github.event.before')
     expect(workflow).toContain('run: npm run migrations:check')
-    expect(workflow).toContain('npx supabase@2.115.0 db start')
-    expect(workflow).toContain('npx supabase@2.115.0 db reset')
-    expect(workflow).toContain('npx supabase@2.115.0 test db')
-    expect(workflow).toContain('npx supabase@2.115.0 gen types typescript --local')
+    expect(workflow).toContain('npx supabase@2.118.0 db start')
+    expect(workflow).toContain('npx supabase@2.118.0 db reset')
+    expect(workflow).toContain('npx supabase@2.118.0 test db')
+    expect(workflow).toContain('npx supabase@2.118.0 gen types typescript --local')
   })
 
   it('documents clinical and platform schema ownership boundaries', () => {
