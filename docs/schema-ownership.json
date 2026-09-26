@@ -156,6 +156,10 @@
     "payables_recurring_atomic_creation": [
       "audit",
       "payables"
+    ],
+    "runtime_role_privilege_hardening": [
+      "audit",
+      "forms"
     ]
   },
   "objects": {
