@@ -2,7 +2,7 @@
   "version": 1,
   "status": "approved",
   "issue": 245,
-  "migration": "20260926134000_runtime_role_privilege_hardening.sql",
+  "migration": "20260919205000_runtime_role_privilege_hardening.sql",
   "owners": [
     "audit",
     "forms"
