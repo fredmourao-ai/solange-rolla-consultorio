@@ -115,7 +115,7 @@ export type Database = {
         Row: {
           business_timezone: string
           cancellation_deadline_at: string
-          cancellation_policy_snapshot: Json
+          cancellation_policy_snapshot: NonNullable<Json>
           created_at: string
           ends_at: string
           id: string
@@ -129,7 +129,7 @@ export type Database = {
         Insert: {
           business_timezone: string
           cancellation_deadline_at: string
-          cancellation_policy_snapshot: Json
+          cancellation_policy_snapshot: NonNullable<Json>
           created_at?: string
           ends_at: string
           id?: string
@@ -143,7 +143,7 @@ export type Database = {
         Update: {
           business_timezone?: string
           cancellation_deadline_at?: string
-          cancellation_policy_snapshot?: Json
+          cancellation_policy_snapshot?: NonNullable<Json>
           created_at?: string
           ends_at?: string
           id?: string
@@ -188,7 +188,7 @@ export type Database = {
           entity_id: string
           entity_type: string
           id: string
-          metadata: Json
+          metadata: NonNullable<Json>
         }
         Insert: {
           action: string
@@ -199,7 +199,7 @@ export type Database = {
           entity_id: string
           entity_type: string
           id?: string
-          metadata?: Json
+          metadata?: NonNullable<Json>
         }
         Update: {
           action?: string
@@ -210,7 +210,7 @@ export type Database = {
           entity_id?: string
           entity_type?: string
           id?: string
-          metadata?: Json
+          metadata?: NonNullable<Json>
         }
         Relationships: []
       }
@@ -220,7 +220,7 @@ export type Database = {
           countable_hours: number
           created_at: string
           effective_from: string
-          excluded_weekdays: Json
+          excluded_weekdays: NonNullable<Json>
           id: string
           late_cancellation_charge_enabled: boolean
           legal_document_version_id: string | null
@@ -232,7 +232,7 @@ export type Database = {
           countable_hours: number
           created_at?: string
           effective_from: string
-          excluded_weekdays: Json
+          excluded_weekdays: NonNullable<Json>
           id?: string
           late_cancellation_charge_enabled: boolean
           legal_document_version_id?: string | null
@@ -244,7 +244,7 @@ export type Database = {
           countable_hours?: number
           created_at?: string
           effective_from?: string
-          excluded_weekdays?: Json
+          excluded_weekdays?: NonNullable<Json>
           id?: string
           late_cancellation_charge_enabled?: boolean
           legal_document_version_id?: string | null
@@ -745,7 +745,7 @@ export type Database = {
           created_at: string
           effective_from: string
           effective_until: string | null
-          fiscal_address: Json
+          fiscal_address: NonNullable<Json>
           id: string
           issuer_document: string
           issuer_kind: string
@@ -759,7 +759,7 @@ export type Database = {
           created_at?: string
           effective_from: string
           effective_until?: string | null
-          fiscal_address?: Json
+          fiscal_address?: NonNullable<Json>
           id?: string
           issuer_document: string
           issuer_kind: string
@@ -773,7 +773,7 @@ export type Database = {
           created_at?: string
           effective_from?: string
           effective_until?: string | null
-          fiscal_address?: Json
+          fiscal_address?: NonNullable<Json>
           id?: string
           issuer_document?: string
           issuer_kind?: string
@@ -910,7 +910,7 @@ export type Database = {
           created_at: string
           data_classification: string
           id: string
-          schema: Json
+          schema: NonNullable<Json>
           template_id: string
           version: number
         }
@@ -918,7 +918,7 @@ export type Database = {
           created_at?: string
           data_classification: string
           id?: string
-          schema: Json
+          schema: NonNullable<Json>
           template_id: string
           version: number
         }
@@ -926,7 +926,7 @@ export type Database = {
           created_at?: string
           data_classification?: string
           id?: string
-          schema?: Json
+          schema?: NonNullable<Json>
           template_id?: string
           version?: number
         }
@@ -964,21 +964,21 @@ export type Database = {
       inbox_events: {
         Row: {
           id: string
-          payload: Json
+          payload: NonNullable<Json>
           provider: string
           provider_event_id: string
           received_at: string
         }
         Insert: {
           id?: string
-          payload: Json
+          payload: NonNullable<Json>
           provider: string
           provider_event_id: string
           received_at?: string
         }
         Update: {
           id?: string
-          payload?: Json
+          payload?: NonNullable<Json>
           provider?: string
           provider_event_id?: string
           received_at?: string
@@ -1168,7 +1168,7 @@ export type Database = {
           dispatched_at: string | null
           id: string
           idempotency_key: string
-          payload: Json
+          payload: NonNullable<Json>
           recipient: string
           status: string
           template_key: string
@@ -1179,7 +1179,7 @@ export type Database = {
           dispatched_at?: string | null
           id?: string
           idempotency_key: string
-          payload: Json
+          payload: NonNullable<Json>
           recipient: string
           status?: string
           template_key: string
@@ -1190,7 +1190,7 @@ export type Database = {
           dispatched_at?: string | null
           id?: string
           idempotency_key?: string
-          payload?: Json
+          payload?: NonNullable<Json>
           recipient?: string
           status?: string
           template_key?: string
@@ -1404,7 +1404,7 @@ export type Database = {
           emergency_contact_name: string | null
           emergency_contact_phone_e164: string | null
           emergency_contact_relationship: string | null
-          fiscal_address: Json
+          fiscal_address: NonNullable<Json>
           id: string
           phone_e164: string | null
           preferred_channel: string
@@ -1421,7 +1421,7 @@ export type Database = {
           emergency_contact_name?: string | null
           emergency_contact_phone_e164?: string | null
           emergency_contact_relationship?: string | null
-          fiscal_address?: Json
+          fiscal_address?: NonNullable<Json>
           id?: string
           phone_e164?: string | null
           preferred_channel?: string
@@ -1438,7 +1438,7 @@ export type Database = {
           emergency_contact_name?: string | null
           emergency_contact_phone_e164?: string | null
           emergency_contact_relationship?: string | null
-          fiscal_address?: Json
+          fiscal_address?: NonNullable<Json>
           id?: string
           phone_e164?: string | null
           preferred_channel?: string
@@ -1787,7 +1787,7 @@ export type Database = {
           document_status: string
           document_storage_path: string | null
           id: string
-          metadata: Json
+          metadata: NonNullable<Json>
           signature_asset_path: string | null
           signed_at: string
           source: string
@@ -1802,7 +1802,7 @@ export type Database = {
           document_status?: string
           document_storage_path?: string | null
           id?: string
-          metadata?: Json
+          metadata?: NonNullable<Json>
           signature_asset_path?: string | null
           signed_at?: string
           source: string
@@ -1817,7 +1817,7 @@ export type Database = {
           document_status?: string
           document_storage_path?: string | null
           id?: string
-          metadata?: Json
+          metadata?: NonNullable<Json>
           signature_asset_path?: string | null
           signed_at?: string
           source?: string
@@ -1961,7 +1961,7 @@ export type Database = {
     }
     Functions: {
       accounting_people_rows: {
-        Args: never
+        Args: Record<PropertyKey, never>
         Returns: {
           civil_name: string
           cpf_normalized: string
@@ -2031,9 +2031,9 @@ export type Database = {
         }
         Returns: boolean
       }
-      current_aal: { Args: never; Returns: string }
+      current_aal: { Args: Record<PropertyKey, never>; Returns: string }
       current_app_role: {
-        Args: never
+        Args: Record<PropertyKey, never>
         Returns: Database["public"]["Enums"]["app_role"]
       }
       exchange_capability: {
@@ -2072,13 +2072,13 @@ export type Database = {
         }[]
       }
       list_current_permissions: {
-        Args: never
+        Args: Record<PropertyKey, never>
         Returns: {
           permission_key: string
         }[]
       }
       list_staff_users: {
-        Args: never
+        Args: Record<PropertyKey, never>
         Returns: {
           active: boolean
           created_at: string
