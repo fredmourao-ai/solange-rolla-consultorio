@@ -150,6 +150,9 @@ jobs:
         run: npm audit --audit-level=high
 
   e2e:
+    concurrency:
+      group: solange-local-supabase
+      cancel-in-progress: false
     if: >-
       github.event_name != 'pull_request' ||
       github.event.pull_request.head.repo.full_name == github.repository
