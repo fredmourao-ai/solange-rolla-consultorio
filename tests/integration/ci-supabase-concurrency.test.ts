@@ -31,4 +31,12 @@ describe('local Supabase CI serialization', () => {
       expect(block).not.toContain('group: solange-local-supabase')
     }
   })
+  it('normalizes generated database types before drift comparison', () => {
+    const db = jobBlock(dbWorkflow, 'db')
+    expect(db).toContain('npx supabase@2.118.0 gen types typescript --local')
+    expect(db).toContain('npx prettier@3.9.9 --no-semi --single-quote')
+    expect(db).toContain('database-types-generated.ts')
+    expect(db).toContain('database-types-committed.ts')
+  })
+
 })
