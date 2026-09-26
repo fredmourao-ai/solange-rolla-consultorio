@@ -242,6 +242,8 @@
     "public.record_payable_payment_atomic": "payables",
     "public.tasks": "identity",
     "public.audit_person_updated": "audit",
-    "public.create_recurring_payable_atomic": "payables"
+    "public.create_recurring_payable_atomic": "payables",
+    "public.current_app_role": "identity",
+    "public.current_aal": "identity"
   }
 }
