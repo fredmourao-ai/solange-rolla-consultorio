@@ -81,7 +81,7 @@ export async function createFormTemplateAction(formData: FormData) {
       label: field.label,
       type: field.type,
       required: field.required,
-      ...(field.options ? { options: field.options } : {}),
+      ...(field.options ? { options: [...field.options] } : {}),
     })),
   }
   const client = await createServerSupabaseClient()
