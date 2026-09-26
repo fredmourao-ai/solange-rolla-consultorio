@@ -26,6 +26,7 @@ jobs:
       (github.event_name == 'workflow_run' &&
        (github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'workflow_dispatch') &&
        github.event.workflow_run.head_branch == 'main' &&
+       vars.STAGING_AUTO_PROMOTE_ENABLED == 'true' &&
        github.event.workflow_run.conclusion == 'success')
     runs-on: [self-hosted, Linux, ARM64, solange-ci]
     timeout-minutes: 5
@@ -439,6 +440,7 @@ jobs:
           APP_SWAPPED=1
           mv "$STAGE" "$APP"
           docker run -d --name "$WEB" --restart unless-stopped --network host \
+            --user "$(id -u):$(id -g)" -e HOME=/tmp \
             --env-file "$RUNTIME_ENV" \
             -v "$APP:/app" \
             -w /app \
@@ -625,3 +627,8 @@ jobs:
           rm -f "$ROOT/reconcile-previous.sh"
           # Keep the promoted release state directory: the canonical workers bind-mount it
           # and need the same host path to exist after container restarts.
+          # Verify mutable app artifacts remain owned by the runner. Root-owned files here
+          # caused historical .next/cache EACCES failures; secrets outside app are excluded.
+          unexpected=$(find "$ROOT/app" -xdev -not -user "$(id -un)" -print -quit)
+          test -z "$unexpected" || { echo "unexpected app ownership: $unexpected" >&2; exit 1; }
+          STAGING_DEPLOY_ROOT="$ROOT" "$GITHUB_WORKSPACE/ops/staging/housekeeping.sh"
