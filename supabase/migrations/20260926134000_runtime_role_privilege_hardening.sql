@@ -8,15 +8,9 @@
 revoke all on public.audit_events from authenticated;
 grant insert, select on public.audit_events to authenticated;
 
-revoke insert, update, delete, truncate, references, trigger
-on public.form_templates
-from service_role;
-revoke insert, update, delete, truncate, references, trigger
-on public.form_template_versions
-from service_role;
-revoke insert, update, delete, truncate, references, trigger
-on public.form_submissions
-from service_role;
+revoke all on public.form_templates from service_role;
+revoke all on public.form_template_versions from service_role;
+revoke all on public.form_submissions from service_role;
 
 grant select on public.form_templates to service_role;
 grant select on public.form_template_versions to service_role;
