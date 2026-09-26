@@ -4,11 +4,13 @@ import { describe, expect, it } from 'vitest'
 const ciWorkflow = readFileSync('.github/workflows/ci.yml', 'utf8')
 const dbWorkflow = readFileSync('.github/workflows/db.yml', 'utf8')
 
-function jobBlock(source: string, job: string, nextJob?: string) {
+function jobBlock(source: string, job: string) {
   const start = source.indexOf(`  ${job}:\n`)
   if (start === -1) throw new Error(`JOB_NOT_FOUND:${job}`)
-  const end = nextJob ? source.indexOf(`  ${nextJob}:\n`, start + 1) : source.length
-  return source.slice(start, end === -1 ? source.length : end)
+  const rest = source.slice(start + 1)
+  const next = rest.search(/^  [a-zA-Z0-9_-]+:\n/m)
+  const end = next === -1 ? source.length : start + 1 + next
+  return source.slice(start, end)
 }
 
 describe('local Supabase CI serialization', () => {
