@@ -21,14 +21,39 @@ describe('staging cloud database helpers', () => {
     })).rejects.toThrow('STAGING_SEED_PRODUCTION_FORBIDDEN')
   })
 
-  it('applies the synthetic seed only to the dedicated staging project', async () => {
-    const fetchImpl = vi.fn(async () => new Response('[]', { status: 200 }))
-    await seedStagingProject({
-      stagingRef: 'staging-ref', productionRef: 'production-ref', accessToken: 'token', seedSql: 'select 1', fetchImpl,
+  it('applies the synthetic seed without the local auth credential fixture', async () => {
+    const fetchImpl = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      void input
+      void init
+      return new Response('[]', { status: 200 })
     })
-    expect(fetchImpl).toHaveBeenCalledWith(
-      'https://api.supabase.com/v1/projects/staging-ref/database/query',
-      expect.objectContaining({ method: 'POST', body: JSON.stringify({ query: 'select 1', read_only: false }) }),
-    )
+    const seedSql = [
+      '-- BEGIN LOCAL_AUTH_FIXTURE',
+      "insert into auth.users (encrypted_password) values ('local-only');",
+      '-- END LOCAL_AUTH_FIXTURE',
+      'select 1;',
+    ].join('\n')
+    await seedStagingProject({
+      stagingRef: 'staging-ref',
+      productionRef: 'production-ref',
+      accessToken: 'token',
+      seedSql,
+      fetchImpl,
+    })
+    const [, options] = fetchImpl.mock.calls[0]
+    const body = JSON.parse(String(options?.body))
+    expect(body.read_only).toBe(false)
+    expect(body.query).toContain('select 1;')
+    expect(body.query).not.toContain('auth.users')
+    expect(body.query).not.toContain('encrypted_password')
+  })
+
+  it('refuses remote staging seed when the local-auth fixture markers are absent', async () => {
+    await expect(seedStagingProject({
+      stagingRef: 'staging-ref',
+      productionRef: 'production-ref',
+      accessToken: 'token',
+      seedSql: 'select 1',
+    })).rejects.toThrow('STAGING_SEED_AUTH_FIXTURE_MARKERS_REQUIRED')
   })
 })

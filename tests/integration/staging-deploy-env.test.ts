@@ -19,10 +19,10 @@ describe('staging deploy environment', () => {
     expect(deploy).toContain("'SUPABASE_PRODUCTION_PROJECT_REF': os.environ['SUPABASE_PRODUCTION_PROJECT_REF']")
   })
 
-  it('disables TLS only for the loopback homologation database push', () => {
+  it('removes the inherited local DB_URL from the managed staging runtime', () => {
     const deploy = workflow.slice(workflow.indexOf('- name: Deploy exact SHA to homologation'))
-    expect(deploy).toContain("hostname in {'127.0.0.1', 'localhost'}")
-    expect(deploy).toContain("query['sslmode'] = 'disable'")
+    expect(deploy).toContain("values.pop('DB_URL', None)")
+    expect(deploy).not.toContain("'db', 'push', '--db-url'")
   })
 })
 
@@ -34,13 +34,13 @@ describe('staging deploy live-channel flags', () => {
   })
 })
 
-describe('staging database endpoint readiness', () => {
-  it('repairs a missing loopback database publication before migration push', () => {
+describe('staging database provenance', () => {
+  it('never treats the local Docker database as the managed staging migration target', () => {
     const deploy = workflow.slice(workflow.indexOf('- name: Deploy exact SHA to homologation'))
-    expect(deploy).toContain('STAGING_DB_CONTAINER=supabase_db_solange-client-demo')
-    expect(deploy).toContain('pg_isready -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER"')
-    expect(deploy).toContain('docker restart -t 30 "$STAGING_DB_CONTAINER"')
-    expect(deploy).toContain('staging database endpoint unavailable after repair')
+    expect(deploy).not.toContain('STAGING_DB_CONTAINER=supabase_db_solange-client-demo')
+    expect(deploy).not.toContain('pg_isready -h "$DB_HOST"')
+    expect(deploy).not.toContain('docker restart -t 30 "$STAGING_DB_CONTAINER"')
+    expect(workflow).toContain('node scripts/apply-staging-migrations.mjs')
   })
 })
 
@@ -51,15 +51,26 @@ describe('staging runtime URL and reconciler contract', () => {
     expect(deploy).toContain("'APP_URL': app_url")
   })
 
-  it('normalizes web, tunnel, and reconciler restart policies before the app swap', () => {
+  it('keeps the tunnel private until the exact candidate is healthy locally', () => {
+    const deploy = workflow.slice(workflow.indexOf('- name: Deploy exact SHA to homologation'))
+    const localHealth = deploy.indexOf('http://127.0.0.1:3200/api/health')
+    const expose = deploy.indexOf('true > "$ROOT/state/public-exposure-enabled"')
+    const externalHealth = deploy.indexOf('"$candidate_url/api/health"')
+    expect(localHealth).toBeGreaterThan(-1)
+    expect(expose).toBeGreaterThan(localHealth)
+    expect(externalHealth).toBeGreaterThan(expose)
+    expect(deploy).toContain('test "$(printf \'%s\' "$local_payload" | jq -r \'.buildSha // empty\')" = "$PROMOTE_SHA"')
+  })
+
+  it('normalizes web, tunnel, and reconciler restart policies only when public exposure is enabled', () => {
     const deploy = workflow.slice(workflow.indexOf('- name: Deploy exact SHA to homologation'))
     expect(deploy).toContain('RECONCILER=solange-demo-reconciler')
     expect(deploy).toContain('TUNNEL=solange-demo-tunnel')
     expect(deploy).toContain('docker update --restart unless-stopped "$RECONCILER" "$TUNNEL"')
     expect(deploy).toContain('docker run -d --name "$WEB" --restart unless-stopped')
     expect(deploy).toContain('docker restart "$RECONCILER"')
-    expect(deploy).toContain('docker inspect -f \'{{.HostConfig.RestartPolicy.Name}}\' solange-demo-reconciler')
-    expect(deploy).toContain('docker inspect -f \'{{.HostConfig.RestartPolicy.Name}}\' solange-demo-tunnel')
+    expect(deploy).toContain("docker inspect -f '{{.HostConfig.RestartPolicy.Name}}' \"$RECONCILER\"")
+    expect(deploy).toContain("docker inspect -f '{{.HostConfig.RestartPolicy.Name}}' \"$TUNNEL\"")
   })
 
   it('uses the versioned reconciler instead of the legacy host preflight', () => {
@@ -76,6 +87,19 @@ describe('staging reconciler transactional rollback', () => {
     expect(deploy).toContain('cp -p "$ROOT/reconcile.sh" "$RECONCILER_PREVIOUS"')
     expect(deploy).toContain('mv "$RECONCILER_PREVIOUS" "$ROOT/reconcile.sh"')
     expect(deploy).toContain('rm -f "$ROOT/reconcile-previous.sh"')
+  })
+})
+
+describe('staging demo credential hardening', () => {
+  it('requires a protected staging secret and never enables the public admin alias', () => {
+    const deploy = workflow.slice(workflow.indexOf('- name: Deploy exact SHA to homologation'))
+    expect(deploy).toContain('STAGING_DEMO_PASSWORD: ${{ secrets.STAGING_DEMO_PASSWORD }}')
+    expect(deploy).toContain("'NEXT_PUBLIC_TEMP_ADMIN_LOGIN_ENABLED': 'false'")
+    expect(deploy).toContain("'DEMO_LOCAL_PASSWORD': staging_demo_password")
+    expect(deploy).toContain('len(staging_demo_password) < 32')
+    expect(deploy).toContain('public-exposure-enabled')
+    expect(deploy).toContain('docker update --restart unless-stopped "$RECONCILER" "$TUNNEL"')
+    expect(workflow).toContain('docker update --restart=no solange-demo-tunnel "$RECONCILER"')
   })
 })
 
