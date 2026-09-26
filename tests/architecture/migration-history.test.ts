@@ -636,7 +636,7 @@ describe('migration history', () => {
     ownership.objects['public.has_permission'] = 'identity'
     fs.writeFileSync(ownershipPath, `${JSON.stringify(ownership, null, 2)}\n`)
 
-    const migration = '20260824000360_appointments_permission_bridge.sql'
+    const migration = '20260824000400_appointments_permission_bridge.sql'
     fs.writeFileSync(
       path.join(repository, 'supabase/migrations', migration),
       '-- owners: appointments,identity\n-- cross-module-task: docs/task-contracts/appointments_permission_bridge.json\n-- allow-static-routines: true\ncreate or replace function public.transition_appointment_permission_test(p_id uuid) returns void language plpgsql set search_path = public as $ begin if not public.has_permission(\'appointments.update\') then raise exception \'forbidden\'; end if; update public.appointments set status = status where id = p_id; end; $;\n',
@@ -668,7 +668,7 @@ describe('migration history', () => {
     ownership.objects['public.has_permission'] = 'identity'
     fs.writeFileSync(ownershipPath, `${JSON.stringify(ownership, null, 2)}\n`)
 
-    const migration = '20260824000360_appointments_permission_bridge.sql'
+    const migration = '20260824000400_appointments_permission_bridge.sql'
     fs.writeFileSync(
       path.join(repository, 'supabase/migrations', migration),
       '-- owners: appointments,identity\n-- cross-module-task: docs/task-contracts/appointments_permission_bridge.json\n-- allow-static-routines: true\ncreate or replace function public.transition_appointment_permission_test(p_id uuid) returns void language plpgsql set search_path = public as $ begin if not public.has_permission(\'appointments.update\') then raise exception \'forbidden\'; end if; update public.appointments set status = status where id = p_id; end; $;\n',
