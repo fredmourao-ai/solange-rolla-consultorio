@@ -129,6 +129,10 @@ jobs:
           test "$(git rev-parse HEAD)" = "$PROMOTE_SHA"
           test "$(git rev-parse origin/main)" = "$PROMOTE_SHA"
 
+      - name: Isolate npm cache per runner
+        shell: bash
+        run: echo "NPM_CONFIG_CACHE=$RUNNER_TEMP/npm-cache" >> "$GITHUB_ENV"
+
       - name: Use Node 24.19.0
         uses: actions/setup-node@v7
         with:
