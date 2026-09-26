@@ -38,4 +38,16 @@ describe('supabase provider event repository', () => {
     const repository = createSupabaseProviderEventRepository(client as never)
     await expect(repository.insertIfNew({ provider: 'meta-whatsapp', providerEventId: 'evt-1', payload: {} })).rejects.toBeTruthy()
   })
+
+  it('rejects nested payload values that cannot be represented as JSON', async () => {
+    const { client, inserted } = fakeClient(null)
+    const repository = createSupabaseProviderEventRepository(client as never)
+    await expect(repository.insertIfNew({
+      provider: 'meta-whatsapp',
+      providerEventId: 'evt-invalid',
+      payload: { nested: { invalid: () => 'not-json' } },
+    })).rejects.toThrow('PROVIDER_EVENT_PAYLOAD_NOT_JSON')
+    expect(inserted).toEqual([])
+  })
+
 })
