@@ -624,6 +624,72 @@ describe('migration history', () => {
     expect(result.status, outputOf(result)).toBe(0)
   })
 
+  it('tracks schema-qualified routine calls as cross-module migration dependencies', () => {
+    const repository = createRepository()
+    const ownershipPath = path.join(repository, 'docs/schema-ownership.json')
+    const ownership = JSON.parse(fs.readFileSync(ownershipPath, 'utf8')) as {
+      descriptionAliases: Record<string, string[]>
+      objects: Record<string, string>
+    }
+    ownership.descriptionAliases.appointments_permission_bridge = ['appointments', 'identity']
+    ownership.objects['public.transition_appointment_permission_test'] = 'appointments'
+    ownership.objects['public.has_permission'] = 'identity'
+    fs.writeFileSync(ownershipPath, `${JSON.stringify(ownership, null, 2)}\n`)
+
+    const migration = '20260824000360_appointments_permission_bridge.sql'
+    fs.writeFileSync(
+      path.join(repository, 'supabase/migrations', migration),
+      '-- owners: appointments,identity\n-- cross-module-task: docs/task-contracts/appointments_permission_bridge.json\n-- allow-static-routines: true\ncreate or replace function public.transition_appointment_permission_test(p_id uuid) returns void language plpgsql set search_path = public as $ begin if not public.has_permission(\'appointments.update\') then raise exception \'forbidden\'; end if; update public.appointments set status = status where id = p_id; end; $;\n',
+    )
+    writeTaskContract(repository, 'appointments_permission_bridge.json', {
+      issue: 125,
+      migration,
+      owners: ['appointments', 'identity'],
+      objects: [
+        { name: 'public.transition_appointment_permission_test', owner: 'appointments' },
+        { name: 'public.appointments', owner: 'appointments' },
+        { name: 'public.has_permission', owner: 'identity' },
+      ],
+    })
+
+    const result = checkMigrations(repository, { baseRef: 'migration-base' })
+    expect(result.status, outputOf(result)).toBe(0)
+  })
+
+  it('rejects a schema-qualified routine dependency omitted from the task contract', () => {
+    const repository = createRepository()
+    const ownershipPath = path.join(repository, 'docs/schema-ownership.json')
+    const ownership = JSON.parse(fs.readFileSync(ownershipPath, 'utf8')) as {
+      descriptionAliases: Record<string, string[]>
+      objects: Record<string, string>
+    }
+    ownership.descriptionAliases.appointments_permission_bridge = ['appointments', 'identity']
+    ownership.objects['public.transition_appointment_permission_test'] = 'appointments'
+    ownership.objects['public.has_permission'] = 'identity'
+    fs.writeFileSync(ownershipPath, `${JSON.stringify(ownership, null, 2)}\n`)
+
+    const migration = '20260824000360_appointments_permission_bridge.sql'
+    fs.writeFileSync(
+      path.join(repository, 'supabase/migrations', migration),
+      '-- owners: appointments,identity\n-- cross-module-task: docs/task-contracts/appointments_permission_bridge.json\n-- allow-static-routines: true\ncreate or replace function public.transition_appointment_permission_test(p_id uuid) returns void language plpgsql set search_path = public as $ begin if not public.has_permission(\'appointments.update\') then raise exception \'forbidden\'; end if; update public.appointments set status = status where id = p_id; end; $;\n',
+    )
+    writeTaskContract(repository, 'appointments_permission_bridge.json', {
+      issue: 126,
+      migration,
+      owners: ['appointments', 'identity'],
+      objects: [
+        { name: 'public.transition_appointment_permission_test', owner: 'appointments' },
+        { name: 'public.appointments', owner: 'appointments' },
+      ],
+    })
+
+    const result = checkMigrations(repository, { baseRef: 'migration-base' })
+    expect(result.status).not.toBe(0)
+    expect(outputOf(result)).toContain(
+      'appointments_permission_bridge.json: SQL object "public.has_permission" is missing from the contract',
+    )
+  })
+
   it('exposes immutable migration history as an npm and database CI gate', () => {
     const packageJson = JSON.parse(
       fs.readFileSync(path.join(repositoryRoot, 'package.json'), 'utf8'),
