@@ -1969,6 +1969,10 @@ export type Database = {
           id: string
         }[]
       }
+      appointment_cancellation_deadline_from_snapshot: {
+        Args: { p_snapshot: Json; p_starts_at: string }
+        Returns: string
+      }
       claim_document_jobs: {
         Args: { p_limit?: number }
         Returns: {
@@ -1992,6 +1996,19 @@ export type Database = {
           remaining: number
           retry_after_seconds: number
         }[]
+      }
+      create_appointment_with_audit_atomic: {
+        Args: {
+          p_appointment_id: string
+          p_cancellation_deadline_at: string
+          p_cancellation_policy_snapshot: Json
+          p_ends_at: string
+          p_person_id: string
+          p_policy_version: number
+          p_service_id: string
+          p_starts_at: string
+        }
+        Returns: string
       }
       create_clinical_record: {
         Args: {
@@ -2248,6 +2265,17 @@ export type Database = {
           result_submission_version_id: string
           result_typed_name: string
         }[]
+      }
+      update_appointment_with_audit_atomic: {
+        Args: {
+          p_appointment_id: string
+          p_cancellation_deadline_at: string
+          p_ends_at: string
+          p_person_id: string
+          p_service_id: string
+          p_starts_at: string
+        }
+        Returns: string
       }
       upsert_staff_profile: {
         Args: {
