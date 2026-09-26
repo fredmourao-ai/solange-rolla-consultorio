@@ -57,13 +57,13 @@ jobs:
         run: npm run migrations:check
 
       - name: Start local database
-        run: npx supabase@2.115.0 db start
+        run: npx supabase@2.118.0 db start
 
       - name: Rebuild database from migrations and seed
-        run: npx supabase@2.115.0 db reset
+        run: npx supabase@2.118.0 db reset
 
       - name: Run pgTAP database tests
-        run: npx supabase@2.115.0 test db
+        run: npx supabase@2.118.0 test db
 
       - name: Ensure postgres-meta image for type verification
         run: |
@@ -82,5 +82,5 @@ jobs:
 
       - name: Verify generated database types are current
         run: |
-          npx supabase@2.115.0 gen types typescript --local > /tmp/database-types.ts
+          npx supabase@2.118.0 gen types typescript --local > /tmp/database-types.ts
           diff -u src/platform/supabase/types.ts /tmp/database-types.ts
