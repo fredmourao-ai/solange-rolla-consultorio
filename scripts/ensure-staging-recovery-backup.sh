@@ -63,8 +63,8 @@ SCHEMA_TMP="$SCHEMA.partial"
 DATA_TMP="$DATA.partial"
 cleanup(){ rm -f "$SCHEMA_TMP" "$DATA_TMP"; unset SUPABASE_DB_PASSWORD; }
 trap cleanup EXIT INT TERM
-npx supabase@2.115.0 db dump --project-ref "$SUPABASE_STAGING_PROJECT_REF" --schema public,clinical,auth --file "$SCHEMA_TMP" --yes
-npx supabase@2.115.0 db dump --project-ref "$SUPABASE_STAGING_PROJECT_REF" --schema public,clinical,auth --data-only --use-copy --file "$DATA_TMP" --yes
+npx supabase@2.118.0 db dump --project-ref "$SUPABASE_STAGING_PROJECT_REF" --schema public,clinical,auth --file "$SCHEMA_TMP" --yes
+npx supabase@2.118.0 db dump --project-ref "$SUPABASE_STAGING_PROJECT_REF" --schema public,clinical,auth --data-only --use-copy --file "$DATA_TMP" --yes
 [ -s "$SCHEMA_TMP" ] && [ -s "$DATA_TMP" ] || { echo 'staging_recovery_failed empty_logical_dump' >&2; exit 1; }
 chmod 600 "$SCHEMA_TMP" "$DATA_TMP"
 mv "$SCHEMA_TMP" "$SCHEMA"
