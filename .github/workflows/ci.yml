@@ -150,6 +150,9 @@ jobs:
         run: npm audit --audit-level=high
 
   e2e:
+    concurrency:
+      group: solange-local-supabase
+      cancel-in-progress: false
     if: >-
       github.event_name != 'pull_request' ||
       github.event.pull_request.head.repo.full_name == github.repository
@@ -184,17 +187,17 @@ jobs:
           set -euo pipefail
           trap 'rm -f "$RUNNER_TEMP/supabase-start.log" "$RUNNER_TEMP/supabase-start-retry.log"' EXIT
           if docker ps -a --format '{{.Names}}' | grep -q '_solange-rolla-consultorio$'; then
-            npx supabase@2.115.0 stop --no-backup
+            npx supabase@2.118.0 stop --no-backup
           else
             echo "No local Supabase stack to stop."
           fi
-          if ! npx supabase@2.115.0 start >"$RUNNER_TEMP/supabase-start.log" 2>&1; then
+          if ! npx supabase@2.118.0 start >"$RUNNER_TEMP/supabase-start.log" 2>&1; then
             echo "::warning::Local Supabase failed initial health check; retrying once after cleanup."
-            npx supabase@2.115.0 stop --no-backup || true
+            npx supabase@2.118.0 stop --no-backup || true
             sleep 5
-            npx supabase@2.115.0 start >"$RUNNER_TEMP/supabase-start-retry.log" 2>&1
+            npx supabase@2.118.0 start >"$RUNNER_TEMP/supabase-start-retry.log" 2>&1
           fi
-          npx supabase@2.115.0 db reset
+          npx supabase@2.118.0 db reset
           rm -f "$RUNNER_TEMP/supabase-start.log" "$RUNNER_TEMP/supabase-start-retry.log"
           trap - EXIT
       - name: Prepare local E2E environment
@@ -210,7 +213,7 @@ jobs:
                 export "$key"
                 ;;
             esac
-          done < <(npx supabase@2.115.0 status -o env)
+          done < <(npx supabase@2.118.0 status -o env)
           test -n "$API_URL" && test -n "$DB_URL" && test -n "$PUBLISHABLE_KEY" && test -n "$SECRET_KEY"
           {
             echo "DB_URL=$DB_URL"

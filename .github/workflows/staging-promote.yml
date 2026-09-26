@@ -409,7 +409,7 @@ jobs:
               query = dict(parse_qsl(parsed.query, keep_blank_values=True))
               query['sslmode'] = 'disable'
               db_url = urlunsplit((parsed.scheme, parsed.netloc, parsed.path, urlencode(query), parsed.fragment))
-          result = subprocess.run(['npx', 'supabase@2.115.0', 'db', 'push', '--db-url', db_url, '--include-all', '--yes'])
+          result = subprocess.run(['npx', 'supabase@2.118.0', 'db', 'push', '--db-url', db_url, '--include-all', '--yes'])
           if result.returncode:
               print('staging migration push failed', file=sys.stderr)
               raise SystemExit(result.returncode)
