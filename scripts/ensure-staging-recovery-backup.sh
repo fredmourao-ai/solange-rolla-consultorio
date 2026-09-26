@@ -2,11 +2,21 @@
 set -Eeuo pipefail
 : "${SUPABASE_ACCESS_TOKEN:?SUPABASE_ACCESS_TOKEN is required}"
 : "${SUPABASE_STAGING_PROJECT_REF:?SUPABASE_STAGING_PROJECT_REF is required}"
-: "${SUPABASE_DB_URL:?SUPABASE_DB_URL is required}"
+ROOT=${STAGING_DEPLOY_ROOT:-/home/ubuntu/solange-client-demo}
 RUNTIME_REF=${SUPABASE_PROJECT_REF:-$SUPABASE_STAGING_PROJECT_REF}
 [ "$RUNTIME_REF" = "$SUPABASE_STAGING_PROJECT_REF" ] || { echo 'staging_recovery_failed project_ref_mismatch' >&2; exit 1; }
 
-SUPABASE_DB_PASSWORD=$(node <<'NODE'
+PASSWORD_FILE=${STAGING_DB_PASSWORD_FILE:-$ROOT/state/managed-db-password}
+CREDENTIAL_SOURCE=environment
+if [ -z "${SUPABASE_DB_PASSWORD:-}" ]; then
+  if [ -f "$PASSWORD_FILE" ]; then
+    [ -O "$PASSWORD_FILE" ] || { echo 'staging_recovery_failed db_password_file_owner' >&2; exit 1; }
+    MODE=$(stat -c '%a' "$PASSWORD_FILE")
+    [ "$MODE" = 600 ] || { echo 'staging_recovery_failed db_password_file_mode' >&2; exit 1; }
+    IFS= read -r SUPABASE_DB_PASSWORD < "$PASSWORD_FILE"
+    CREDENTIAL_SOURCE=host-file
+  elif [ -n "${SUPABASE_DB_URL:-}" ]; then
+    SUPABASE_DB_PASSWORD=$(node <<'NODE'
 const rawUrl = process.env.SUPABASE_DB_URL || ''
 const projectRef = process.env.SUPABASE_STAGING_PROJECT_REF || ''
 let parsed
@@ -20,11 +30,17 @@ if (!password) throw new Error('staging_recovery_failed db_password_missing')
 process.stdout.write(password)
 NODE
 )
+    CREDENTIAL_SOURCE=database-url
+  else
+    echo 'staging_recovery_failed db_password_missing' >&2
+    exit 1
+  fi
+fi
+[ "${#SUPABASE_DB_PASSWORD}" -ge 40 ] || { echo 'staging_recovery_failed db_password_too_short' >&2; exit 1; }
 export SUPABASE_DB_PASSWORD
 unset SUPABASE_DB_URL
-echo 'staging_recovery_db_proven=true'
+echo "staging_recovery_db_credential_ready source=$CREDENTIAL_SOURCE"
 
-ROOT=${STAGING_DEPLOY_ROOT:-/home/ubuntu/solange-client-demo}
 DEST=${STAGING_RECOVERY_BACKUP_DEST:-$ROOT/managed-staging-backups}
 mkdir -p "$DEST"
 chmod 700 "$DEST"
