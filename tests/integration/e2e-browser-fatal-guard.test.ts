@@ -3,7 +3,8 @@ import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
   isExpectedAuthLogoutAbort,
-  isExpectedDocumentClientErrorConsole,
+  isExpectedAuthCredentialResponse,
+  isExpectedClientErrorConsole,
   isExpectedDownloadAbort,
   isExpectedNextActionAbort,
   isExpectedNextPrefetchAbort,
@@ -23,7 +24,7 @@ describe('E2E browser fatal guard', () => {
     }
   })
 
-  it('allowlists only documented benign browser aborts and intentional document 4xx errors', () => {
+  it('allowlists only documented benign browser aborts and intentional client 4xx errors', () => {
     expect(isExpectedNextPrefetchAbort('GET', 'http://127.0.0.1:3400/agenda?_rsc=abc', 'net::ERR_ABORTED')).toBe(true)
     expect(isExpectedNextPrefetchAbort('GET', 'http://127.0.0.1:3400/agenda', 'net::ERR_ABORTED')).toBe(false)
     expect(isExpectedNextActionAbort('POST', 'net::ERR_ABORTED', { accept: 'text/x-component', 'next-action': 'abc' })).toBe(true)
@@ -33,8 +34,11 @@ describe('E2E browser fatal guard', () => {
     expect(isExpectedAuthLogoutAbort('POST', 'http://127.0.0.1:57321/auth/v1/logout?scope=local', 'net::ERR_ABORTED')).toBe(true)
     expect(isExpectedAuthLogoutAbort('POST', 'http://127.0.0.1:57321/auth/v1/token', 'net::ERR_ABORTED')).toBe(false)
     const intentional4xx = new Set(['http://127.0.0.1:3400/clinico/synthetic-person-1'])
-    expect(isExpectedDocumentClientErrorConsole('Failed to load resource: the server responded with a status of 404 (Not Found)', 'http://127.0.0.1:3400/clinico/synthetic-person-1', intentional4xx)).toBe(true)
-    expect(isExpectedDocumentClientErrorConsole('Failed to load resource: the server responded with a status of 404 (Not Found)', 'http://127.0.0.1:3400/_next/missing.js', intentional4xx)).toBe(false)
+    expect(isExpectedClientErrorConsole('Failed to load resource: the server responded with a status of 404 (Not Found)', 'http://127.0.0.1:3400/clinico/synthetic-person-1', intentional4xx)).toBe(true)
+    expect(isExpectedClientErrorConsole('Failed to load resource: the server responded with a status of 404 (Not Found)', 'http://127.0.0.1:3400/_next/missing.js', intentional4xx)).toBe(false)
+    expect(isExpectedAuthCredentialResponse('POST', 'http://127.0.0.1:54321/auth/v1/token?grant_type=password', 400)).toBe(true)
+    expect(isExpectedAuthCredentialResponse('POST', 'http://127.0.0.1:54321/rest/v1/profiles', 400)).toBe(false)
+    expect(isExpectedClientErrorConsole('Failed to load resource: the server responded with a status of 400 (Bad Request)', '', new Set(), 1)).toBe(true)
   })
 
   it('fails tests on unhandled browser and server runtime errors', () => {

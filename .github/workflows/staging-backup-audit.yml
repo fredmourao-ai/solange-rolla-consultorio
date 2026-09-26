@@ -1,0 +1,67 @@
+name: Staging Backup Audit
+
+on:
+  pull_request:
+    paths:
+      - scripts/check-managed-staging-backup.mjs
+      - tests/integration/managed-staging-backup.test.ts
+      - .github/workflows/staging-backup-audit.yml
+      - .github/workflows/staging-promote.yml
+      - scripts/ensure-staging-recovery-backup.sh
+      - scripts/ensure-staging-database-credential.mjs
+      - scripts/verify-staging-logical-backup-docker.sh
+      - scripts/backup-verify-staging-storage.mjs
+      - scripts/rotate-staging-demo-credential.mjs
+      - tests/integration/staging-recovery-hardening.test.ts
+      - tests/integration/staging-storage-recovery.test.ts
+  workflow_dispatch:
+  schedule:
+    - cron: '17 5 * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: staging-backup-audit-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  managed-backup:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: [self-hosted, Linux, ARM64, solange-ci, solange-staging-host]
+    environment: staging
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+      - name: Isolate npm cache per runner
+        shell: bash
+        run: echo "NPM_CONFIG_CACHE=$RUNNER_TEMP/npm-cache" >> "$GITHUB_ENV"
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24.19.0
+      - name: Verify protected staging credential is configured
+        env:
+          STAGING_DEMO_PASSWORD: ${{ secrets.STAGING_DEMO_PASSWORD }}
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "${#STAGING_DEMO_PASSWORD}" -ge 32
+
+      - name: Ensure staging database recovery credential
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_STAGING_PROJECT_REF: ${{ secrets.SUPABASE_STAGING_PROJECT_REF }}
+          STAGING_DEPLOY_ROOT: /home/ubuntu/solange-client-demo
+        run: node scripts/ensure-staging-database-credential.mjs
+
+      - name: Create and restore-verify staging recovery point
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_STAGING_PROJECT_REF }}
+          SUPABASE_STAGING_PROJECT_REF: ${{ secrets.SUPABASE_STAGING_PROJECT_REF }}
+          SUPABASE_PRODUCTION_PROJECT_REF: ${{ secrets.SUPABASE_PRODUCTION_PROJECT_REF }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          STAGING_BACKUP_MAX_AGE_SECONDS: 90000
+          STAGING_DEPLOY_ROOT: /home/ubuntu/solange-client-demo
+        run: bash scripts/ensure-staging-recovery-backup.sh
