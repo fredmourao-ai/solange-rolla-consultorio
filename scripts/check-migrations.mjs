@@ -412,7 +412,13 @@ function sqlObjects(migration) {
     'public.set',
   ])
   const recordObject = (object) => {
-    if (!object || object.startsWith('auth.') || ignoredExternalOrPseudoObjects.has(object)) return
+    if (
+      !object
+      || object.startsWith('auth.')
+      || object.startsWith('pg_catalog.')
+      || object.startsWith('information_schema.')
+      || ignoredExternalOrPseudoObjects.has(object)
+    ) return
     objects.add(object)
   }
   const multiTargetCommands = new Set([
@@ -452,6 +458,15 @@ function sqlObjects(migration) {
   for (let index = 0; index < tokens.length; index += 1) {
     const token = tokens[index]
     const alterTableSubClause = isAlterTableSubClause(index)
+
+    if (
+      /^[a-z_][a-z0-9_$]*$/u.test(token)
+      && tokens[index + 1] === '.'
+      && /^[a-z_][a-z0-9_$]*$/u.test(tokens[index + 2] ?? '')
+      && tokens[index + 3] === '('
+    ) {
+      recordObject(`${token}.${tokens[index + 2]}`)
+    }
     if (token === 'execute' && ['begin', 'do'].includes(tokens[index - 1])) {
       parsed.unsupported = true
       continue
