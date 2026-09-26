@@ -13,9 +13,9 @@ function e2eSupabaseStartStep(source: string): string {
 describe('CI E2E Supabase startup resilience', () => {
   it('retries startup exactly once after a transient health-check failure', () => {
     const step = e2eSupabaseStartStep(workflow)
-    expect(step).toContain('if ! npx supabase@2.115.0 start >"$RUNNER_TEMP/supabase-start.log" 2>&1; then')
+    expect(step).toContain('if ! npx supabase@2.118.0 start >"$RUNNER_TEMP/supabase-start.log" 2>&1; then')
     expect(step.match(/npx supabase@2\.115\.0 start/g)).toHaveLength(2)
-    expect(step).toContain('npx supabase@2.115.0 stop --no-backup || true')
+    expect(step).toContain('npx supabase@2.118.0 stop --no-backup || true')
     expect(step).toContain('sleep 5')
   })
 
