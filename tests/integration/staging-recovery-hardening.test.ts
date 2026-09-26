@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
 const rotateScript = readFileSync('scripts/rotate-staging-demo-credential.mjs', 'utf8')
+const databaseCredentialScript = readFileSync('scripts/ensure-staging-database-credential.mjs', 'utf8')
 const storageScript = readFileSync('scripts/backup-verify-staging-storage.mjs', 'utf8')
 const recoveryScript = readFileSync('scripts/ensure-staging-recovery-backup.sh', 'utf8')
 const restoreScript = readFileSync('scripts/verify-staging-logical-backup-docker.sh', 'utf8')
@@ -38,9 +39,25 @@ describe('staging recovery hardening', () => {
     expect(backupWorkflow).toContain('NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}')
   })
 
+  it('provisions a host-scoped managed database credential without logging it', () => {
+    expect(databaseCredentialScript).toContain('/v1/projects/${encodeURIComponent(projectRef)}/database/password')
+    expect(databaseCredentialScript).toContain("method: 'PATCH'")
+    expect(databaseCredentialScript).toContain("mode: 0o600")
+    expect(databaseCredentialScript).toContain("source: 'existing'")
+    expect(databaseCredentialScript).toContain("source: 'rotated'")
+    expect(databaseCredentialScript).not.toContain('console.log(password)')
+    expect(databaseCredentialScript).not.toContain('console.error(password)')
+    expect(backupWorkflow).toContain('Ensure staging database recovery credential')
+    expect(backupWorkflow).toContain('node scripts/ensure-staging-database-credential.mjs')
+    expect(backupWorkflow).not.toContain('SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}')
+  })
+
   it('keeps the protected staging database credential out of process argv', () => {
+    expect(recoveryScript).toContain('STAGING_DB_PASSWORD_FILE')
+    expect(recoveryScript).toContain('state/managed-db-password')
+    expect(recoveryScript).toContain("MODE=$(stat -c '%a' \"$PASSWORD_FILE\")")
+    expect(recoveryScript).toContain('[ "$MODE" = 600 ]')
     expect(recoveryScript).toContain('process.env.SUPABASE_DB_URL')
-    expect(recoveryScript).toContain('SUPABASE_DB_PASSWORD=$(node')
     expect(recoveryScript).toContain('export SUPABASE_DB_PASSWORD')
     expect(recoveryScript).toContain('unset SUPABASE_DB_URL')
     expect(recoveryScript).toContain('--project-ref "$SUPABASE_STAGING_PROJECT_REF"')
