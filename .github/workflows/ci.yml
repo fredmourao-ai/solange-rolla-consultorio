@@ -110,6 +110,8 @@ jobs:
         run: npm run arch:check
       - name: Module contracts
         run: npm run modules:check
+      - name: Issue-comment listener guard
+        run: npm run governance:issue-comment-listeners
       - name: Environment isolation assertion
         env:
           APP_ENV: local

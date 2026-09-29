@@ -16,6 +16,7 @@
     "test:run": "vitest run",
     "arch:check": "depcruise src --config .dependency-cruiser.cjs --output-type err-long",
     "modules:check": "node scripts/check-module-contracts.mjs",
+    "governance:issue-comment-listeners": "node scripts/governance/check-issue-comment-listeners.mjs",
     "migrations:check": "node scripts/check-migrations.mjs",
     "environment:check": "node scripts/assert-environment.mjs",
     "seed:check": "node scripts/verify-synthetic-seed.mjs",
