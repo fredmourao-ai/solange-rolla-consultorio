@@ -16,7 +16,6 @@ export function LoginForm() {
     const credentials = normalizeLoginCredentials(
       String(form.get('email') ?? ''),
       String(form.get('password') ?? ''),
-      process.env.NEXT_PUBLIC_TEMP_ADMIN_LOGIN_ENABLED === 'true',
     )
     const { error: signInError } = await createBrowserSupabaseClient().auth.signInWithPassword(credentials)
     if (signInError) setError('Não foi possível entrar com essas credenciais.')

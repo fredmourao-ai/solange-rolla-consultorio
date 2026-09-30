@@ -11,6 +11,7 @@ const runnerLabelExceptionsByFile: Record<string, string[][]> = {
   'staging-promote.yml': [requiredRunnerLabels, [...requiredRunnerLabels, 'solange-staging-host']],
   'diag-staging-host.yml': [[...requiredRunnerLabels, 'solange-staging-host']],
   'historical-state-audit.yml': [[...requiredRunnerLabels, 'solange-staging-host'], [...requiredRunnerLabels, 'solange-staging-host']],
+  'staging-backup-audit.yml': [[...requiredRunnerLabels, 'solange-staging-host']],
 }
 
 function indexMode(path: string): string {

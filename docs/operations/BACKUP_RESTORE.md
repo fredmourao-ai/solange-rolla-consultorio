@@ -9,21 +9,17 @@
 
 ## Homologação
 
-A VM mantém backup lógico diário em `/home/ubuntu/solange-client-demo/backups/`. `scripts/backup-homologation.sh` usa esse diretório como destino padrão (ou `SOLANGE_BACKUP_DEST` quando explicitamente configurado), falha fechado quando o destino não está disponível, gera primeiro arquivos `.partial`, só promove dumps não vazios, grava SHA-256 e `LAST_SUCCESS`, usa permissões restritivas e remove artefatos com mais de 14 dias.
+O runtime publicado de staging usa um projeto Supabase gerenciado. O banco Docker local da VM é apenas infraestrutura local/self-hosted e **não é** fonte de recuperação do staging publicado. `scripts/backup-homologation.sh` continua disponível para ambientes locais que realmente usem esse banco, mas seus artefatos não podem ser apresentados como backup do runtime remoto.
 
-São gerados dois artefatos na mesma execução: um dump completo do PostgreSQL/Supabase e um dump `public + clinical + auth` destinado ao drill portátil. O segundo existe porque a imagem local Supabase inclui extensões/plataforma específicas que não devem ser sobrepostas em um PostgreSQL vazio durante o teste de recuperabilidade da aplicação.
+Antes de qualquer migration/promoção de staging, a automação tenta confirmar um backup gerenciado recente pela Management API e exige `SUPABASE_PROJECT_REF == SUPABASE_STAGING_PROJECT_REF`. Como o Supabase Free não fornece backup gerenciado diário, ausência/staleness desse artefato aciona o fallback canônico: `scripts/ensure-staging-recovery-backup.sh` usa a conexão remota protegida `SUPABASE_DB_URL`, prova que host/usuário pertencem ao `SUPABASE_STAGING_PROJECT_REF`, exporta `public + clinical + auth`, grava os artefatos com permissão `0600` na OCI e executa restore isolado antes de liberar a promoção. A URL nunca é impressa nem gravada nos artefatos. Erros de API, autenticação, URL local ou divergência de project ref continuam fail-closed.
 
-O scheduler de homologação roda em container Docker com `--restart unless-stopped`, executa imediatamente após iniciar/reiniciar e repete a cada 86400 segundos. O container possui health check que rejeita `LAST_SUCCESS` stale, artefatos ausentes e divergência de SHA-256 nos dois dumps. O segredo do banco não é persistido no script nem em logs: é lido em runtime do container Supabase já provisionado.
+O workflow `Staging Backup Audit` executa a mesma prova em contexto protegido de `staging`, no host de staging, e também roda diariamente. Nenhum token, URL com senha ou conteúdo clínico é impresso.
 
 ## Restore isolado
 
-Use apenas o artefato `solange-homologacao-app-auth-*.dump` produzido pela automação:
+Para banco local/self-hosted, o drill portátil existente continua válido com `scripts/verify-backup-restore-docker.sh`.
 
-```sh
-BACKUP_FILE=/home/ubuntu/solange-client-demo/backups/solange-homologacao-app-auth-YYYYMMDDTHHMMSSZ.dump scripts/verify-backup-restore-docker.sh
-```
-
-O verificador cria um PostgreSQL 15 descartável, restaura o dump sem owner/ACL, exige `public.profiles`, `clinical.records`, `auth.users` e políticas RLS, mede RTO e destrói o container ao sair. Nunca restaura sobre produção ou sobre o banco de homologação ativo.
+Para staging gerenciado, **não considerar o restore certificado apenas porque existe backup gerenciado**. O gate gera um dump lógico pela conexão remota protegida do projeto Supabase e o restaura em PostgreSQL Supabase descartável, exigindo `public.profiles`, `clinical.records`, `auth.users` e políticas RLS. O mesmo gate copia os buckets privados obrigatórios, restaura-os temporariamente e compara SHA-256 antes de removê-los. Só depois dos dois drills o recovery gate pode ser PASS.
 
 ## Evidência histórica e verificação atual
 
