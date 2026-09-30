@@ -43,11 +43,11 @@ describe('environment workflow contracts', () => {
 
   it('requires all canonical checks and deploys the exact main SHA', () => {
     const workflow = readText(stagingWorkflow)
-    expect(workflow).toContain('workflows: [CI, Database, Repository Governance Gate]')
+    expect(workflow).toContain('workflows: [CI, Database, Repository Governance Gate, Absolute Audit Main Guard]')
     expect(workflow).toContain('actions: read')
     expect(workflow).toContain('Verify canonical main SHA and checks')
     expect(workflow).toContain('refs/heads/main')
-    expect(workflow).toContain("['CI', 'Database', 'Repository Governance Gate']")
+    expect(workflow).toContain("['CI', 'Database', 'Repository Governance Gate', 'Absolute Audit Main Guard']")
     expect(workflow).toContain('Deploy exact SHA to homologation')
     expect(workflow).toContain('APP_BUILD_SHA')
     expect(workflow).toContain('solange-client-demo-web')
