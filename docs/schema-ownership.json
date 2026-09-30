@@ -176,6 +176,12 @@
       "identity",
       "payables",
       "receivables"
+    ],
+    "events_atomic_audit": [
+      "audit",
+      "events",
+      "identity",
+      "receivables"
     ]
   },
   "objects": {
@@ -273,6 +279,10 @@
     "public.create_payable_atomic": "payables",
     "public.create_recurrence_rule_atomic": "payables",
     "public.create_vendor_atomic": "payables",
-    "public.create_expense_category_atomic": "payables"
+    "public.create_expense_category_atomic": "payables",
+    "public.create_event_atomic": "events",
+    "public.update_event_atomic": "events",
+    "public.update_event_registration_atomic": "events",
+    "public.create_event_expense_atomic": "events"
   }
 }
