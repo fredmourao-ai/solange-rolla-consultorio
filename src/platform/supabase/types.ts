@@ -1969,6 +1969,55 @@ export type Database = {
           id: string
         }[]
       }
+      begin_mock_fiscal_document_issue_atomic: {
+        Args: {
+          p_amount_cents: number
+          p_attempt_id: string
+          p_document_id: string
+          p_review_ack: boolean
+          p_external_id: string
+          p_idempotency_key: string
+          p_payer_person_id: string
+          p_pdf_byte_length: number
+          p_pdf_path: string
+          p_pdf_sha256: string
+          p_person_id: string
+          p_profile_id: string
+          p_profile_version: number
+          p_protocol: string
+          p_source_id: string
+          p_source_type: string
+          p_treatment_id: string
+          p_treatment_version: number
+          p_xml_byte_length: number
+          p_xml_path: string
+          p_xml_sha256: string
+        }
+        Returns: Json
+      }
+      cancel_mock_fiscal_document_atomic: {
+        Args: {
+          p_document_id: string
+          p_reason: string
+        }
+        Returns: string
+      }
+      complete_mock_fiscal_document_issue_atomic: {
+        Args: {
+          p_attempt_id: string
+          p_document_id: string
+          p_issued_at: string
+        }
+        Returns: string
+      }
+      fail_mock_fiscal_document_issue_atomic: {
+        Args: {
+          p_attempt_id: string
+          p_document_id: string
+          p_error_code: string
+        }
+        Returns: string
+      }
       appointment_cancellation_deadline_from_snapshot: {
         Args: { p_snapshot: Json; p_starts_at: string }
         Returns: string

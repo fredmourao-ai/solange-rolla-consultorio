@@ -187,6 +187,12 @@
       "audit",
       "forms",
       "identity"
+    ],
+    "fiscal_atomic_audit": [
+      "audit",
+      "fiscal",
+      "identity",
+      "platform"
     ]
   },
   "objects": {
@@ -290,6 +296,10 @@
     "public.update_event_registration_atomic": "events",
     "public.create_event_expense_atomic": "events",
     "public.create_form_template_atomic": "forms",
-    "public.issue_form_capability_atomic": "forms"
+    "public.issue_form_capability_atomic": "forms",
+    "public.cancel_mock_fiscal_document_atomic": "fiscal",
+    "public.begin_mock_fiscal_document_issue_atomic": "fiscal",
+    "public.complete_mock_fiscal_document_issue_atomic": "fiscal",
+    "public.fail_mock_fiscal_document_issue_atomic": "fiscal"
   }
 }

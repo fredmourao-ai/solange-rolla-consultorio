@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import type { FiscalDocumentStatus } from '@/modules/fiscal/public'
-import { authorizeStaffSession, getStaffSession } from '@/modules/identity/public'
+import { authorizeStaffSession, getStaffSession, hasSessionPermission } from '@/modules/identity/public'
 import { createServerSupabaseClient } from '@/platform/supabase/server'
 import { PageHeader } from '@/shared/ui/page-header'
 import { cancelMockNfseAction, issueMockNfseAction } from './actions'
@@ -41,8 +41,10 @@ const issuerKindLabels: Record<string, string> = {
 
 export default async function FiscalOperationsPage() {
   const session = await getStaffSession()
-  const authorized = authorizeStaffSession(session, ['psychologist_owner', 'accounting'])
+  const authorized = authorizeStaffSession(session, ['psychologist_owner', 'secretary', 'accounting'])
   const client = await createServerSupabaseClient()
+  const canIssue = hasSessionPermission(session, 'fiscal.issue')
+  const canCancel = hasSessionPermission(session, 'fiscal.cancel')
   const peopleQuery = authorized.role === 'accounting'
     ? client.from('accounting_people_view').select('id,civil_name,cpf_normalized,fiscal_address').order('civil_name')
     : client.from('people').select('id,civil_name,preferred_name,cpf_normalized,fiscal_address').order('civil_name')
@@ -82,7 +84,7 @@ export default async function FiscalOperationsPage() {
     </section>
     <section><h2>Solicitar NFS-e sintética</h2><p>Preencha a origem e o tomador, confira o tratamento aplicável e confirme a revisão antes de emitir a simulação.</p>
       {people.length === 0 ? <p>Nenhum tomador fiscal disponível para este perfil de acesso.</p> : null}
-      <form action={issueMockNfseAction} className="stack-form">
+      {canIssue ?       <form action={issueMockNfseAction} className="stack-form">
         <label>Origem <select name="source_type">{treatments.filter((t) => t.issuance_rule !== 'not_issuable').map((t) => <option key={t.id} value={t.source_kind}>{sourceKindLabels[t.source_kind] ?? t.source_kind}</option>)}</select></label>
         <label>ID da origem <input name="source_id" required pattern="[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}" /></label>
         <label>Paciente <select name="person_id" required>{people.map((person) => <option key={person.id} value={person.id}>{person.preferred_name || person.civil_name}</option>)}</select></label>
@@ -92,13 +94,13 @@ export default async function FiscalOperationsPage() {
         <label>Tratamento <select name="treatment_id">{treatments.filter((t) => t.issuance_rule !== 'not_issuable').map((t) => <option key={t.id} value={t.id}>{sourceKindLabels[t.source_kind] ?? t.source_kind} v{t.version} · {issuanceRuleLabels[t.issuance_rule] ?? t.issuance_rule}</option>)}</select></label>
         <label><input type="checkbox" name="review_ack" value="yes" required /> Revisei origem, tomador, valor e tratamento; emitir somente no mock/sandbox.</label>
         <button type="submit" disabled={people.length === 0}>Emitir NFS-e mock</button>
-      </form>
+      </form> : <p>Seu acesso atual permite consultar o fiscal, mas não emitir NFS-e.</p>}
     </section>
     <section><h2>Documentos</h2>{docs.map((doc) => <article key={doc.id} className="card">
       <h3>{personNames.get(doc.person_id) || 'Pessoa'} — {money.format(doc.amount_cents / 100)}</h3>
       <p><span className="operational-status">{documentStatusLabels[doc.status as FiscalDocumentStatus]}</span> · {sourceKindLabels[doc.source_type] ?? doc.source_type} · Provedor: {doc.provider === 'mock' ? 'Simulação' : doc.provider}</p>
       <details className="operational-technical"><summary>Detalhes técnicos</summary><p>ID externo: {doc.external_id || '—'} · Protocolo: {doc.protocol || '—'}</p><p>Artefatos privados: XML {doc.xml_path ? '✓' : '—'} · PDF {doc.pdf_path ? '✓' : '—'}</p></details>
-      {doc.provider === 'mock' && doc.status === 'issued' ? <form action={cancelMockNfseAction} className="stack-form">
+      {canCancel && doc.provider === 'mock' && doc.status === 'issued' ? <form action={cancelMockNfseAction} className="stack-form">
         <input type="hidden" name="fiscal_document_id" value={doc.id} />
         <label>Motivo do cancelamento <input name="reason" required /></label><button type="submit">Cancelar NFS-e mock</button>
       </form> : null}

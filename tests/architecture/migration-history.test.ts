@@ -690,6 +690,27 @@ describe('migration history', () => {
     )
   })
 
+  it('does not treat SQL table aliases in JOIN ON clauses as schema objects', () => {
+    const repository = createRepository()
+    const migration = '20260824000410_fiscal_alias_join.sql'
+    fs.writeFileSync(
+      path.join(repository, 'supabase/migrations', migration),
+      '-- owners: fiscal\n-- task-contract: docs/task-contracts/fiscal_alias_join.json\nselect d.id from public.fiscal_documents d join public.fiscal_attempts a on a.fiscal_document_id = d.id;\n',
+    )
+    writeTaskContract(repository, 'fiscal_alias_join.json', {
+      issue: 128,
+      migration,
+      owners: ['fiscal'],
+      objects: [
+        { name: 'public.fiscal_documents', owner: 'fiscal' },
+        { name: 'public.fiscal_attempts', owner: 'fiscal' },
+      ],
+    })
+
+    const result = checkMigrations(repository, { baseRef: 'migration-base' })
+    expect(result.status, outputOf(result)).toBe(0)
+  })
+
   it('treats service_role grant and revoke targets as roles, not SQL objects', () => {
     const repository = createRepository()
     const migration = '20260824000355_forms_service_role_privileges.sql'

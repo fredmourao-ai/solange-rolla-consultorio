@@ -455,6 +455,16 @@ function sqlObjects(migration) {
     return false
   }
 
+  const isSchemaObjectOnClause = (index) => {
+    for (let cursor = index - 1; cursor >= 0 && tokens[cursor] !== ';'; cursor -= 1) {
+      // JOIN ... ON binds column aliases; it is never a schema-object target.
+      if (tokens[cursor] === 'join') return false
+      // These statements use ON to name an owned database object.
+      if (['policy', 'trigger', 'index', 'grant', 'revoke'].includes(tokens[cursor])) return true
+    }
+    return false
+  }
+
   for (let index = 0; index < tokens.length; index += 1) {
     const token = tokens[index]
     const alterTableSubClause = isAlterTableSubClause(index)
@@ -550,7 +560,11 @@ function sqlObjects(migration) {
       if (schemaName) recordObject(schemaName === 'clinical' ? 'clinical.__schema__' : `public.${schemaName}`)
       continue
     }
-    if (token === 'on' && !['conflict', 'delete', 'update'].includes(tokens[index + 1])) {
+    if (
+      token === 'on'
+      && !['conflict', 'delete', 'update'].includes(tokens[index + 1])
+      && isSchemaObjectOnClause(index)
+    ) {
       const object = objectFromTokens(tokens, index + 1)
       if (object) {
         recordObject(object)
