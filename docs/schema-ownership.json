@@ -163,7 +163,8 @@
     ],
     "appointments_admin_atomic_audit": [
       "appointments",
-      "audit"
+      "audit",
+      "identity"
     ]
   },
   "objects": {
@@ -253,6 +254,8 @@
     "public.create_recurring_payable_atomic": "payables",
     "public.create_appointment_with_audit_atomic": "appointments",
     "public.update_appointment_with_audit_atomic": "appointments",
-    "public.appointment_cancellation_deadline_from_snapshot": "appointments"
+    "public.appointment_cancellation_deadline_from_snapshot": "appointments",
+    "public.current_app_role": "identity",
+    "public.current_aal": "identity"
   }
 }
