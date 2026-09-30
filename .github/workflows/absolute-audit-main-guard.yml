@@ -48,8 +48,30 @@ jobs:
           test -s artifacts/main-merge-provenance/report.json
           test -s artifacts/main-merge-provenance/report.md
 
-      - name: Upload main-guard evidence
+      - name: Publish evidence hashes to run summary
         if: always()
+        run: |
+          set -Eeuo pipefail
+          {
+            echo '## Absolute Audit Main Guard evidence'
+            echo
+            echo 'Commit: `${{ github.sha }}`'
+            echo
+            echo '```text'
+            sha256sum \
+              artifacts/audit-governance-self-test/report.json \
+              artifacts/audit-governance-self-test/report.md \
+              artifacts/global-audit-policy/report.json \
+              artifacts/global-audit-policy/report.md \
+              artifacts/main-merge-provenance/report.json \
+              artifacts/main-merge-provenance/report.md
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload main-guard evidence
+        id: evidence-upload
+        if: always()
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: absolute-audit-main-guard-${{ github.run_id }}
@@ -58,4 +80,9 @@ jobs:
             artifacts/global-audit-policy/
             artifacts/main-merge-provenance/
           if-no-files-found: error
-          retention-days: 90
+          retention-days: 14
+
+      - name: Record artifact-storage fallback
+        if: always() && steps.evidence-upload.outcome == 'failure'
+        run: |
+          echo "::warning::GitHub artifact upload unavailable; validated evidence hashes remain in this run summary."
