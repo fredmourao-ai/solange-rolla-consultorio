@@ -182,6 +182,11 @@
       "events",
       "identity",
       "receivables"
+    ],
+    "forms_capability_atomic_audit": [
+      "audit",
+      "forms",
+      "identity"
     ]
   },
   "objects": {
@@ -283,6 +288,8 @@
     "public.create_event_atomic": "events",
     "public.update_event_atomic": "events",
     "public.update_event_registration_atomic": "events",
-    "public.create_event_expense_atomic": "events"
+    "public.create_event_expense_atomic": "events",
+    "public.create_form_template_atomic": "forms",
+    "public.issue_form_capability_atomic": "forms"
   }
 }
