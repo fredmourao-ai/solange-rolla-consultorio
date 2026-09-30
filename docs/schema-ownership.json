@@ -170,6 +170,12 @@
       "appointments",
       "audit",
       "identity"
+    ],
+    "finance_remaining_atomic_audit": [
+      "audit",
+      "identity",
+      "payables",
+      "receivables"
     ]
   },
   "objects": {
@@ -262,6 +268,11 @@
     "public.appointment_cancellation_deadline_from_snapshot": "appointments",
     "public.current_app_role": "identity",
     "public.current_aal": "identity",
-    "public.transition_appointment_status_atomic": "appointments"
+    "public.transition_appointment_status_atomic": "appointments",
+    "public.apply_receivable_adjustment_atomic": "receivables",
+    "public.create_payable_atomic": "payables",
+    "public.create_recurrence_rule_atomic": "payables",
+    "public.create_vendor_atomic": "payables",
+    "public.create_expense_category_atomic": "payables"
   }
 }

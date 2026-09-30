@@ -1973,6 +1973,14 @@ export type Database = {
         Args: { p_snapshot: Json; p_starts_at: string }
         Returns: string
       }
+      apply_receivable_adjustment_atomic: {
+        Args: {
+          p_adjustment_cents: number
+          p_reason: string
+          p_receivable_id: string
+        }
+        Returns: string
+      }
       claim_document_jobs: {
         Args: { p_limit?: number }
         Returns: {
@@ -2035,6 +2043,34 @@ export type Database = {
           supersedes_id: string
         }[]
       }
+      create_expense_category_atomic: {
+        Args: { p_name: string }
+        Returns: string
+      }
+      create_payable_atomic: {
+        Args: {
+          p_amount_cents: number
+          p_category_id: string
+          p_competence: string
+          p_description: string
+          p_due_date: string
+          p_idempotency_key: string
+          p_vendor_id: string
+        }
+        Returns: string
+      }
+      create_recurrence_rule_atomic: {
+        Args: {
+          p_amount_cents: number
+          p_category_id: string
+          p_day_of_month: number
+          p_description: string
+          p_month_end_fallback: string
+          p_start_date: string
+          p_vendor_id: string
+        }
+        Returns: string
+      }
       create_recurring_payable_atomic: {
         Args: {
           p_amount_cents: number
@@ -2048,6 +2084,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      create_vendor_atomic: { Args: { p_legal_name: string }; Returns: string }
       current_aal: { Args: Record<PropertyKey, never>; Returns: string }
       current_app_role: {
         Args: Record<PropertyKey, never>
