@@ -269,9 +269,9 @@ Nenhum agente pode declarar tarefa concluída antes de cumprir `docs/DEFINITION_
 
 - Toda tarefa finalizada deve terminar em PR validado e merge; não deixar PR pronta aberta sem motivo técnico comprovado.
 - Se qualquer check, lint, teste, gate, conflito ou Action falhar: investigar causa raiz, corrigir, revalidar e repetir até ficar verde. É proibido contornar falha com bypass, `|| true`, `exit 0`, force merge ou desativação de proteção.
-- Gate verde autoriza merge automático somente para PR do próprio repositório e depois de todos os checks canônicos aplicáveis passarem.
+- Gate verde não autoriza merge por si só. Merge automático só pode ocorrer para PR do próprio repositório, com todos os checks canônicos aplicáveis verdes e confirmação humana explícita persistida para o HEAD exato como comentário `HUMAN_MERGE_APPROVED_SHA:<HEAD_SHA>` feito pelo owner. Qualquer mudança de HEAD invalida a aprovação anterior.
 - Bloqueio aparentemente externo não encerra a tarefa. Investigar solução segura em configuração, credencial, permissão, serviço, ambiente, provider ou infraestrutura antes de classificar como inconclusivo.
-- Depois do merge, verificar os Actions do SHA resultante. CI verde em `main` deve acionar automaticamente a promoção canônica de staging; produção continua sujeita aos gates de ambiente e às proteções clínicas/fiscais vigentes.
+- Depois do merge, verificar os Actions do SHA resultante. Promoção automática de staging só pode ocorrer quando o HEAD da PR tiver confirmação humana explícita persistida como `HUMAN_STAGING_APPROVED_HEAD:<HEAD_SHA>` e o opt-in do repositório estiver ativo; sem isso, staging aguarda promoção explicitamente autorizada. Produção continua sujeita aos gates de ambiente e às proteções clínicas/fiscais vigentes.
 - Nunca automatizar aprovação que reduza RLS, MFA/AAL2, isolamento de ambiente, proteção de dados clínicos, idempotência financeira/fiscal ou feature flags live.
 
 ## Isolamento obrigatorio de sessao CLI por chat

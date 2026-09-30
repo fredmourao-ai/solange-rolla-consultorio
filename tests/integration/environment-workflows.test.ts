@@ -99,9 +99,11 @@ describe('environment workflow contracts', () => {
     expect(workflow).toContain("new URLSearchParams({ head_sha: sha, event, per_page: '100' })")
   })
 
-  it('always hands green post-merge validation off to staging promotion', () => {
+  it('hands green post-merge validation to staging only with exact-head human approval', () => {
     const autoMerge = readFileSync(autoMergeWorkflow, 'utf8')
-    expect(autoMerge).not.toContain("vars.STAGING_AUTO_PROMOTE_ENABLED == 'true'")
+    expect(autoMerge).toContain('HUMAN_STAGING_APPROVED_HEAD:$HEAD_SHA')
+    expect(autoMerge).toContain("needs.merge-if-green.outputs.staging_approved == 'true'")
+    expect(autoMerge).toContain("vars.STAGING_AUTO_PROMOTE_ENABLED == 'true'")
     expect(autoMerge).toContain('actions/workflows/staging-promote.yml/dispatches')
     expect(autoMerge).toContain('-f "inputs[commit_sha]=$sha"')
     expect(autoMerge).not.toContain('-f commit_sha="$sha"')

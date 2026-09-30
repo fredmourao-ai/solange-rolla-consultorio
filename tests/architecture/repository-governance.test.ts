@@ -153,6 +153,24 @@ describe('repository governance contract', () => {
     expect(workflow).toContain('--match-head-commit "$HEAD_SHA"')
   })
 
+  it('requires an exact-head owner approval marker before auto-merge', () => {
+    const workflow = projectFile('.github/workflows/pr-auto-merge.yml')
+    const agents = projectFile('AGENTS.md')
+    const protocol = projectFile('AI-TO-CLI-PROTOCOL.md')
+
+    expect(workflow).toContain('HUMAN_MERGE_APPROVED_SHA:$HEAD_SHA')
+    expect(workflow).toContain('repos/$REPO/issues/$pr_number/comments?per_page=100')
+    expect(workflow).toContain('.author_association == "OWNER"')
+    expect(workflow).toContain('.body == $marker')
+    expect(workflow).toContain('.draft == false')
+    expect(workflow).toContain('HUMAN_STAGING_APPROVED_HEAD:$HEAD_SHA')
+    expect(workflow).toContain("needs.merge-if-green.outputs.staging_approved == 'true'")
+    expect(agents).toContain('HUMAN_MERGE_APPROVED_SHA:<HEAD_SHA>')
+    expect(agents).toContain('HUMAN_STAGING_APPROVED_HEAD:<HEAD_SHA>')
+    expect(protocol).toContain('HUMAN_MERGE_APPROVED_SHA:<HEAD_SHA>')
+    expect(protocol).toContain('HUMAN_STAGING_APPROVED_HEAD:<HEAD_SHA>')
+  })
+
   it('retries auto-merge whenever any pull-request gate finishes', () => {
     const workflow = projectFile('.github/workflows/pr-auto-merge.yml')
 
