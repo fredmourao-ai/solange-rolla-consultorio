@@ -2277,6 +2277,10 @@ export type Database = {
         }
         Returns: string
       }
+      transition_appointment_status_atomic: {
+        Args: { p_appointment_id: string; p_command: string }
+        Returns: string
+      }
       upsert_staff_profile: {
         Args: {
           p_active: boolean

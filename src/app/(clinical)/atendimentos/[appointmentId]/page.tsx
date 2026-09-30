@@ -6,7 +6,6 @@ import {
   type Appointment,
   type AppointmentStatusRepository,
 } from '@/modules/appointments/public'
-import { recordAuditEvent, type AuditEvent, type AuditEventRepository } from '@/modules/audit/public'
 import {
   completeAppointmentWithHandoff,
   getClinicalRecord,
@@ -31,7 +30,6 @@ import {
 import type { Task, TaskRepository } from '@/modules/tasks/public'
 import { createSensitiveDataCrypto } from '@/platform/crypto/aes-gcm'
 import { createServerSupabaseClient } from '@/platform/supabase/server'
-import type { Database } from '@/platform/supabase/types'
 import { PageHeader } from '@/shared/ui/page-header'
 
 export const dynamic = 'force-dynamic'
@@ -54,23 +52,6 @@ function ageFrom(date: string) {
   if (now.getUTCMonth() < birth.getUTCMonth()
     || (now.getUTCMonth() === birth.getUTCMonth() && now.getUTCDate() < birth.getUTCDate())) age -= 1
   return Math.max(age, 0)
-}
-
-function auditRepository(client: Awaited<ReturnType<typeof createServerSupabaseClient>>): AuditEventRepository {
-  return {
-    async insert(event: AuditEvent): Promise<void> {
-      const { error } = await client.from('audit_events').insert({
-        actor_user_id: event.actorId,
-        action: event.action,
-        entity_type: event.entityType,
-        entity_id: event.entityId,
-        correlation_id: event.correlationId,
-        metadata: event.metadata as Database['public']['Tables']['audit_events']['Insert']['metadata'],
-        created_at: event.createdAt,
-      })
-      if (error) throw new Error('CARE_AUDIT_FAILED')
-    },
-  }
 }
 
 async function requireClinicalSession(returnTo: string, permission: 'clinical.read' | 'clinical.create') {
@@ -116,7 +97,7 @@ function toAppointment(row: {
 async function startCareAction(formData: FormData) {
   'use server'
   const appointmentId = String(formData.get('appointment_id') ?? '')
-  const session = await requireClinicalSession(`/atendimentos/${appointmentId}`, 'clinical.create')
+  await requireClinicalSession(`/atendimentos/${appointmentId}`, 'clinical.create')
   const client = await createServerSupabaseClient()
   const { data: row, error } = await client.from('appointments')
     .select('id,person_id,service_id,starts_at,ends_at,status,policy_version,cancellation_deadline_at,cancellation_policy_snapshot')
@@ -129,33 +110,17 @@ async function startCareAction(formData: FormData) {
   const appointment = toAppointment(row)
   const repository: AppointmentStatusRepository = {
     async updateStatus(id, status) {
-      const { data, error: updateError } = await client.from('appointments')
-        .update({ status })
-        .eq('id', id)
-        .eq('status', 'checked_in')
-        .select('id,person_id,service_id,starts_at,ends_at,status,policy_version,cancellation_deadline_at,cancellation_policy_snapshot')
-        .maybeSingle()
-      if (updateError || !data) throw new Error('CARE_START_CONFLICT')
-      const { error: historyError } = await client.from('appointment_status_history').insert({
-        appointment_id: id,
-        from_status: 'checked_in',
-        to_status: status,
-        changed_by_user_id: session.userId,
+      const { data, error: updateError } = await client.rpc('transition_appointment_status_atomic', {
+        p_appointment_id: id,
+        p_command: 'start',
       })
-      if (historyError) throw new Error('CARE_STATUS_HISTORY_FAILED')
-      return toAppointment(data)
+      if (updateError) throw new Error('CARE_START_CONFLICT')
+      if (String(data) !== status) throw new Error('CARE_START_TRANSITION_DRIFT')
+      return { ...appointment, status }
     },
   }
 
   await changeAppointmentStatus(appointment, 'start', repository)
-  await recordAuditEvent({
-    actorId: session.userId,
-    action: 'appointment.care_started',
-    entityType: 'appointment',
-    entityId: appointmentId,
-    correlationId: appointmentId,
-    metadata: { personId: appointment.personId },
-  }, auditRepository(client))
   redirect(`/atendimentos/${appointmentId}`)
 }
 
@@ -279,32 +244,16 @@ async function finishCareAction(formData: FormData) {
   const appointment = toAppointment(row)
   const statusRepository: AppointmentStatusRepository = {
     async updateStatus(id, status) {
-      const { data, error: updateError } = await client.from('appointments')
-        .update({ status })
-        .eq('id', id)
-        .eq('status', 'in_progress')
-        .select('id,person_id,service_id,starts_at,ends_at,status,policy_version,cancellation_deadline_at,cancellation_policy_snapshot')
-        .maybeSingle()
-      if (updateError || !data) throw new Error('CARE_COMPLETE_CONFLICT')
-      const { error: historyError } = await client.from('appointment_status_history').insert({
-        appointment_id: id,
-        from_status: 'in_progress',
-        to_status: status,
-        changed_by_user_id: session.userId,
+      const { data, error: updateError } = await client.rpc('transition_appointment_status_atomic', {
+        p_appointment_id: id,
+        p_command: 'complete',
       })
-      if (historyError) throw new Error('CARE_STATUS_HISTORY_FAILED')
-      return toAppointment(data)
+      if (updateError) throw new Error('CARE_COMPLETE_CONFLICT')
+      if (String(data) !== status) throw new Error('CARE_COMPLETE_TRANSITION_DRIFT')
+      return { ...appointment, status }
     },
   }
   await changeAppointmentStatus(appointment, 'complete', statusRepository)
-  await recordAuditEvent({
-    actorId: session.userId,
-    action: 'appointment.care_completed',
-    entityType: 'appointment',
-    entityId: appointmentId,
-    correlationId: appointmentId,
-    metadata: { personId },
-  }, auditRepository(client))
 
   redirect(`/pessoas/${personId}?status=care_completed`)
 }
