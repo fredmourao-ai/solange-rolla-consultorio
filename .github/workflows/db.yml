@@ -65,6 +65,9 @@ jobs:
           set -euo pipefail
           project=solange-rolla-consultorio
           network="supabase_network_$project"
+          if docker ps -a --format '{{.Names}}' | grep -q "_$project$"; then
+            npx supabase@2.118.0 stop --no-backup || true
+          fi
           if docker ps -a --format '{{.Names}}' | grep -q "_$project$" && ! docker network inspect "$network" >/dev/null 2>&1; then
             docker ps -a --format '{{.Names}}' | grep "_$project$" | xargs -r docker rm -f
           fi
