@@ -15,7 +15,7 @@ describe('workflow continuity under rapid PR updates', () => {
   })
 
   it('coalesces duplicate auto-merge workflow-run triggers for the same SHA', () => {
-    expect(autoMerge).toContain('group: pr-auto-merge-${{ github.event.workflow_run.head_sha }}')
+    expect(autoMerge).toContain('group: pr-auto-merge-${{ github.repository }}')
     expect(autoMerge).toContain('cancel-in-progress: true')
   })
 
