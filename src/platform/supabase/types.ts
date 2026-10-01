@@ -965,6 +965,7 @@ export type Database = {
         Row: {
           id: string
           payload: NonNullable<Json>
+          processed_at: string | null
           provider: string
           provider_event_id: string
           received_at: string
@@ -972,6 +973,7 @@ export type Database = {
         Insert: {
           id?: string
           payload: NonNullable<Json>
+          processed_at?: string | null
           provider: string
           provider_event_id: string
           received_at?: string
@@ -979,6 +981,7 @@ export type Database = {
         Update: {
           id?: string
           payload?: NonNullable<Json>
+          processed_at?: string | null
           provider?: string
           provider_event_id?: string
           received_at?: string
@@ -1169,6 +1172,9 @@ export type Database = {
           id: string
           idempotency_key: string
           payload: NonNullable<Json>
+          provider_delivery_status: string | null
+          provider_delivery_updated_at: string | null
+          provider_message_id: string | null
           recipient: string
           status: string
           template_key: string
@@ -1180,6 +1186,9 @@ export type Database = {
           id?: string
           idempotency_key: string
           payload: NonNullable<Json>
+          provider_delivery_status?: string | null
+          provider_delivery_updated_at?: string | null
+          provider_message_id?: string | null
           recipient: string
           status?: string
           template_key: string
@@ -1191,6 +1200,9 @@ export type Database = {
           id?: string
           idempotency_key?: string
           payload?: NonNullable<Json>
+          provider_delivery_status?: string | null
+          provider_delivery_updated_at?: string | null
+          provider_message_id?: string | null
           recipient?: string
           status?: string
           template_key?: string
@@ -2103,6 +2115,10 @@ export type Database = {
           role_default: boolean
           sort_order: number
         }[]
+      }
+      apply_message_provider_delivery_status: {
+        Args: { p_provider_message_id: string; p_status: string }
+        Returns: string
       }
       persist_appointment_response: {
         Args: {
