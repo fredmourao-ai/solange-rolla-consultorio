@@ -115,6 +115,7 @@ jobs:
     env:
       PROMOTE_SHA: ${{ needs.canonical-gate.outputs.sha }}
       STAGING_DEPLOY_ROOT: /home/ubuntu/solange-client-demo
+      STAGING_ACCEPTANCE_URL: http://127.0.0.1:3200
     steps:
       - name: Checkout selected revision
         uses: actions/checkout@v7
@@ -298,13 +299,13 @@ jobs:
             --exclude '.env.production.local' \
             "$GITHUB_WORKSPACE/" "$STAGE/"
 
-          python3 - "$ROOT/demo.env" "$RUNTIME_ENV" "$PROMOTE_SHA" "$ROOT/state/current-url.txt" <<'PY'
+          python3 - "$ROOT/demo.env" "$RUNTIME_ENV" "$PROMOTE_SHA" "$STAGING_ACCEPTANCE_URL" <<'PY'
           import os, pathlib, sys
           from urllib.parse import urlsplit
           source = pathlib.Path(sys.argv[1])
           target = pathlib.Path(sys.argv[2])
           sha = sys.argv[3]
-          app_url = pathlib.Path(sys.argv[4]).read_text().strip().rstrip('/')
+          app_url = sys.argv[4].strip().rstrip('/')
           parsed_app_url = urlsplit(app_url)
           if parsed_app_url.scheme not in {'http', 'https'} or not parsed_app_url.netloc:
               raise SystemExit('current staging URL is invalid')
@@ -476,7 +477,7 @@ jobs:
           set -Eeuo pipefail
           ROOT="$STAGING_DEPLOY_ROOT"
           test "$(cat "$ROOT/state/deployed-sha.txt")" = "$PROMOTE_SHA"
-          URL=$(cat "$ROOT/state/current-url.txt")
+          URL="$STAGING_ACCEPTANCE_URL"
           actual=''
           for _ in $(seq 1 30); do
             payload=$(curl --fail --silent --show-error "$URL/api/health" || true)
@@ -514,10 +515,10 @@ jobs:
           SUPABASE_STAGING_PROJECT_REF: ${{ secrets.SUPABASE_STAGING_PROJECT_REF }}
         run: |
           set -Eeuo pipefail
-          python3 - "$STAGING_DEPLOY_ROOT/staging.env" "$STAGING_DEPLOY_ROOT/state/current-url.txt" "$PROMOTE_SHA" <<'PY'
+          python3 - "$STAGING_DEPLOY_ROOT/staging.env" "$STAGING_ACCEPTANCE_URL" "$PROMOTE_SHA" <<'PY'
           import os, pathlib, subprocess, sys
           env_file = pathlib.Path(sys.argv[1])
-          app_url = pathlib.Path(sys.argv[2]).read_text().strip().rstrip('/')
+          app_url = sys.argv[2].strip().rstrip('/')
           sha = sys.argv[3]
           values = {}
           for raw in env_file.read_text().splitlines():
