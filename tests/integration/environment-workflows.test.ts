@@ -166,6 +166,8 @@ describe('environment workflow contracts', () => {
     expect(workflow).toContain("'SUPABASE_ACCESS_TOKEN': os.environ['SUPABASE_ACCESS_TOKEN']")
     expect(workflow).toContain('E2E_EXPECTED_BUILD_SHA')
     expect(workflow).toContain('tests/e2e/real-ui-homologation.spec.ts')
+    expect(workflow).toContain('STAGING_ACCEPTANCE_URL: http://127.0.0.1:3200')
+    expect(workflow).not.toContain('state/current-url.txt')
     expect(workflow).toContain('Rollback staging release after failed validation')
     expect(workflow).toContain('Finalize promoted release')
     expect(workflow.indexOf('Real UI staging homologation')).toBeLessThan(workflow.indexOf('Finalize promoted release'))
@@ -191,6 +193,8 @@ describe('environment workflow contracts', () => {
     expect(workflow).toContain("'E2E_DB_MODE': 'supabase-management-api'")
     expect(workflow).toContain("'E2E_EXTERNAL_SUITE': 'historical-state-audit'")
     expect(workflow).toContain('tests/e2e/agenda-historical-state-transitions.spec.ts')
+    expect(workflow).toContain('STAGING_ACCEPTANCE_URL: http://127.0.0.1:3200')
+    expect(workflow).not.toContain('state/current-url.txt')
     expect(workflow).toContain("'--workers=1'")
   })
 

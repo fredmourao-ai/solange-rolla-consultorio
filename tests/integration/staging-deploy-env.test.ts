@@ -45,21 +45,26 @@ describe('staging database provenance', () => {
 })
 
 describe('staging runtime URL and reconciler contract', () => {
-  it('builds the candidate with the current external staging URL', () => {
+  it('uses a stable runner-local URL for staging runtime and acceptance', () => {
     const deploy = workflow.slice(workflow.indexOf('- name: Deploy exact SHA to homologation'))
-    expect(deploy).toContain('"$ROOT/state/current-url.txt"')
+    expect(workflow).toContain('STAGING_ACCEPTANCE_URL: http://127.0.0.1:3200')
     expect(deploy).toContain("'APP_URL': app_url")
+    expect(deploy).not.toContain('"$ROOT/state/current-url.txt"')
+    expect(deploy).toContain('URL="$STAGING_ACCEPTANCE_URL"')
   })
 
-  it('keeps the tunnel private until the exact candidate is healthy locally', () => {
+  it('keeps the tunnel private until the exact candidate is healthy on the stable acceptance URL', () => {
     const deploy = workflow.slice(workflow.indexOf('- name: Deploy exact SHA to homologation'))
-    const localHealth = deploy.indexOf('http://127.0.0.1:3200/api/health')
+    const localHealth = deploy.indexOf('"$URL/api/health"')
+    const assertSha = deploy.indexOf('test "$actual" = "$PROMOTE_SHA"')
+    const assertStatus = deploy.indexOf('test "$status" = ok')
     const expose = deploy.indexOf('true > "$ROOT/state/public-exposure-enabled"')
-    const externalHealth = deploy.indexOf('"$candidate_url/api/health"')
     expect(localHealth).toBeGreaterThan(-1)
-    expect(expose).toBeGreaterThan(localHealth)
-    expect(externalHealth).toBeGreaterThan(expose)
-    expect(deploy).toContain('test "$(printf \'%s\' "$local_payload" | jq -r \'.buildSha // empty\')" = "$PROMOTE_SHA"')
+    expect(assertSha).toBeGreaterThan(localHealth)
+    expect(assertStatus).toBeGreaterThan(assertSha)
+    expect(expose).toBeGreaterThan(assertStatus)
+    expect(deploy).not.toContain('$candidate_url/api/health')
+    expect(deploy).not.toContain('state/current-url.txt')
   })
 
   it('normalizes web, tunnel, and reconciler restart policies only when public exposure is enabled', () => {
