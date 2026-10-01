@@ -93,7 +93,7 @@ select is((
 ), 1, 'atomic create writes one audit event');
 
 
-select throws_ok($
+select throws_ok($$
   select public.create_appointment_with_audit_atomic(
     'a2070000-0000-4000-8000-000000000106',
     'a2070000-0000-4000-8000-000000000012',
@@ -104,9 +104,9 @@ select throws_ok($
     '2035-01-03T13:00:00Z',
     '{"policyVersion":207,"countableHours":48,"excludedWeekdays":[0,6],"businessTimezone":"America/Sao_Paulo","lateCancellationChargeEnabled":true,"noShowChargeEnabled":true}'::jsonb
   )
-$, '23514', 'AGENDA_SERVICE_DURATION_MISMATCH', 'direct RPC cannot forge service duration');
+$$, '23514', 'AGENDA_SERVICE_DURATION_MISMATCH', 'direct RPC cannot forge service duration');
 
-select throws_ok($
+select throws_ok($$
   select public.create_appointment_with_audit_atomic(
     'a2070000-0000-4000-8000-000000000107',
     'a2070000-0000-4000-8000-000000000012',
@@ -117,9 +117,9 @@ select throws_ok($
     '2035-01-03T13:00:00Z',
     '{"policyVersion":1,"countableHours":48,"excludedWeekdays":[0,6],"businessTimezone":"America/Sao_Paulo","lateCancellationChargeEnabled":true,"noShowChargeEnabled":true}'::jsonb
   )
-$, '23514', 'AGENDA_POLICY_VERSION_INVALID', 'direct RPC cannot select a stale policy version');
+$$, '23514', 'AGENDA_POLICY_VERSION_INVALID', 'direct RPC cannot select a stale policy version');
 
-select throws_ok($
+select throws_ok($$
   select public.create_appointment_with_audit_atomic(
     'a2070000-0000-4000-8000-000000000108',
     'a2070000-0000-4000-8000-000000000012',
@@ -130,9 +130,9 @@ select throws_ok($
     '2035-01-03T13:00:00Z',
     '{"policyVersion":207,"countableHours":48,"excludedWeekdays":[0,6],"businessTimezone":"America/Sao_Paulo","lateCancellationChargeEnabled":true,"noShowChargeEnabled":false}'::jsonb
   )
-$, '23514', 'AGENDA_POLICY_SNAPSHOT_INVALID', 'direct RPC cannot forge cancellation policy snapshot');
+$$, '23514', 'AGENDA_POLICY_SNAPSHOT_INVALID', 'direct RPC cannot forge cancellation policy snapshot');
 
-select throws_ok($
+select throws_ok($$
   select public.create_appointment_with_audit_atomic(
     'a2070000-0000-4000-8000-000000000109',
     'a2070000-0000-4000-8000-000000000012',
@@ -143,7 +143,7 @@ select throws_ok($
     '2035-01-02T13:00:00Z',
     '{"policyVersion":207,"countableHours":48,"excludedWeekdays":[0,6],"businessTimezone":"America/Sao_Paulo","lateCancellationChargeEnabled":true,"noShowChargeEnabled":true}'::jsonb
   )
-$, '23514', 'AGENDA_CANCELLATION_DEADLINE_INVALID', 'direct RPC cannot forge cancellation deadline');
+$$, '23514', 'AGENDA_CANCELLATION_DEADLINE_INVALID', 'direct RPC cannot forge cancellation deadline');
 
 select is((
   select count(*)::integer

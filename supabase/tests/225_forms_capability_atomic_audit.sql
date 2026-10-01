@@ -30,6 +30,7 @@ select lives_ok(
   ) $$,
   'owner creates template and version atomically'
 );
+reset role;
 select is(
   (select count(*)::int from public.form_templates where id='fc100000-0000-4000-8000-000000000001'),
   1,
@@ -76,6 +77,7 @@ select lives_ok(
   ) $$,
   'secretary issues submission and capability atomically'
 );
+reset role;
 select is(
   (select count(*)::int from public.form_submissions where id='fc120000-0000-4000-8000-000000000001'),
   1,
@@ -98,6 +100,12 @@ select ok(
    from public.audit_events
    where action='form.capability_issued' and entity_id='fc120000-0000-4000-8000-000000000001'),
   'capability hash is absent from audit metadata'
+);
+set local role authenticated;
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"fc000000-0000-4000-8000-000000000002","aal":"aal1","role":"authenticated"}',
+  true
 );
 select throws_ok(
   $$ insert into public.capabilities (
@@ -172,6 +180,7 @@ select throws_ok(
   '55000','SYNTHETIC_FORM_AUDIT_FAILURE',
   'audit failure rolls back submission and capability'
 );
+reset role;
 select is(
   (select count(*)::int from public.form_submissions where id='fc120000-0000-4000-8000-000000000002'),
   0,

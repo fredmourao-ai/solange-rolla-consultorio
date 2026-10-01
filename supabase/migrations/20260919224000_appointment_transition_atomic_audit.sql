@@ -37,16 +37,16 @@ begin
     else null
   end;
 
-  if v_permission is null or not public.has_permission(v_permission) then
-    raise exception 'AGENDA_STATUS_FORBIDDEN' using errcode = '42501';
-  end if;
-
   if p_command = 'start'
     and (
       public.current_app_role() <> 'psychologist_owner'
       or public.current_aal() <> 'aal2'
     ) then
     raise exception 'CARE_START_FORBIDDEN' using errcode = '42501';
+  end if;
+
+  if v_permission is null or not public.has_permission(v_permission) then
+    raise exception 'AGENDA_STATUS_FORBIDDEN' using errcode = '42501';
   end if;
 
   select *

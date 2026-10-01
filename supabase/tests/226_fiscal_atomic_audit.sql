@@ -58,13 +58,31 @@ as $$
     'fd200000-0000-4000-8000-000000000001',77,
     'fd300000-0000-4000-8000-000000000001',77,
     format('appointment_completed:%s:77:77',p_source_id),
-    'mock-nfse-' || substr(replace(p_document_id::text,'-',''),1,20),
-    'mock-protocol-' || substr(replace(p_document_id::text,'-',''),1,20),
+    'mock-nfse-' || replace(p_document_id::text,'-',''),
+    'mock-protocol-' || replace(p_document_id::text,'-',''),
     p_document_id::text || '/' || p_attempt_id::text || '/nfse.xml',
     p_document_id::text || '/' || p_attempt_id::text || '/nfse.pdf',
     repeat('a',64),123,repeat('b',64),456
   )
 $$;
+
+create or replace function public.test_fiscal_audit_count(
+  p_entity_id uuid,
+  p_action text
+)
+returns integer
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select count(*)::integer
+  from public.audit_events
+  where entity_id = p_entity_id
+    and action = p_action
+$$;
+revoke all on function public.test_fiscal_audit_count(uuid,text) from public,anon;
+grant execute on function public.test_fiscal_audit_count(uuid,text) to authenticated;
 
 set local role authenticated;
 select set_config(
@@ -132,8 +150,7 @@ select is(
   're-entry does not duplicate issue attempt'
 );
 select is(
-  (select count(*)::int from public.audit_events
-   where entity_id='fd400000-0000-4000-8000-000000000001' and action='fiscal.mock_issue_started'),
+  public.test_fiscal_audit_count('fd400000-0000-4000-8000-000000000001','fiscal.mock_issue_started'),
   1,
   're-entry does not duplicate start audit'
 );
@@ -184,8 +201,7 @@ select is(
   'failure closes active attempt'
 );
 select is(
-  (select count(*)::int from public.audit_events
-   where entity_id='fd400000-0000-4000-8000-000000000001' and action='fiscal.mock_issue_failed'),
+  public.test_fiscal_audit_count('fd400000-0000-4000-8000-000000000001','fiscal.mock_issue_failed'),
   1,
   'failure is audited once'
 );
@@ -304,8 +320,7 @@ select is(
   'successful finalize closes current attempt'
 );
 select is(
-  (select count(*)::int from public.audit_events
-   where entity_id='fd400000-0000-4000-8000-000000000001' and action='fiscal.mock_issued'),
+  public.test_fiscal_audit_count('fd400000-0000-4000-8000-000000000001','fiscal.mock_issued'),
   1,
   'successful finalize writes issued audit once'
 );
@@ -388,17 +403,16 @@ select is(
   'takeover owns a new active attempt'
 );
 select is(
-  (select count(*)::int from public.audit_events
-   where entity_id='fd400000-0000-4000-8000-000000000002'
-     and action='fiscal.mock_issue_lease_expired'),
+  public.test_fiscal_audit_count('fd400000-0000-4000-8000-000000000002','fiscal.mock_issue_lease_expired'),
   1,
   'lease expiry is auditable'
 );
+select set_config('storage.allow_delete_query','true',true);
 select lives_ok(
   $$ delete from storage.objects
      where bucket_id='fiscal-documents-private'
        and name like 'fd400000-0000-4000-8000-000000000002/fd600000-0000-4000-8000-000000000010/%' $$,
-  'new claimant may clean artifacts from expired lease'
+  'new claimant may clean artifacts from expired lease through Storage API deletion context'
 );
 select is(
   (select count(*)::int from storage.objects
@@ -539,8 +553,7 @@ select is(
   'successful cancellation creates one attempt'
 );
 select is(
-  (select count(*)::int from public.audit_events
-   where entity_id='fd400000-0000-4000-8000-000000000001' and action='fiscal.mock_cancelled'),
+  public.test_fiscal_audit_count('fd400000-0000-4000-8000-000000000001','fiscal.mock_cancelled'),
   1,
   'successful cancellation creates one audit event'
 );
@@ -563,8 +576,7 @@ select is(
   'cancel retry does not duplicate attempt'
 );
 select is(
-  (select count(*)::int from public.audit_events
-   where entity_id='fd400000-0000-4000-8000-000000000001' and action='fiscal.mock_cancelled'),
+  public.test_fiscal_audit_count('fd400000-0000-4000-8000-000000000001','fiscal.mock_cancelled'),
   1,
   'cancel retry does not duplicate audit'
 );

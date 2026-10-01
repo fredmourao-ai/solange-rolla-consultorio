@@ -233,6 +233,7 @@ select throws_ok($$
   )
 $$, '42501', 'AGENDA_STATUS_FORBIDDEN', 'accounting cannot transition appointment');
 
+reset role;
 select is((
   select status from public.appointments
   where id = 'a2090000-0000-4000-8000-000000000103'

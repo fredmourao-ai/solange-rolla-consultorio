@@ -1,10 +1,11 @@
 begin;
-select plan(9);
+select plan(10);
+
 select ok(not has_table_privilege('anon', 'public.fiscal_documents', 'SELECT'), 'anonymous has no fiscal document select privilege');
-select ok(has_table_privilege('authenticated', 'public.fiscal_documents', 'SELECT'), 'authenticated select is still filtered by RLS');
-select ok((select pg_get_expr(polqual, polrelid) from pg_policy where polname = 'fiscal_documents_accounting') like '%psychologist_owner%', 'documents policy includes owner');
-select ok((select pg_get_expr(polqual, polrelid) from pg_policy where polname = 'fiscal_documents_accounting') like '%accounting%', 'documents policy includes accounting');
-select ok((select pg_get_expr(polqual, polrelid) from pg_policy where polname = 'fiscal_documents_accounting') not like '%secretary%', 'documents policy excludes secretary');
+select ok(has_table_privilege('authenticated', 'public.fiscal_documents', 'SELECT'), 'authenticated select is filtered by RLS');
+select ok(not exists(select 1 from pg_policy where polname='fiscal_documents_accounting'), 'legacy role-only fiscal document policy is removed');
+select ok((select pg_get_expr(polqual, polrelid) from pg_policy where polname='fiscal_documents_read_authorized') like '%has_permission%fiscal.read%', 'documents policy is permission based');
+select ok(not has_table_privilege('authenticated', 'public.fiscal_documents', 'UPDATE'), 'authenticated direct fiscal document updates are revoked');
 
 insert into auth.users (id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data)
 values
@@ -30,9 +31,15 @@ set local role anon;
 select throws_ok($$ select count(*) from public.fiscal_documents $$, '42501', null, 'anonymous cannot read fiscal documents');
 reset role;
 set local role authenticated;
-select set_config('request.jwt.claims', '{"sub":"30000000-0000-0000-0000-000000000002","aal":"aal2","role":"authenticated"}', true);
-select is((select count(*)::int from public.fiscal_documents), 0, 'secretary cannot read fiscal documents');
-select set_config('request.jwt.claims', '{"sub":"30000000-0000-0000-0000-000000000003","aal":"aal2","role":"authenticated"}', true);
-select is((select count(*)::int from public.fiscal_documents where id = '30000000-0000-0000-0000-000000000040'), 1, 'accounting can read the test fiscal document');
+select set_config('request.jwt.claims', '{"sub":"30000000-0000-0000-0000-000000000002","aal":"aal1","role":"authenticated"}', true);
+select is((select count(*)::int from public.fiscal_documents where id='30000000-0000-0000-0000-000000000040'), 1, 'secretary with fiscal.read can read the fiscal document');
+reset role;
+insert into public.user_permission_overrides(user_id,permission_key,allowed,changed_by_user_id)
+values('30000000-0000-0000-0000-000000000002','fiscal.read',false,'30000000-0000-0000-0000-000000000001');
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"30000000-0000-0000-0000-000000000002","aal":"aal1","role":"authenticated"}', true);
+select is((select count(*)::int from public.fiscal_documents), 0, 'explicit fiscal.read deny hides fiscal documents from secretary');
+select set_config('request.jwt.claims', '{"sub":"30000000-0000-0000-0000-000000000003","aal":"aal1","role":"authenticated"}', true);
+select is((select count(*)::int from public.fiscal_documents where id = '30000000-0000-0000-0000-000000000040'), 1, 'accounting with fiscal.read can read the test fiscal document');
 select * from finish();
 rollback;
