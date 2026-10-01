@@ -45,10 +45,12 @@ describe('staging database endpoint readiness', () => {
 })
 
 describe('staging runtime URL and reconciler contract', () => {
-  it('builds the candidate with the current external staging URL', () => {
+  it('uses a stable runner-local URL for staging runtime and acceptance', () => {
     const deploy = workflow.slice(workflow.indexOf('- name: Deploy exact SHA to homologation'))
-    expect(deploy).toContain('"$ROOT/state/current-url.txt"')
+    expect(workflow).toContain('STAGING_ACCEPTANCE_URL: http://127.0.0.1:3200')
     expect(deploy).toContain("'APP_URL': app_url")
+    expect(deploy).not.toContain('"$ROOT/state/current-url.txt"')
+    expect(deploy).toContain('URL="$STAGING_ACCEPTANCE_URL"')
   })
 
   it('normalizes web, tunnel, and reconciler restart policies before the app swap', () => {
