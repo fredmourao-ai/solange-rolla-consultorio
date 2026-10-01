@@ -18,8 +18,11 @@ export function createSupabaseMessageAttemptRepository(client: MessagingClient =
       if (error) throw error
     },
 
-    async markSent(messageId: string): Promise<void> {
-      const { error } = await client.from('outbound_messages').update({ status: 'sent' }).eq('id', messageId)
+    async markSent(messageId: string, providerMessageId?: string): Promise<void> {
+      const values = providerMessageId
+        ? { status: 'sent' as const, provider_message_id: providerMessageId, provider_delivery_status: 'sent' as const }
+        : { status: 'sent' as const }
+      const { error } = await client.from('outbound_messages').update(values).eq('id', messageId)
       if (error) throw error
     },
 
