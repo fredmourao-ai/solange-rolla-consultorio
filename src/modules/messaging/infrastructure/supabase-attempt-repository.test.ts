@@ -38,8 +38,13 @@ describe('supabase message attempt repository', () => {
   it('marks the outbound message sent', async () => {
     const { client, calls } = fakeClient()
     const repository = createSupabaseMessageAttemptRepository(client as never)
-    await repository.markSent('m1')
-    expect(calls[0]).toMatchObject({ table: 'outbound_messages', op: 'update', values: { status: 'sent' }, id: 'm1' })
+    await repository.markSent('m1', 'provider-message-1')
+    expect(calls[0]).toMatchObject({
+      table: 'outbound_messages',
+      op: 'update',
+      values: { status: 'sent', provider_message_id: 'provider-message-1', provider_delivery_status: 'sent' },
+      id: 'm1',
+    })
   })
 
   it('marks the outbound message failed', async () => {

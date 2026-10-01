@@ -39,6 +39,60 @@ describe('supabase provider event repository', () => {
     await expect(repository.insertIfNew({ provider: 'meta-whatsapp', providerEventId: 'evt-1', payload: {} })).rejects.toBeTruthy()
   })
 
+  it('applies provider delivery status by provider message id', async () => {
+    const updates: unknown[] = []
+    const client = {
+      from(table: string) {
+        if (table === 'outbound_messages') {
+          return {
+            select() {
+              return {
+                eq() {
+                  return { maybeSingle: async () => ({ data: { id: 'm1', provider_delivery_status: 'sent' }, error: null }) }
+                },
+              }
+            },
+            update(values: unknown) {
+              return { eq: async () => { updates.push(values); return { error: null } } }
+            },
+          }
+        }
+        if (table === 'inbox_events') return { insert: async () => ({ error: null }) }
+        throw new Error(`unexpected table ${table}`)
+      },
+    }
+    const repository = createSupabaseProviderEventRepository(client as never)
+    await expect(repository.applyDeliveryStatus?.({ messageId: 'provider-message-1', status: 'delivered' })).resolves.toBe('updated')
+    expect(updates).toEqual([{ provider_delivery_status: 'delivered' }])
+  })
+
+  it('marks an asynchronously failed provider delivery as operationally failed', async () => {
+    const updates: unknown[] = []
+    const client = {
+      from(table: string) {
+        if (table === 'outbound_messages') {
+          return {
+            select() {
+              return {
+                eq() {
+                  return { maybeSingle: async () => ({ data: { id: 'm1', provider_delivery_status: 'sent' }, error: null }) }
+                },
+              }
+            },
+            update(values: unknown) {
+              return { eq: async () => { updates.push(values); return { error: null } } }
+            },
+          }
+        }
+        if (table === 'inbox_events') return { insert: async () => ({ error: null }) }
+        throw new Error(`unexpected table ${table}`)
+      },
+    }
+    const repository = createSupabaseProviderEventRepository(client as never)
+    await expect(repository.applyDeliveryStatus?.({ messageId: 'provider-message-1', status: 'failed' })).resolves.toBe('updated')
+    expect(updates).toEqual([{ provider_delivery_status: 'failed', status: 'failed' }])
+  })
+
   it('rejects nested payload values that cannot be represented as JSON', async () => {
     const { client, inserted } = fakeClient(null)
     const repository = createSupabaseProviderEventRepository(client as never)
