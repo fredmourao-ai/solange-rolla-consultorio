@@ -64,32 +64,7 @@ jobs:
         run: |
           set -euo pipefail
           trap 'rm -f "$RUNNER_TEMP/supabase-db-start.log" "$RUNNER_TEMP/supabase-db-start-retry.log"' EXIT
-          if docker ps -a --format '{{.Names}}' | grep -q '_solange-rolla-consultorio
-      - name: Run pgTAP database tests
-        run: npx supabase@2.118.0 test db
-
-      - name: Ensure postgres-meta image for type verification
-        run: |
-          image="public.ecr.aws/supabase/postgres-meta:v0.98.0"
-          delay=5
-          for attempt in 1 2 3 4 5; do
-            if docker image inspect "$image" >/dev/null 2>&1 || docker pull "$image"; then
-              exit 0
-            fi
-            if [ "$attempt" -eq 5 ]; then
-              exit 1
-            fi
-            sleep "$delay"
-            delay=$((delay * 2))
-          done
-
-      - name: Verify generated database types are current
-        run: |
-          npx supabase@2.118.0 gen types typescript --local > /tmp/database-types.ts
-          npx prettier@3.9.9 --no-semi --single-quote src/platform/supabase/types.ts > /tmp/database-types-committed.ts
-          npx prettier@3.9.9 --no-semi --single-quote /tmp/database-types.ts > /tmp/database-types-generated.ts
-          diff -u /tmp/database-types-committed.ts /tmp/database-types-generated.ts
-; then
+          if [ -n "$(docker ps -aq --filter name=_solange-rolla-consultorio)" ]; then
             npx supabase@2.118.0 stop --no-backup
           else
             echo "No local Supabase stack to stop."
