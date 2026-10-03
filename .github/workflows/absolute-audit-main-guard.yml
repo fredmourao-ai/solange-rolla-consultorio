@@ -48,28 +48,39 @@ jobs:
           test -s artifacts/main-merge-provenance/report.json
           test -s artifacts/main-merge-provenance/report.md
 
-      - name: Publish evidence hashes to run summary
+      - name: Publish quota-independent evidence
         if: always()
+        shell: bash
         run: |
           set -Eeuo pipefail
+          files=(
+            artifacts/audit-governance-self-test/report.json
+            artifacts/audit-governance-self-test/report.md
+            artifacts/global-audit-policy/report.json
+            artifacts/global-audit-policy/report.md
+            artifacts/main-merge-provenance/report.json
+            artifacts/main-merge-provenance/report.md
+          )
           {
-            echo '## Absolute Audit Main Guard evidence'
+            echo "## Absolute Audit Main Guard evidence"
             echo
-            echo 'Commit: `${{ github.sha }}`'
+            echo "run_id=${GITHUB_RUN_ID}"
+            echo "sha=${GITHUB_SHA}"
             echo
+            echo '### SHA-256'
             echo '```text'
-            sha256sum \
-              artifacts/audit-governance-self-test/report.json \
-              artifacts/audit-governance-self-test/report.md \
-              artifacts/global-audit-policy/report.json \
-              artifacts/global-audit-policy/report.md \
-              artifacts/main-merge-provenance/report.json \
-              artifacts/main-merge-provenance/report.md
+            sha256sum "${files[@]}"
             echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
+            for file in "${files[@]}"; do
+              echo
+              echo "### ${file}"
+              echo '```'
+              cat "$file"
+              echo '```'
+            done
+          } | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Upload main-guard evidence
-        id: evidence-upload
         if: always()
         continue-on-error: true
         uses: actions/upload-artifact@v4
@@ -80,9 +91,4 @@ jobs:
             artifacts/global-audit-policy/
             artifacts/main-merge-provenance/
           if-no-files-found: error
-          retention-days: 14
-
-      - name: Record artifact-storage fallback
-        if: always() && steps.evidence-upload.outcome == 'failure'
-        run: |
-          echo "::warning::GitHub artifact upload unavailable; validated evidence hashes remain in this run summary."
+          retention-days: 1
