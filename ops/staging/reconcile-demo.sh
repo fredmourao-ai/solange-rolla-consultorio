@@ -3,6 +3,7 @@ set -eu
 
 APP=/app
 URL_FILE=/state/current-url.txt
+PUBLIC_EXPOSURE_FILE=/state/public-exposure-enabled
 WEB=solange-client-demo-web
 
 log() { printf '%s %s\n' "$(date -u +%FT%TZ)" "$*"; }
@@ -12,14 +13,28 @@ app_valid() {
 current_tunnel_url() {
   docker logs solange-demo-tunnel 2>&1 | grep -Eo 'https://[a-z0-9-]+\.trycloudflare\.com' | tail -1 || true
 }
+public_exposure_enabled() {
+  [ -f "$PUBLIC_EXPOSURE_FILE" ] && [ "$(cat "$PUBLIC_EXPOSURE_FILE" 2>/dev/null || true)" = true ]
+}
 ensure_running() {
-  for c in solange-demo-gateway solange-demo-tunnel; do
-    state=$(docker inspect -f '{{.State.Status}}' "$c" 2>/dev/null || true)
+  state=$(docker inspect -f '{{.State.Status}}' solange-demo-gateway 2>/dev/null || true)
+  [ "$state" = running ] || {
+    log "starting solange-demo-gateway state=${state:-missing}"
+    docker start solange-demo-gateway >/dev/null 2>&1 || true
+  }
+  if public_exposure_enabled; then
+    state=$(docker inspect -f '{{.State.Status}}' solange-demo-tunnel 2>/dev/null || true)
     [ "$state" = running ] || {
-      log "starting $c state=${state:-missing}"
-      docker start "$c" >/dev/null 2>&1 || true
+      log "starting solange-demo-tunnel state=${state:-missing}"
+      docker start solange-demo-tunnel >/dev/null 2>&1 || true
     }
-  done
+  else
+    state=$(docker inspect -f '{{.State.Status}}' solange-demo-tunnel 2>/dev/null || true)
+    if [ "$state" = running ]; then
+      log 'public exposure disabled; stopping solange-demo-tunnel'
+      docker stop solange-demo-tunnel >/dev/null 2>&1 || true
+    fi
+  fi
   if ! app_valid; then
     log 'app incomplete; web start deferred'
     return 0
@@ -33,6 +48,7 @@ ensure_running() {
 
 reconcile_url() {
   app_valid || { log 'app incomplete; URL reconcile deferred'; return 0; }
+  public_exposure_enabled || { log 'public exposure disabled; URL reconcile deferred'; return 0; }
   url=$(current_tunnel_url)
   [ -n "$url" ] || { log 'tunnel URL unavailable'; return 0; }
   printf '%s\n' "$url" > "$URL_FILE"

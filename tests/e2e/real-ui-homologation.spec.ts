@@ -74,9 +74,44 @@ async function createEventFlow(page: Page, personId: string, personName: string,
 }
 function configuredFiscalProfile() { const id = sql("select id from public.fiscal_profiles where active=true order by version desc limit 1"); if (!id) throw new Error('E2E_FISCAL_PROFILE_NOT_PROVISIONED'); return id }
 async function fiscalAndExports(page: Page, personId: string, registrationId: string) {
-  const profileId = configuredFiscalProfile(); const treatmentId = sql("select id from public.fiscal_treatments where source_kind='event_registration' order by version desc limit 1")
-  await page.goto('/fiscal/operacoes', { waitUntil: 'domcontentloaded' }); const form = page.locator('form').filter({ has: page.getByRole('button', { name: 'Emitir NFS-e mock' }) }); await form.locator('select[name="source_type"]').selectOption('event_registration'); await form.locator('input[name="source_id"]').fill(registrationId); await form.locator('select[name="person_id"]').selectOption(personId); await form.locator('select[name="payer_person_id"]').selectOption(personId); await form.locator('input[name="amount"]').fill('120.00'); await form.locator('select[name="profile_id"]').selectOption(profileId); await form.locator('select[name="treatment_id"]').selectOption(treatmentId); await form.locator('input[name="review_ack"]').check(); await form.getByRole('button', { name: 'Emitir NFS-e mock' }).click(); await expect.poll(() => sql(`select id from public.fiscal_documents where source_id=${q(registrationId)} and provider='mock' order by created_at desc limit 1`), { timeout: 15_000 }).not.toBe(''); const docId = sql(`select id from public.fiscal_documents where source_id=${q(registrationId)} and provider='mock' order by created_at desc limit 1`); await page.goto('/fiscal/operacoes', { waitUntil: 'domcontentloaded' }); const cancel = page.locator('form').filter({ has: page.locator(`input[name="fiscal_document_id"][value="${docId}"]`) }); await cancel.locator('input[name="reason"]').fill('Cancelamento homologação UI'); await cancel.getByRole('button', { name: 'Cancelar NFS-e mock' }).click(); await expect.poll(() => sql(`select status from public.fiscal_documents where id=${q(docId)}`)).toBe('cancelled')
-  await page.goto('/relatorios/baixar', { waitUntil: 'domcontentloaded' }); for (const [label, ext] of [['Baixar CSV','csv'],['Baixar XLSX','xlsx'],['Baixar PDF','pdf']] as const) { const d = page.waitForEvent('download'); await page.getByRole('button', { name: label }).click(); const download = await d; expect(download.suggestedFilename()).toMatch(new RegExp(`\\.${ext}$`)); expect(await download.path()).toBeTruthy(); await page.goto('/relatorios/baixar', { waitUntil: 'domcontentloaded' }) }
+  const profileId = configuredFiscalProfile()
+  const treatmentId = sql("select id from public.fiscal_treatments where source_kind='event_registration' order by version desc limit 1")
+
+  await page.goto('/fiscal/operacoes', { waitUntil: 'domcontentloaded' })
+  const form = page.locator('form').filter({ has: page.getByRole('button', { name: 'Emitir NFS-e mock' }) })
+  await form.locator('select[name="source_type"]').selectOption('event_registration')
+  await form.locator('input[name="source_id"]').fill(registrationId)
+  await form.locator('select[name="person_id"]').selectOption(personId)
+  await form.locator('select[name="payer_person_id"]').selectOption(personId)
+  await form.locator('input[name="amount"]').fill('120.00')
+  await form.locator('select[name="profile_id"]').selectOption(profileId)
+  await form.locator('select[name="treatment_id"]').selectOption(treatmentId)
+  await form.locator('input[name="review_ack"]').check()
+  await form.getByRole('button', { name: 'Emitir NFS-e mock' }).click()
+
+  await expect.poll(
+    () => sql(`select id from public.fiscal_documents where source_id=${q(registrationId)} and provider='mock' order by created_at desc limit 1`),
+    { timeout: 15_000 },
+  ).not.toBe('')
+  const docId = sql(`select id from public.fiscal_documents where source_id=${q(registrationId)} and provider='mock' order by created_at desc limit 1`)
+
+  await page.goto('/fiscal/operacoes', { waitUntil: 'domcontentloaded' })
+  await expect(
+    page.locator('form').filter({ has: page.locator(`input[name="fiscal_document_id"][value="${docId}"]`) }),
+  ).toHaveCount(0)
+  await expect.poll(
+    () => sql(`select status from public.fiscal_documents where id=${q(docId)}`),
+  ).toBe('issued')
+
+  await page.goto('/relatorios/baixar', { waitUntil: 'domcontentloaded' })
+  for (const [label, ext] of [['Baixar CSV','csv'],['Baixar XLSX','xlsx'],['Baixar PDF','pdf']] as const) {
+    const downloadEvent = page.waitForEvent('download')
+    await page.getByRole('button', { name: label }).click()
+    const download = await downloadEvent
+    expect(download.suggestedFilename()).toMatch(new RegExp(`\\.${ext}$`))
+    expect(await download.path()).toBeTruthy()
+    await page.goto('/relatorios/baixar', { waitUntil: 'domcontentloaded' })
+  }
 }
 
 test('canonical operational homologation creates all business data through the UI', async ({ page }) => {

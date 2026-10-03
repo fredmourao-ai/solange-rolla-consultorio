@@ -1969,6 +1969,67 @@ export type Database = {
           id: string
         }[]
       }
+      begin_mock_fiscal_document_issue_atomic: {
+        Args: {
+          p_amount_cents: number
+          p_attempt_id: string
+          p_document_id: string
+          p_review_ack: boolean
+          p_external_id: string
+          p_idempotency_key: string
+          p_payer_person_id: string
+          p_pdf_byte_length: number
+          p_pdf_path: string
+          p_pdf_sha256: string
+          p_person_id: string
+          p_profile_id: string
+          p_profile_version: number
+          p_protocol: string
+          p_source_id: string
+          p_source_type: string
+          p_treatment_id: string
+          p_treatment_version: number
+          p_xml_byte_length: number
+          p_xml_path: string
+          p_xml_sha256: string
+        }
+        Returns: Json
+      }
+      cancel_mock_fiscal_document_atomic: {
+        Args: {
+          p_document_id: string
+          p_reason: string
+        }
+        Returns: string
+      }
+      complete_mock_fiscal_document_issue_atomic: {
+        Args: {
+          p_attempt_id: string
+          p_document_id: string
+          p_issued_at: string
+        }
+        Returns: string
+      }
+      fail_mock_fiscal_document_issue_atomic: {
+        Args: {
+          p_attempt_id: string
+          p_document_id: string
+          p_error_code: string
+        }
+        Returns: string
+      }
+      appointment_cancellation_deadline_from_snapshot: {
+        Args: { p_snapshot: Json; p_starts_at: string }
+        Returns: string
+      }
+      apply_receivable_adjustment_atomic: {
+        Args: {
+          p_adjustment_cents: number
+          p_reason: string
+          p_receivable_id: string
+        }
+        Returns: string
+      }
       claim_document_jobs: {
         Args: { p_limit?: number }
         Returns: {
@@ -1992,6 +2053,19 @@ export type Database = {
           remaining: number
           retry_after_seconds: number
         }[]
+      }
+      create_appointment_with_audit_atomic: {
+        Args: {
+          p_appointment_id: string
+          p_cancellation_deadline_at: string
+          p_cancellation_policy_snapshot: Json
+          p_ends_at: string
+          p_person_id: string
+          p_policy_version: number
+          p_service_id: string
+          p_starts_at: string
+        }
+        Returns: string
       }
       create_clinical_record: {
         Args: {
@@ -2018,6 +2092,67 @@ export type Database = {
           supersedes_id: string
         }[]
       }
+      create_expense_category_atomic: {
+        Args: { p_name: string }
+        Returns: string
+      }
+      create_payable_atomic: {
+        Args: {
+          p_amount_cents: number
+          p_category_id: string
+          p_competence: string
+          p_description: string
+          p_due_date: string
+          p_idempotency_key: string
+          p_vendor_id: string
+        }
+        Returns: string
+      }
+      create_recurrence_rule_atomic: {
+        Args: {
+          p_amount_cents: number
+          p_category_id: string
+          p_day_of_month: number
+          p_description: string
+          p_month_end_fallback: string
+          p_start_date: string
+          p_vendor_id: string
+        }
+        Returns: string
+      }
+      create_event_atomic: {
+        Args: {
+          p_capacity: number
+          p_default_price_cents: number
+          p_description: string
+          p_ends_at: string
+          p_location: string
+          p_modality: string
+          p_starts_at: string
+          p_title: string
+          p_type: string
+        }
+        Returns: string
+      }
+      create_event_expense_atomic: {
+        Args: {
+          p_amount_cents: number
+          p_description: string
+          p_event_id: string
+          p_paid_at?: string
+        }
+        Returns: string
+      }
+      create_form_template_atomic: {
+        Args: {
+          p_classification: string
+          p_name: string
+          p_schema: Json
+          p_template_id: string
+          p_version_id: string
+        }
+        Returns: string
+      }
       create_recurring_payable_atomic: {
         Args: {
           p_amount_cents: number
@@ -2031,6 +2166,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      create_vendor_atomic: { Args: { p_legal_name: string }; Returns: string }
       current_aal: { Args: Record<PropertyKey, never>; Returns: string }
       current_app_role: {
         Args: Record<PropertyKey, never>
@@ -2061,6 +2197,17 @@ export type Database = {
         }[]
       }
       has_permission: { Args: { p_permission_key: string }; Returns: boolean }
+      issue_form_capability_atomic: {
+        Args: {
+          p_capability_id: string
+          p_expires_at: string
+          p_person_id: string
+          p_submission_id: string
+          p_template_version_id: string
+          p_token_hash: string
+        }
+        Returns: string
+      }
       list_clinical_record_metadata: {
         Args: { p_person_id: string }
         Returns: {
@@ -2248,6 +2395,42 @@ export type Database = {
           result_submission_version_id: string
           result_typed_name: string
         }[]
+      }
+      update_appointment_with_audit_atomic: {
+        Args: {
+          p_appointment_id: string
+          p_cancellation_deadline_at: string
+          p_ends_at: string
+          p_person_id: string
+          p_service_id: string
+          p_starts_at: string
+        }
+        Returns: string
+      }
+      transition_appointment_status_atomic: {
+        Args: { p_appointment_id: string; p_command: string }
+        Returns: string
+      }
+      update_event_atomic: {
+        Args: {
+          p_capacity: number
+          p_default_price_cents: number
+          p_ends_at: string
+          p_event_id: string
+          p_location: string
+          p_modality: string
+          p_starts_at: string
+          p_title: string
+        }
+        Returns: string
+      }
+      update_event_registration_atomic: {
+        Args: {
+          p_attendance_status: string
+          p_registration_id: string
+          p_status: string
+        }
+        Returns: string
       }
       upsert_staff_profile: {
         Args: {

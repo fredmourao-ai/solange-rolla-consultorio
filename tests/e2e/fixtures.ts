@@ -35,15 +35,22 @@ export function isExpectedAuthLogoutAbort(method: string, url: string, errorText
   try { const parsed = new URL(url); return parsed.pathname.endsWith('/auth/v1/logout') && parsed.searchParams.get('scope') === 'local' } catch { return false }
 }
 
-export function isExpectedDocumentClientErrorConsole(message: string, url: string, expectedDocumentClientErrors: Set<string>) {
-  return /^Failed to load resource: the server responded with a status of 4\d\d /.test(message)
-    && Boolean(url) && expectedDocumentClientErrors.has(url)
+export function isExpectedAuthCredentialResponse(method: string, url: string, status: number) {
+  if (method !== 'POST' || (status !== 400 && status !== 401)) return false
+  try { return new URL(url).pathname.endsWith('/auth/v1/token') } catch { return false }
+}
+
+export function isExpectedClientErrorConsole(message: string, url: string, expectedClientErrorUrls: Set<string>, expectedAnonymousClientErrors = 0) {
+  if (!/^Failed to load resource: the server responded with a status of 4\d\d /.test(message)) return false
+  if (url && expectedClientErrorUrls.has(url)) return true
+  return !url && expectedAnonymousClientErrors > 0
 }
 
 export const test = base.extend({
   page: async ({ page }, providePage) => {
     const failures: string[] = []
-    const expectedDocumentClientErrors = new Set<string>()
+    const expectedClientErrorUrls = new Set<string>()
+    let expectedAnonymousClientErrors = 0
     const onPageError = (error: Error) => failures.push(`pageerror: ${error.message}`)
     const onRequestFailed = (request: Request) => {
       const errorText = request.failure()?.errorText
@@ -56,12 +63,19 @@ export const test = base.extend({
     }
     const onConsole = (message: ConsoleMessage) => {
       if (message.type() !== 'error') return
-      if (isExpectedDocumentClientErrorConsole(message.text(), message.location().url, expectedDocumentClientErrors)) return
+      if (isExpectedClientErrorConsole(message.text(), message.location().url, expectedClientErrorUrls, expectedAnonymousClientErrors)) {
+        if (!message.location().url && expectedAnonymousClientErrors > 0) expectedAnonymousClientErrors -= 1
+        return
+      }
       failures.push(`console.error: ${message.text()}`)
     }
     const onResponse = (response: Response) => {
       const status = response.status()
-      if (status >= 400 && status < 500 && response.request().resourceType() === 'document') expectedDocumentClientErrors.add(response.url())
+      if (status >= 400 && status < 500 && response.request().resourceType() === 'document') expectedClientErrorUrls.add(response.url())
+      if (isExpectedAuthCredentialResponse(response.request().method(), response.url(), status)) {
+        expectedClientErrorUrls.add(response.url())
+        expectedAnonymousClientErrors += 1
+      }
       if (status >= 500) failures.push(`http ${status}: ${requestLabel(response.request())}`)
     }
     page.on('pageerror', onPageError)

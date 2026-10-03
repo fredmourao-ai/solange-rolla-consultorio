@@ -1,5 +1,6 @@
 -- Synthetic demonstration data only. Never replace these fixtures with real patient data.
 
+-- BEGIN LOCAL_AUTH_FIXTURE
 -- Local-only staff fixture. The .invalid address can never receive external mail.
 insert into auth.users (
   instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,
@@ -22,6 +23,7 @@ values (
   'email', now(), now()
 )
 on conflict (provider_id, provider) do nothing;
+-- END LOCAL_AUTH_FIXTURE
 
 insert into public.profiles (user_id, role, display_name, active)
 values ('d9000000-0000-4000-8000-000000000001', 'psychologist_owner', 'Demonstração Local', true)

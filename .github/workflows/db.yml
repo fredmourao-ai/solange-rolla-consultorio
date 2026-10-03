@@ -109,3 +109,7 @@ jobs:
           npx prettier@3.9.9 --no-semi --single-quote src/platform/supabase/types.ts > /tmp/database-types-committed.ts
           npx prettier@3.9.9 --no-semi --single-quote /tmp/database-types.ts > /tmp/database-types-generated.ts
           diff -u /tmp/database-types-committed.ts /tmp/database-types-generated.ts
+
+      - name: Stop isolated local Supabase
+        if: always()
+        run: npx supabase@2.118.0 stop --no-backup

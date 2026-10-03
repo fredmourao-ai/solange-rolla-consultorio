@@ -412,7 +412,13 @@ function sqlObjects(migration) {
     'public.set',
   ])
   const recordObject = (object) => {
-    if (!object || object.startsWith('auth.') || ignoredExternalOrPseudoObjects.has(object)) return
+    if (
+      !object
+      || object.startsWith('auth.')
+      || object.startsWith('pg_catalog.')
+      || object.startsWith('information_schema.')
+      || ignoredExternalOrPseudoObjects.has(object)
+    ) return
     objects.add(object)
   }
   const multiTargetCommands = new Set([
@@ -449,9 +455,28 @@ function sqlObjects(migration) {
     return false
   }
 
+  const isSchemaObjectOnClause = (index) => {
+    for (let cursor = index - 1; cursor >= 0 && tokens[cursor] !== ';'; cursor -= 1) {
+      // JOIN ... ON binds column aliases; it is never a schema-object target.
+      if (tokens[cursor] === 'join') return false
+      // These statements use ON to name an owned database object.
+      if (['policy', 'trigger', 'index', 'grant', 'revoke'].includes(tokens[cursor])) return true
+    }
+    return false
+  }
+
   for (let index = 0; index < tokens.length; index += 1) {
     const token = tokens[index]
     const alterTableSubClause = isAlterTableSubClause(index)
+
+    if (
+      /^[a-z_][a-z0-9_$]*$/u.test(token)
+      && tokens[index + 1] === '.'
+      && /^[a-z_][a-z0-9_$]*$/u.test(tokens[index + 2] ?? '')
+      && tokens[index + 3] === '('
+    ) {
+      recordObject(`${token}.${tokens[index + 2]}`)
+    }
     if (token === 'execute' && ['begin', 'do'].includes(tokens[index - 1])) {
       parsed.unsupported = true
       continue
@@ -535,7 +560,11 @@ function sqlObjects(migration) {
       if (schemaName) recordObject(schemaName === 'clinical' ? 'clinical.__schema__' : `public.${schemaName}`)
       continue
     }
-    if (token === 'on' && !['conflict', 'delete', 'update'].includes(tokens[index + 1])) {
+    if (
+      token === 'on'
+      && !['conflict', 'delete', 'update'].includes(tokens[index + 1])
+      && isSchemaObjectOnClause(index)
+    ) {
       const object = objectFromTokens(tokens, index + 1)
       if (object) {
         recordObject(object)

@@ -8,11 +8,14 @@ import { describe, expect, it } from 'vitest'
 const projectRoot = fileURLToPath(new URL('../../', import.meta.url))
 
 function makeExecutable(file: string) {
-  chmodSync(file, 0o755)
+  try { chmodSync(file, 0o755) } catch { /* Windows may ignore POSIX mode bits. */ }
 }
 
+const shell = process.platform === 'win32' ? 'bash' : 'sh'
+const shellAvailable = spawnSync(shell, ['--version'], { encoding: 'utf8' }).status === 0
+
 describe('backup restore drill readiness', () => {
-  it('waits for final startup and restores into a clean Supabase-compatible database', () => {
+  it.skipIf(!shellAvailable)('waits for final startup and restores into a clean Supabase-compatible database', () => {
     const root = mkdtempSync(path.join(os.tmpdir(), 'restore-readiness-'))
     const bin = path.join(root, 'bin')
     const state = path.join(root, 'state')
@@ -71,7 +74,7 @@ exit 99
     makeExecutable(docker)
 
     try {
-      const result = spawnSync('sh', [path.join(projectRoot, 'scripts/verify-backup-restore-docker.sh')], {
+      const result = spawnSync(shell, [path.join(projectRoot, 'scripts/verify-backup-restore-docker.sh')], {
         encoding: 'utf8',
         env: {
           ...process.env,
