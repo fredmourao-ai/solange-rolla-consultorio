@@ -59,11 +59,31 @@ jobs:
           MIGRATION_BASE_REF: ${{ github.event.pull_request.base.sha || github.event.before }}
         run: npm run migrations:check
 
-      - name: Start local database
-        run: npx supabase@2.118.0 db start
-
-      - name: Rebuild database from migrations and seed
-        run: npx supabase@2.118.0 db reset
+      - name: Start and reset isolated local database
+        shell: bash
+        run: |
+          set -euo pipefail
+          trap 'rm -f "$RUNNER_TEMP/supabase-db-start.log" "$RUNNER_TEMP/supabase-db-start-retry.log"' EXIT
+          if [ -n "$(docker ps -aq --filter name=_solange-rolla-consultorio)" ]; then
+            npx supabase@2.118.0 stop --no-backup
+          else
+            echo "No local Supabase stack to stop."
+          fi
+          if ! npx supabase@2.118.0 db start >"$RUNNER_TEMP/supabase-db-start.log" 2>&1; then
+            echo "::warning::Local database failed initial start; retrying once after cleanup."
+            npx supabase@2.118.0 stop --no-backup || true
+            sleep 5
+            npx supabase@2.118.0 db start >"$RUNNER_TEMP/supabase-db-start-retry.log" 2>&1
+          fi
+          if ! npx supabase@2.118.0 db reset; then
+            echo "::warning::Database reset failed; rebuilding local stack once."
+            npx supabase@2.118.0 stop --no-backup || true
+            sleep 5
+            npx supabase@2.118.0 db start
+            npx supabase@2.118.0 db reset
+          fi
+          rm -f "$RUNNER_TEMP/supabase-db-start.log" "$RUNNER_TEMP/supabase-db-start-retry.log"
+          trap - EXIT
 
       - name: Run pgTAP database tests
         run: npx supabase@2.118.0 test db
