@@ -33,6 +33,15 @@ export type {
   FiscalProviderSnapshot,
 } from './application/process-fiscal-job'
 export { NationalNfseProvider } from './infrastructure/national-nfse-provider'
+export type {
+  NationalNfseEnvironment,
+  NationalNfsePayloadFactory,
+  NationalNfsePreparedCancellation,
+  NationalNfsePreparedIssue,
+  NationalNfseTransport,
+  NationalNfseTransportRequest,
+  NationalNfseTransportResponse,
+} from './infrastructure/national-nfse-provider'
 export { evaluateFiscalReadiness } from './application/evaluate-fiscal-readiness'
 export type {
   FiscalPayer,
