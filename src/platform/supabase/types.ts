@@ -2120,6 +2120,10 @@ export type Database = {
         Args: { p_provider_message_id: string; p_status: string }
         Returns: string
       }
+      record_message_provider_acceptance: {
+        Args: { p_message_id: string; p_provider_message_id: string }
+        Returns: string
+      }
       persist_appointment_response: {
         Args: {
           p_appointment_id: string
