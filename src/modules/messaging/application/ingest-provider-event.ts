@@ -62,7 +62,15 @@ export async function ingestProviderEvent(
   assertValidProviderEvent(input)
   const inserted = await repository.insertIfNew(input)
   if (!inserted) return { duplicate: true }
-  if (input.delivery) await repository.applyDeliveryStatus?.(input.delivery)
+
+  if (input.delivery && repository.applyDeliveryStatus) {
+    const deliveryResult = await repository.applyDeliveryStatus(input.delivery)
+    // A provider may emit a delivery webhook before the send worker has
+    // persisted provider_message_id. Keep that inbox event unprocessed so
+    // record_message_provider_acceptance() can reconcile it atomically later.
+    if (deliveryResult === 'unknown') return { duplicate: false }
+  }
+
   await processNewEvent?.(input)
   await repository.markProcessed?.({ provider: input.provider, providerEventId: input.providerEventId })
   return { duplicate: false }
