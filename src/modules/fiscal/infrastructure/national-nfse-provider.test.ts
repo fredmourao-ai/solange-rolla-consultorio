@@ -67,7 +67,7 @@ describe('NationalNfseProvider', () => {
     await expect(provider.issue(issueRequest)).rejects.toThrow('NFSE_CONFIGURATION_REQUIRED')
   })
 
-  it('uses the official restricted SEFIN /nfse contract with a signed compressed DPS', async () => {
+  it('checks the DPS before POST and then uses the official restricted /nfse contract', async () => {
     const calls: NationalNfseTransportRequest[] = []
     const provider = new NationalNfseProvider({
       liveEnabled: true,
@@ -75,6 +75,7 @@ describe('NationalNfseProvider', () => {
       payloadFactory: payloadFactory(),
       transport: async (input) => {
         calls.push(input)
+        if (input.operation === 'reconcile-dps') return { status: 404, body: {} }
         return {
           status: 201,
           body: {
@@ -92,15 +93,22 @@ describe('NationalNfseProvider', () => {
       status: 'issued',
       synthetic: false,
     })
-    expect(calls).toEqual([{
-      operation: 'issue',
-      method: 'POST',
-      url: 'https://sefin.producaorestrita.nfse.gov.br/API/SefinNacional/nfse',
-      body: { dpsXmlGZipB64: 'synthetic-signed-dps-gzip-base64' },
-    }])
+    expect(calls).toEqual([
+      {
+        operation: 'reconcile-dps',
+        method: 'GET',
+        url: 'https://sefin.producaorestrita.nfse.gov.br/API/SefinNacional/dps/DPS-SYNTHETIC-1',
+      },
+      {
+        operation: 'issue',
+        method: 'POST',
+        url: 'https://sefin.producaorestrita.nfse.gov.br/API/SefinNacional/nfse',
+        body: { dpsXmlGZipB64: 'synthetic-signed-dps-gzip-base64' },
+      },
+    ])
   })
 
-  it('reconciles an ambiguous issue by the immutable DPS id instead of blindly re-posting', async () => {
+  it('returns an already-issued DPS without replaying POST', async () => {
     const calls: NationalNfseTransportRequest[] = []
     const provider = new NationalNfseProvider({
       liveEnabled: true,
@@ -108,8 +116,36 @@ describe('NationalNfseProvider', () => {
       payloadFactory: payloadFactory(),
       transport: async (input) => {
         calls.push(input)
-        if (input.operation === 'issue') throw new Error('synthetic network interruption')
         return { status: 200, body: { chaveAcesso: accessKey } }
+      },
+    })
+
+    await expect(provider.issue(issueRequest)).resolves.toEqual({
+      externalId: accessKey,
+      protocol: 'DPS-SYNTHETIC-1',
+      status: 'issued',
+      synthetic: false,
+    })
+    expect(calls).toHaveLength(1)
+    expect(calls[0]?.operation).toBe('reconcile-dps')
+  })
+
+  it('reconciles an ambiguous POST by the immutable DPS id instead of replaying it', async () => {
+    const calls: NationalNfseTransportRequest[] = []
+    let dpsLookups = 0
+    const provider = new NationalNfseProvider({
+      liveEnabled: true,
+      environment: 'restricted',
+      payloadFactory: payloadFactory(),
+      transport: async (input) => {
+        calls.push(input)
+        if (input.operation === 'reconcile-dps') {
+          dpsLookups += 1
+          return dpsLookups === 1
+            ? { status: 404, body: {} }
+            : { status: 200, body: { chaveAcesso: accessKey } }
+        }
+        throw new Error('synthetic network interruption')
       },
     })
 
@@ -118,27 +154,49 @@ describe('NationalNfseProvider', () => {
       protocol: 'DPS-SYNTHETIC-1',
       status: 'issued',
     })
-    expect(calls.map((call) => [call.operation, call.method, call.url])).toEqual([
-      ['issue', 'POST', 'https://sefin.producaorestrita.nfse.gov.br/API/SefinNacional/nfse'],
-      ['reconcile-dps', 'GET', 'https://sefin.producaorestrita.nfse.gov.br/API/SefinNacional/dps/DPS-SYNTHETIC-1'],
+    expect(calls.map((call) => [call.operation, call.method])).toEqual([
+      ['reconcile-dps', 'GET'],
+      ['issue', 'POST'],
+      ['reconcile-dps', 'GET'],
     ])
   })
 
-  it('keeps an unresolved POST outcome ambiguous rather than retrying issuance', async () => {
-    let calls = 0
+  it('keeps an unresolved POST outcome ambiguous rather than replaying issuance', async () => {
+    const calls: NationalNfseTransportRequest[] = []
     const provider = new NationalNfseProvider({
       liveEnabled: true,
       environment: 'restricted',
       payloadFactory: payloadFactory(),
       transport: async (input) => {
-        calls += 1
+        calls.push(input)
         if (input.operation === 'issue') return { status: 500, body: {} }
         return { status: 404, body: {} }
       },
     })
 
     await expect(provider.issue(issueRequest)).rejects.toThrow('NFSE_AMBIGUOUS')
-    expect(calls).toBe(2)
+    expect(calls.map((call) => call.operation)).toEqual([
+      'reconcile-dps',
+      'issue',
+      'reconcile-dps',
+    ])
+  })
+
+  it('does not POST when the preflight DPS lookup is temporarily unavailable', async () => {
+    const calls: NationalNfseTransportRequest[] = []
+    const provider = new NationalNfseProvider({
+      liveEnabled: true,
+      environment: 'restricted',
+      payloadFactory: payloadFactory(),
+      transport: async (input) => {
+        calls.push(input)
+        throw new Error('synthetic lookup outage')
+      },
+    })
+
+    await expect(provider.issue(issueRequest)).rejects.toThrow('NFSE_RETRYABLE')
+    expect(calls).toHaveLength(1)
+    expect(calls[0]?.operation).toBe('reconcile-dps')
   })
 
   it('queries the official NFS-e resource by its 50-digit access key', async () => {
@@ -151,7 +209,7 @@ describe('NationalNfseProvider', () => {
         calls.push(input)
         return {
           status: 200,
-          body: { chaveAcesso: accessKey, nfseXmlGZipB64: 'synthetic-nfse-gzip-base64' },
+          body: { nfseXmlGZipB64: 'synthetic-nfse-gzip-base64' },
         }
       },
     })
