@@ -1,5 +1,5 @@
 begin;
-select plan(15);
+select plan(20);
 
 select has_column('public', 'outbound_messages', 'provider_message_id', 'outbound messages persist provider message id');
 select has_column('public', 'outbound_messages', 'provider_delivery_status', 'outbound messages persist provider delivery status');
@@ -84,10 +84,54 @@ select is(
 );
 
 select throws_ok(
-  $$ select public.apply_message_provider_delivery_status('', 'delivered') $$,
+  $ select public.apply_message_provider_delivery_status('', 'delivered') $,
   '22023',
   'MESSAGE_PROVIDER_DELIVERY_INVALID',
   'invalid delivery input fails closed'
+);
+
+insert into public.outbound_messages (
+  id, idempotency_key, channel, recipient, template_key, payload, status
+)
+values (
+  '00000000-0000-0000-0000-000000000254'::uuid,
+  'delivery-race-test', 'whatsapp', '+5500000000000',
+  'appointment_confirmation', '{}'::jsonb, 'queued'
+);
+
+insert into public.inbox_events (provider, provider_event_id, payload)
+values (
+  'meta-whatsapp',
+  'delivery-race-event',
+  '{"kind":"delivery_status","providerMessageId":"provider-race-1","status":"failed"}'::jsonb
+);
+
+select is(
+  public.record_message_provider_acceptance(
+    '00000000-0000-0000-0000-000000000254'::uuid,
+    'provider-race-1'
+  ),
+  'updated',
+  'provider acceptance is persisted even when its webhook arrived first'
+);
+select is(
+  (select provider_message_id from public.outbound_messages where id = '00000000-0000-0000-0000-000000000254'::uuid),
+  'provider-race-1',
+  'early webhook is correlated after provider acceptance'
+);
+select is(
+  (select provider_delivery_status from public.outbound_messages where id = '00000000-0000-0000-0000-000000000254'::uuid),
+  'failed',
+  'early terminal provider status is reconciled'
+);
+select is(
+  (select status from public.outbound_messages where id = '00000000-0000-0000-0000-000000000254'::uuid),
+  'failed',
+  'early provider failure becomes operationally visible'
+);
+select ok(
+  (select processed_at is not null from public.inbox_events where provider_event_id = 'delivery-race-event'),
+  'reconciled early webhook is marked processed'
 );
 
 select * from finish();
