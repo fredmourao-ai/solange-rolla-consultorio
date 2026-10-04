@@ -18,7 +18,7 @@ permissions:
   statuses: read
 
 concurrency:
-  group: pr-auto-merge-${{ github.event.workflow_run.head_sha }}
+  # Collapse stale merge evaluations repository-wide; each run still revalidates the exact PR head.\n  group: pr-auto-merge-${{ github.repository }}
   cancel-in-progress: true
 
 jobs:
