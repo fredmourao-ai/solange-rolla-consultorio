@@ -46,6 +46,7 @@ type NationalNfseProviderOptions = {
 }
 
 type JsonRecord = Record<string, unknown>
+type DpsLookupPhase = 'preflight' | 'post-attempt'
 
 const OFFICIAL_ENDPOINTS: Record<NationalNfseEnvironment, string> = {
   restricted: 'https://sefin.producaorestrita.nfse.gov.br/API/SefinNacional',
@@ -78,6 +79,11 @@ export class NationalNfseProvider implements NfseProvider {
     const dpsId = requiredString(prepared.dpsId, 'NFSE_CONFIGURATION_REQUIRED')
     const dpsXmlGZipB64 = requiredString(prepared.dpsXmlGZipB64, 'NFSE_CONFIGURATION_REQUIRED')
 
+    // A retry can happen after a previous POST produced an ambiguous result.
+    // Query the immutable DPS first so a retry never blindly emits twice.
+    const existing = await this.lookupIssuedByDps(endpoint, transport, dpsId, 'preflight')
+    if (existing) return existing
+
     let response: NationalNfseTransportResponse
     try {
       response = await transport({
@@ -87,17 +93,17 @@ export class NationalNfseProvider implements NfseProvider {
         body: { dpsXmlGZipB64 },
       })
     } catch {
-      return this.reconcileAmbiguousIssue(endpoint, transport, dpsId)
+      return this.reconcileAfterIssueAttempt(endpoint, transport, dpsId)
     }
 
     if (response.status === 201) return this.parseIssueSuccess(response.body)
     if (response.status === 400 || response.status === 401 || response.status === 403) {
       throw new Error('NFSE_FINAL')
     }
-    if (response.status === 429 || response.status >= 500) {
-      return this.reconcileAmbiguousIssue(endpoint, transport, dpsId)
-    }
-    throw new Error('NFSE_AMBIGUOUS')
+
+    // Any non-final response after POST may still represent a committed issue.
+    // Reconcile by DPS instead of replaying the POST.
+    return this.reconcileAfterIssueAttempt(endpoint, transport, dpsId)
   }
 
   async getStatus(externalId: string): Promise<NfseStatusResult> {
@@ -116,9 +122,6 @@ export class NationalNfseProvider implements NfseProvider {
     }
 
     if (response.status === 200) {
-      const payload = this.record(response.body)
-      const chaveAcesso = requiredString(payload.chaveAcesso, 'NFSE_AMBIGUOUS')
-      if (chaveAcesso !== externalId) throw new Error('NFSE_AMBIGUOUS')
       return { externalId, status: 'issued' }
     }
 
@@ -176,11 +179,12 @@ export class NationalNfseProvider implements NfseProvider {
     }
   }
 
-  private async reconcileAmbiguousIssue(
+  private async lookupIssuedByDps(
     endpoint: string,
     transport: NationalNfseTransport,
     dpsId: string,
-  ): Promise<NfseIssueResult> {
+    phase: DpsLookupPhase,
+  ): Promise<NfseIssueResult | null> {
     let response: NationalNfseTransportResponse
     try {
       response = await transport({
@@ -189,7 +193,7 @@ export class NationalNfseProvider implements NfseProvider {
         url: urlFor(endpoint, `/dps/${encodeURIComponent(dpsId)}`),
       })
     } catch {
-      throw new Error('NFSE_AMBIGUOUS')
+      throw new Error(phase === 'preflight' ? 'NFSE_RETRYABLE' : 'NFSE_AMBIGUOUS')
     }
 
     if (response.status === 200) {
@@ -204,10 +208,27 @@ export class NationalNfseProvider implements NfseProvider {
       }
     }
 
+    if (response.status === 404) {
+      if (phase === 'preflight') return null
+      throw new Error('NFSE_AMBIGUOUS')
+    }
+
     if (response.status === 400 || response.status === 401 || response.status === 403) {
       throw new Error('NFSE_FINAL')
     }
+
+    if (phase === 'preflight') throw new Error('NFSE_RETRYABLE')
     throw new Error('NFSE_AMBIGUOUS')
+  }
+
+  private async reconcileAfterIssueAttempt(
+    endpoint: string,
+    transport: NationalNfseTransport,
+    dpsId: string,
+  ): Promise<NfseIssueResult> {
+    const result = await this.lookupIssuedByDps(endpoint, transport, dpsId, 'post-attempt')
+    if (!result) throw new Error('NFSE_AMBIGUOUS')
+    return result
   }
 
   private parseIssueSuccess(body: unknown): NfseIssueResult {
