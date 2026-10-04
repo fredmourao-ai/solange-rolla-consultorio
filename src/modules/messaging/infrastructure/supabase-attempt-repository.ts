@@ -19,10 +19,20 @@ export function createSupabaseMessageAttemptRepository(client: MessagingClient =
     },
 
     async markSent(messageId: string, providerMessageId?: string): Promise<void> {
-      const values = providerMessageId
-        ? { status: 'sent' as const, provider_message_id: providerMessageId, provider_delivery_status: 'sent' as const }
-        : { status: 'sent' as const }
-      const { error } = await client.from('outbound_messages').update(values).eq('id', messageId)
+      if (providerMessageId) {
+        const { data, error } = await client.rpc('record_message_provider_acceptance', {
+          p_message_id: messageId,
+          p_provider_message_id: providerMessageId,
+        })
+        if (error) throw error
+        if (data !== 'updated') throw new Error('MESSAGE_PROVIDER_ACCEPTANCE_RESULT_INVALID')
+        return
+      }
+
+      const { error } = await client
+        .from('outbound_messages')
+        .update({ status: 'sent' })
+        .eq('id', messageId)
       if (error) throw error
     },
 
