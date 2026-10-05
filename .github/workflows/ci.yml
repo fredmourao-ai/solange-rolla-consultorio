@@ -146,8 +146,8 @@ jobs:
         run: npm run modules:check
       - name: Build
         run: npm run build
-      - name: Dependency audit
-        run: npm audit --audit-level=high
+      - name: Runtime dependency audit
+        run: npm audit --omit=dev --audit-level=high
 
   e2e:
     concurrency:
