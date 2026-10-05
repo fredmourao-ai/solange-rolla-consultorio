@@ -965,6 +965,7 @@ export type Database = {
         Row: {
           id: string
           payload: NonNullable<Json>
+          processed_at: string | null
           provider: string
           provider_event_id: string
           received_at: string
@@ -972,6 +973,7 @@ export type Database = {
         Insert: {
           id?: string
           payload: NonNullable<Json>
+          processed_at?: string | null
           provider: string
           provider_event_id: string
           received_at?: string
@@ -979,6 +981,7 @@ export type Database = {
         Update: {
           id?: string
           payload?: NonNullable<Json>
+          processed_at?: string | null
           provider?: string
           provider_event_id?: string
           received_at?: string
@@ -1169,6 +1172,9 @@ export type Database = {
           id: string
           idempotency_key: string
           payload: NonNullable<Json>
+          provider_delivery_status: string | null
+          provider_delivery_updated_at: string | null
+          provider_message_id: string | null
           recipient: string
           status: string
           template_key: string
@@ -1180,6 +1186,9 @@ export type Database = {
           id?: string
           idempotency_key: string
           payload: NonNullable<Json>
+          provider_delivery_status?: string | null
+          provider_delivery_updated_at?: string | null
+          provider_message_id?: string | null
           recipient: string
           status?: string
           template_key: string
@@ -1191,6 +1200,9 @@ export type Database = {
           id?: string
           idempotency_key?: string
           payload?: NonNullable<Json>
+          provider_delivery_status?: string | null
+          provider_delivery_updated_at?: string | null
+          provider_message_id?: string | null
           recipient?: string
           status?: string
           template_key?: string
@@ -1969,6 +1981,10 @@ export type Database = {
           id: string
         }[]
       }
+      apply_message_provider_delivery_status: {
+        Args: { p_provider_message_id: string; p_status: string }
+        Returns: string
+      }
       claim_document_jobs: {
         Args: { p_limit?: number }
         Returns: {
@@ -2176,6 +2192,10 @@ export type Database = {
           p_message: Json
           p_queue_name: string
         }
+        Returns: string
+      }
+      record_message_provider_acceptance: {
+        Args: { p_message_id: string; p_provider_message_id: string }
         Returns: string
       }
       record_payable_payment_atomic: {
@@ -2395,4 +2415,3 @@ export const Constants = {
     },
   },
 } as const
-
