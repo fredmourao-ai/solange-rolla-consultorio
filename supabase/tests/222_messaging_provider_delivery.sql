@@ -84,7 +84,7 @@ select is(
 );
 
 select throws_ok(
-  $ select public.apply_message_provider_delivery_status('', 'delivered') $,
+  $sql$ select public.apply_message_provider_delivery_status('', 'delivered') $sql$,
   '22023',
   'MESSAGE_PROVIDER_DELIVERY_INVALID',
   'invalid delivery input fails closed'
