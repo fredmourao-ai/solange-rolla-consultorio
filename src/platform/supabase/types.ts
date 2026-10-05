@@ -1981,6 +1981,10 @@ export type Database = {
           id: string
         }[]
       }
+      apply_message_provider_delivery_status: {
+        Args: { p_provider_message_id: string; p_status: string }
+        Returns: string
+      }
       claim_document_jobs: {
         Args: { p_limit?: number }
         Returns: {
@@ -2116,14 +2120,6 @@ export type Database = {
           sort_order: number
         }[]
       }
-      apply_message_provider_delivery_status: {
-        Args: { p_provider_message_id: string; p_status: string }
-        Returns: string
-      }
-      record_message_provider_acceptance: {
-        Args: { p_message_id: string; p_provider_message_id: string }
-        Returns: string
-      }
       persist_appointment_response: {
         Args: {
           p_appointment_id: string
@@ -2196,6 +2192,10 @@ export type Database = {
           p_message: Json
           p_queue_name: string
         }
+        Returns: string
+      }
+      record_message_provider_acceptance: {
+        Args: { p_message_id: string; p_provider_message_id: string }
         Returns: string
       }
       record_payable_payment_atomic: {
@@ -2415,4 +2415,3 @@ export const Constants = {
     },
   },
 } as const
-
