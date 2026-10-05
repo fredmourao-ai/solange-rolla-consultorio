@@ -31,6 +31,7 @@ jobs:
     timeout-minutes: 30
     outputs:
       main_sha: ${{ steps.revalidate.outputs.sha }}
+      staging_approved: ${{ steps.pr.outputs.staging_approved }}
     steps:
       - name: Bootstrap verified GitHub CLI
         env:
@@ -111,12 +112,43 @@ jobs:
           fi
 
           current_pr="$(gh api "repos/$REPO/pulls/$pr_number")"
-          jq -e --arg sha "$HEAD_SHA" '
+          if ! jq -e --arg sha "$HEAD_SHA" '
             .state == "open" and
+            .draft == false and
             .base.ref == "main" and
             .head.sha == $sha and
             .head.repo.full_name == .base.repo.full_name
-          ' <<<"$current_pr" >/dev/null
+          ' <<<"$current_pr" >/dev/null; then
+            echo "PR #$pr_number is draft, closed, stale, or no longer targets main."
+            exit 0
+          fi
+
+          approval_marker="HUMAN_MERGE_APPROVED_SHA:$HEAD_SHA"
+          approval_pages="$(gh api --paginate "repos/$REPO/issues/$pr_number/comments?per_page=100")"
+          if ! jq -s -e --arg marker "$approval_marker" '
+            add | any(.[];
+              .body == $marker and
+              .author_association == "OWNER" and
+              .user.type == "User"
+            )
+          ' <<<"$approval_pages" >/dev/null; then
+            echo "PR #$pr_number lacks explicit owner approval for exact head $HEAD_SHA."
+            exit 0
+          fi
+
+          staging_approval_marker="HUMAN_STAGING_APPROVED_HEAD:$HEAD_SHA"
+          if jq -s -e --arg marker "$staging_approval_marker" '
+            add | any(.[];
+              .body == $marker and
+              .author_association == "OWNER" and
+              .user.type == "User"
+            )
+          ' <<<"$approval_pages" >/dev/null; then
+            echo "staging_approved=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "staging_approved=false" >> "$GITHUB_OUTPUT"
+          fi
+
           mergeable_state="$(jq -r '.mergeable_state // "unknown"' <<<"$current_pr")"
           if [ "$mergeable_state" != "clean" ]; then
             echo "PR #$pr_number is not currently mergeable (mergeable_state=$mergeable_state)."
@@ -174,7 +206,10 @@ jobs:
 
   staging-handoff:
     needs: merge-if-green
-    if: needs.merge-if-green.outputs.main_sha != ''
+    if: >-
+      needs.merge-if-green.outputs.main_sha != '' &&
+      needs.merge-if-green.outputs.staging_approved == 'true' &&
+      vars.STAGING_AUTO_PROMOTE_ENABLED == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
