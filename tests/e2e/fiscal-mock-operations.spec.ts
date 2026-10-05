@@ -15,6 +15,18 @@ function q(value: string) {
   return `'${value.replaceAll("'", "''")}'`
 }
 
+function validCpf(seed: string) {
+  const digits = seed.replace(/\D/g, '').padEnd(9, '1').slice(0, 9).split('').map(Number)
+  const check = (base: number[], factor: number) => {
+    const sum = base.reduce((acc, digit, index) => acc + digit * (factor - index), 0)
+    const remainder = (sum * 10) % 11
+    return remainder === 10 ? 0 : remainder
+  }
+  digits.push(check(digits, 10))
+  digits.push(check(digits, 11))
+  return digits.join('')
+}
+
 async function resetDemoMfa() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const key = process.env.SUPABASE_SECRET_KEY
@@ -80,18 +92,19 @@ test('owner issues a synthetic mock NFS-e at AAL1 and cancels only after real MF
   const personId = randomUUID()
   const profileId = randomUUID()
   const sourceId = randomUUID()
+  const syntheticCpf = validCpf(personId)
 
   sql(`insert into public.people(
     id,civil_name,birth_date,cpf_normalized,preferred_channel,birthday_messages_enabled,fiscal_address
   ) values(
-    ${q(personId)},'Tomador Fiscal','1990-01-01','12345678901','none',false,
+    ${q(personId)},'Tomador Fiscal','1990-01-01',${q(syntheticCpf)},'none',false,
     '{"street":"Teste","city":"Divinopolis"}'::jsonb
   )`)
   sql(`insert into public.fiscal_profiles(
     id,version,issuer_kind,issuer_document,municipality_code,service_code,tax_regime,
     fiscal_address,effective_from,active
   ) values(
-    ${q(profileId)},99,'individual','12345678901','3122306','8650002','pf',
+    ${q(profileId)},99,'individual',${q(syntheticCpf)},'3122306','8650002','pf',
     '{"city":"Divinopolis"}'::jsonb,'2026-01-01',true
   )`)
   const treatmentId = sql(`select id from public.fiscal_treatments

@@ -204,6 +204,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          E2E_ENV_FILE="$RUNNER_TEMP/solange-e2e.env"
+          umask 077
           while IFS='=' read -r key value; do
             case "$key" in
               API_URL|DB_URL|PUBLISHABLE_KEY|SECRET_KEY)
@@ -215,32 +217,48 @@ jobs:
             esac
           done < <(npx supabase@2.118.0 status -o env)
           test -n "$API_URL" && test -n "$DB_URL" && test -n "$PUBLISHABLE_KEY" && test -n "$SECRET_KEY"
+          clinical_key="$(openssl rand -base64 32 | tr -d '\n')"
+          rate_key="$(openssl rand -hex 32)"
+          action_key="$(openssl rand -hex 32)"
           {
-            echo "DB_URL=$DB_URL"
-            echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL"
-            echo "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$PUBLISHABLE_KEY"
-            echo "SUPABASE_SECRET_KEY=$SECRET_KEY"
-            echo "APP_URL=http://127.0.0.1:3000"
-            echo "APP_ENV=local"
-            echo "NEXT_PUBLIC_TEMP_ADMIN_LOGIN_ENABLED=true"
-            echo "WHATSAPP_LIVE_ENABLED=false"
-            echo "EMAIL_LIVE_ENABLED=false"
-            echo "NFSE_LIVE_ENABLED=false"
-            echo "CLINICAL_ENCRYPTION_ACTIVE_VERSION=1"
-            echo "CLINICAL_ENCRYPTION_KEY_V1=$(printf 'solange-ci-local-e2e-key-0000001' | base64 -w0)"
-            echo "RATE_LIMIT_HMAC_KEY=solange-ci-local-rate-limit-key-32-bytes"
-            echo "PUBLIC_ACTION_HMAC_KEY=solange-ci-local-public-action-key-32-bytes"
-            echo "DEMO_LOCAL_EMAIL=demo.owner@solange.invalid"
-            echo "DEMO_LOCAL_PASSWORD=DemoLocalOnly!2026"
-          } >> "$GITHUB_ENV"
+            printf 'DB_URL=%q\n' "$DB_URL"
+            printf 'NEXT_PUBLIC_SUPABASE_URL=%q\n' "$API_URL"
+            printf 'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=%q\n' "$PUBLISHABLE_KEY"
+            printf 'SUPABASE_SECRET_KEY=%q\n' "$SECRET_KEY"
+            printf 'APP_URL=%q\n' 'http://127.0.0.1:3000'
+            printf 'APP_ENV=%q\n' 'local'
+            printf 'NEXT_PUBLIC_TEMP_ADMIN_LOGIN_ENABLED=%q\n' 'true'
+            printf 'WHATSAPP_LIVE_ENABLED=%q\n' 'false'
+            printf 'EMAIL_LIVE_ENABLED=%q\n' 'false'
+            printf 'NFSE_LIVE_ENABLED=%q\n' 'false'
+            printf 'CLINICAL_ENCRYPTION_ACTIVE_VERSION=%q\n' '1'
+            printf 'CLINICAL_ENCRYPTION_KEY_V1=%q\n' "$clinical_key"
+            printf 'RATE_LIMIT_HMAC_KEY=%q\n' "$rate_key"
+            printf 'PUBLIC_ACTION_HMAC_KEY=%q\n' "$action_key"
+            printf 'DEMO_LOCAL_EMAIL=%q\n' 'demo.owner@solange.invalid'
+            printf 'DEMO_LOCAL_PASSWORD=%q\n' 'DemoLocalOnly!2026'
+          } > "$E2E_ENV_FILE"
+          chmod 600 "$E2E_ENV_FILE"
+
       - name: Build application
-        run: npm run build
+        shell: bash
+        run: |
+          set -euo pipefail
+          E2E_ENV_FILE="$RUNNER_TEMP/solange-e2e.env"
+          set -a
+          source "$E2E_ENV_FILE"
+          set +a
+          npm run build
       - name: Install Playwright browser
         run: npx playwright install chromium
       - name: End-to-end tests
         shell: bash
         run: |
           set -euo pipefail
+          E2E_ENV_FILE="$RUNNER_TEMP/solange-e2e.env"
+          set -a
+          source "$E2E_ENV_FILE"
+          set +a
           LOG="$RUNNER_TEMP/solange-e2e-server.log"
           E2E_SERVER_PID=''
           cleanup_server() {
@@ -282,6 +300,14 @@ jobs:
           fi
           export E2E_REUSE_EXISTING_SERVER=true
           npm run test:e2e
+
+      - name: Cleanup private E2E environment
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          E2E_ENV_FILE="$RUNNER_TEMP/solange-e2e.env"
+          rm -f "$E2E_ENV_FILE"
 
       - name: Stop isolated local Supabase
         if: always()

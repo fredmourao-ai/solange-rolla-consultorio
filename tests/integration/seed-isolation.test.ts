@@ -21,4 +21,21 @@ describe('synthetic seed isolation', () => {
     expect(statement, 'cancellation policy legal version seed statement').not.toBeNull()
     expect(statement?.[1].trim()).toBe('nothing')
   })
+
+  it('approves synthetic mock treatments without enabling live fiscal issuance', () => {
+    const seed = readFileSync(path.join(process.cwd(), 'supabase/seed.sql'), 'utf8')
+    const statement = seed.match(/update public\.fiscal_treatments[\s\S]*?;/)?.[0] ?? ''
+
+    expect(statement).toContain('approved = true')
+    expect(statement).toContain('enabled_for_live = false')
+    for (const sourceKind of [
+      'appointment_completed',
+      'appointment_late_cancellation',
+      'appointment_no_show',
+      'event_registration',
+    ]) {
+      expect(statement).toContain(`'${sourceKind}'`)
+    }
+    expect(statement).not.toContain("'other_service'")
+  })
 })

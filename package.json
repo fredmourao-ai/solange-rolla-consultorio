@@ -49,6 +49,7 @@
     "@types/nodemailer": "^7.0.2",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
+    "braces": "file:vendor/braces",
     "dependency-cruiser": "18.2.0",
     "eslint": "9.39.5",
     "eslint-config-next": "16.3.8",
@@ -66,6 +67,7 @@
     "next@16.3.8": {
       "postcss": "8.5.26",
       "sharp": "0.35.4"
-    }
+    },
+    "braces": "$braces"
   }
 }

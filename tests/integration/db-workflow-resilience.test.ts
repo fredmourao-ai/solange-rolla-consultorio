@@ -5,15 +5,15 @@ const workflow = readFileSync('.github/workflows/db.yml', 'utf8')
 
 describe('database workflow resilience', () => {
   it('stops any inherited canonical Supabase stack before starting a database job', () => {
-    expect(workflow).toContain("if docker ps -a --format '{{.Names}}' | grep -q \"_$project$\"; then")
-    expect(workflow).toContain('npx supabase@2.118.0 stop --no-backup || true')
+    expect(workflow).toContain("docker ps -aq --filter name=_solange-rolla-consultorio")
+    expect(workflow).toContain('npx supabase@2.118.0 stop --no-backup')
+    expect(workflow).toContain('No local Supabase stack to stop.')
   })
 
-  it('removes stale project containers when the expected Supabase network is missing', () => {
-    expect(workflow).toContain('Clean stale local Supabase runtime')
-    expect(workflow).toContain('network="supabase_network_$project"')
-    expect(workflow).toContain("docker ps -a --format '{{.Names}}' | grep -q \"_$project$\"")
-    expect(workflow).toContain('! docker network inspect "$network"')
-    expect(workflow).toContain("grep \"_$project$\" | xargs -r docker rm -f")
+  it('retries a failed database start and rebuilds after a failed reset', () => {
+    expect(workflow).toContain('Local database failed initial start; retrying once after cleanup.')
+    expect(workflow).toContain('supabase-db-start-retry.log')
+    expect(workflow).toContain('Database reset failed; rebuilding local stack once.')
+    expect(workflow.match(/npx supabase@2\.118\.0 db reset/g)?.length).toBe(2)
   })
 })

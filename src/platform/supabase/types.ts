@@ -1969,12 +1969,23 @@ export type Database = {
           id: string
         }[]
       }
+      apply_receivable_adjustment_atomic: {
+        Args: {
+          p_adjustment_cents: number
+          p_reason: string
+          p_receivable_id: string
+        }
+        Returns: string
+      }
+      appointment_cancellation_deadline_from_snapshot: {
+        Args: { p_snapshot: Json; p_starts_at: string }
+        Returns: string
+      }
       begin_mock_fiscal_document_issue_atomic: {
         Args: {
           p_amount_cents: number
           p_attempt_id: string
           p_document_id: string
-          p_review_ack: boolean
           p_external_id: string
           p_idempotency_key: string
           p_payer_person_id: string
@@ -1985,6 +1996,7 @@ export type Database = {
           p_profile_id: string
           p_profile_version: number
           p_protocol: string
+          p_review_ack: boolean
           p_source_id: string
           p_source_type: string
           p_treatment_id: string
@@ -1996,38 +2008,7 @@ export type Database = {
         Returns: Json
       }
       cancel_mock_fiscal_document_atomic: {
-        Args: {
-          p_document_id: string
-          p_reason: string
-        }
-        Returns: string
-      }
-      complete_mock_fiscal_document_issue_atomic: {
-        Args: {
-          p_attempt_id: string
-          p_document_id: string
-          p_issued_at: string
-        }
-        Returns: string
-      }
-      fail_mock_fiscal_document_issue_atomic: {
-        Args: {
-          p_attempt_id: string
-          p_document_id: string
-          p_error_code: string
-        }
-        Returns: string
-      }
-      appointment_cancellation_deadline_from_snapshot: {
-        Args: { p_snapshot: Json; p_starts_at: string }
-        Returns: string
-      }
-      apply_receivable_adjustment_atomic: {
-        Args: {
-          p_adjustment_cents: number
-          p_reason: string
-          p_receivable_id: string
-        }
+        Args: { p_document_id: string; p_reason: string }
         Returns: string
       }
       claim_document_jobs: {
@@ -2040,6 +2021,14 @@ export type Database = {
       clear_user_permission_override: {
         Args: { p_permission_key: string; p_user_id: string }
         Returns: undefined
+      }
+      complete_mock_fiscal_document_issue_atomic: {
+        Args: {
+          p_attempt_id: string
+          p_document_id: string
+          p_issued_at: string
+        }
+        Returns: string
       }
       consume_public_rate_limit: {
         Args: {
@@ -2092,34 +2081,6 @@ export type Database = {
           supersedes_id: string
         }[]
       }
-      create_expense_category_atomic: {
-        Args: { p_name: string }
-        Returns: string
-      }
-      create_payable_atomic: {
-        Args: {
-          p_amount_cents: number
-          p_category_id: string
-          p_competence: string
-          p_description: string
-          p_due_date: string
-          p_idempotency_key: string
-          p_vendor_id: string
-        }
-        Returns: string
-      }
-      create_recurrence_rule_atomic: {
-        Args: {
-          p_amount_cents: number
-          p_category_id: string
-          p_day_of_month: number
-          p_description: string
-          p_month_end_fallback: string
-          p_start_date: string
-          p_vendor_id: string
-        }
-        Returns: string
-      }
       create_event_atomic: {
         Args: {
           p_capacity: number
@@ -2143,6 +2104,10 @@ export type Database = {
         }
         Returns: string
       }
+      create_expense_category_atomic: {
+        Args: { p_name: string }
+        Returns: string
+      }
       create_form_template_atomic: {
         Args: {
           p_classification: string
@@ -2150,6 +2115,30 @@ export type Database = {
           p_schema: Json
           p_template_id: string
           p_version_id: string
+        }
+        Returns: string
+      }
+      create_payable_atomic: {
+        Args: {
+          p_amount_cents: number
+          p_category_id: string
+          p_competence: string
+          p_description: string
+          p_due_date: string
+          p_idempotency_key: string
+          p_vendor_id: string
+        }
+        Returns: string
+      }
+      create_recurrence_rule_atomic: {
+        Args: {
+          p_amount_cents: number
+          p_category_id: string
+          p_day_of_month: number
+          p_description: string
+          p_month_end_fallback: string
+          p_start_date: string
+          p_vendor_id: string
         }
         Returns: string
       }
@@ -2181,6 +2170,14 @@ export type Database = {
           subject_id: string
           subject_type: string
         }[]
+      }
+      fail_mock_fiscal_document_issue_atomic: {
+        Args: {
+          p_attempt_id: string
+          p_document_id: string
+          p_error_code: string
+        }
+        Returns: string
       }
       get_clinical_record_envelope: {
         Args: { record_id: string }
@@ -2396,6 +2393,10 @@ export type Database = {
           result_typed_name: string
         }[]
       }
+      transition_appointment_status_atomic: {
+        Args: { p_appointment_id: string; p_command: string }
+        Returns: string
+      }
       update_appointment_with_audit_atomic: {
         Args: {
           p_appointment_id: string
@@ -2405,10 +2406,6 @@ export type Database = {
           p_service_id: string
           p_starts_at: string
         }
-        Returns: string
-      }
-      transition_appointment_status_atomic: {
-        Args: { p_appointment_id: string; p_command: string }
         Returns: string
       }
       update_event_atomic: {
@@ -2459,12 +2456,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2486,13 +2483,12 @@ export type Tables<
 
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
-    | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+    keyof DefaultSchema["Tables"] | { schema: keyof DatabaseWithoutInternals },
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2511,13 +2507,12 @@ export type TablesInsert<
 
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
-    | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+    keyof DefaultSchema["Tables"] | { schema: keyof DatabaseWithoutInternals },
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2536,13 +2531,12 @@ export type TablesUpdate<
 
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
-    | keyof DefaultSchema["Enums"]
-    | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    keyof DefaultSchema["Enums"] | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2555,11 +2549,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2578,4 +2572,3 @@ export const Constants = {
     },
   },
 } as const
-

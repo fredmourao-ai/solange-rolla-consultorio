@@ -1,6 +1,6 @@
 begin;
 
-select plan(28);
+select plan(29);
 
 insert into auth.users (id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data)
 values
@@ -68,6 +68,15 @@ select set_config(
   'request.jwt.claims',
   '{"sub":"a2070000-0000-4000-8000-000000000001","aal":"aal2","role":"authenticated"}',
   true
+);
+
+select is(
+  public.appointment_cancellation_deadline_from_snapshot(
+    '2035-01-01T13:00:00Z',
+    '{"policyVersion":1,"countableHours":48,"excludedWeekdays":[0,6]}'::jsonb
+  ),
+  '2034-12-28T13:00:00Z'::timestamptz,
+  'legacy cancellation snapshots keep their historical defaults during edits'
 );
 
 select is(

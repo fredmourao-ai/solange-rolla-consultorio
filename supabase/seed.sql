@@ -160,6 +160,20 @@ values (
 )
 on conflict (issuer_document, version) do nothing;
 
+-- Local/homologation-only approval for synthetic mock issuance. Real issuance
+-- stays disabled and production approval remains controlled outside this seed.
+update public.fiscal_treatments
+set approved = true,
+    enabled_for_live = false
+where version = 1
+  and source_kind in (
+    'appointment_completed',
+    'appointment_late_cancellation',
+    'appointment_no_show',
+    'event_registration'
+  )
+  and issuance_rule <> 'not_issuable';
+
 insert into public.fiscal_documents (
   id, source_type, source_id, person_id, payer_person_id, amount_cents,
   profile_id, profile_version, treatment_id, treatment_version, provider,
