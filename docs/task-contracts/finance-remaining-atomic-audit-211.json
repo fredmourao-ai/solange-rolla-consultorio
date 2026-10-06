@@ -2,7 +2,7 @@
   "version": 1,
   "status": "approved",
   "issue": 211,
-  "migration": "20260919225000_finance_remaining_atomic_audit.sql",
+  "migration": "20261006004800_finance_remaining_atomic_audit.sql",
   "owners": [
     "audit",
     "identity",
