@@ -160,6 +160,16 @@
     "runtime_role_privilege_hardening": [
       "audit",
       "forms"
+    ],
+    "appointments_admin_atomic_audit": [
+      "appointments",
+      "audit",
+      "identity"
+    ],
+    "appointment_transition_atomic_audit": [
+      "appointments",
+      "audit",
+      "identity"
     ]
   },
   "objects": {
@@ -255,17 +265,5 @@
     "public.current_app_role": "identity",
     "public.current_aal": "identity",
     "public.transition_appointment_status_atomic": "appointments"
-  },
-  "crossModuleTasks": {
-    "appointments_admin_atomic_audit": [
-      "appointments",
-      "audit",
-      "identity"
-    ],
-    "appointment_transition_atomic_audit": [
-      "appointments",
-      "audit",
-      "identity"
-    ]
   }
 }
