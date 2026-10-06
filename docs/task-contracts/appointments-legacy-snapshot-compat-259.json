@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "status": "approved",
+  "issue": 259,
+  "migration": "20261006004800_appointments_legacy_snapshot_compat.sql",
+  "owners": [
+    "appointments"
+  ],
+  "objects": [
+    {
+      "name": "public.appointment_cancellation_deadline_from_snapshot",
+      "owner": "appointments"
+    }
+  ]
+}
