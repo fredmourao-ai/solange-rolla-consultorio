@@ -2,7 +2,7 @@
   "version": 1,
   "status": "approved",
   "issue": 225,
-  "migration": "20260919230000_fiscal_atomic_audit.sql",
+  "migration": "20261006005100_fiscal_atomic_audit.sql",
   "owners": [
     "audit",
     "fiscal",

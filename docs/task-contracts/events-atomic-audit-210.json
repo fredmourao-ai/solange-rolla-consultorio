@@ -2,7 +2,7 @@
   "version": 1,
   "status": "approved",
   "issue": 210,
-  "migration": "20260919225500_events_atomic_audit.sql",
+  "migration": "20261006004900_events_atomic_audit.sql",
   "owners": [
     "audit",
     "events",

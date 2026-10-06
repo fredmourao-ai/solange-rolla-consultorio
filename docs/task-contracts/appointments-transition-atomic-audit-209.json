@@ -2,7 +2,7 @@
   "version": 1,
   "status": "approved",
   "issue": 209,
-  "migration": "20260919224000_appointment_transition_atomic_audit.sql",
+  "migration": "20261006004700_appointment_transition_atomic_audit.sql",
   "owners": [
     "appointments",
     "audit",

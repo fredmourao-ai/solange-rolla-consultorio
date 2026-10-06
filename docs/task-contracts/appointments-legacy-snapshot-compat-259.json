@@ -2,7 +2,7 @@
   "version": 1,
   "status": "approved",
   "issue": 259,
-  "migration": "20261003034500_appointments_legacy_snapshot_compat.sql",
+  "migration": "20261006005200_appointments_legacy_snapshot_compat.sql",
   "owners": [
     "appointments"
   ],
