@@ -79,7 +79,7 @@ function defaultWait(ms: number, signal: AbortSignal): Promise<void> {
 
 export async function runDocumentWorker(options: {
   signal: AbortSignal
-  dispatch?: () => Promise<unknown>
+  dispatch?: () => Promise<{ claimed: number; dispatched: number } | void>
   drain: () => Promise<number>
   pollMs?: number
   wait?: (ms: number, signal: AbortSignal) => Promise<void>
@@ -91,7 +91,11 @@ export async function runDocumentWorker(options: {
   while (!options.signal.aborted) {
     let dispatchOk = true
     try {
-      await options.dispatch?.()
+      const result = await options.dispatch?.()
+      // Released queue-send failures return counts instead of rejecting.
+      if (result && result.dispatched !== result.claimed) {
+        throw new Error('DOCUMENT_DISPATCH_INCOMPLETE')
+      }
     } catch (error) {
       dispatchOk = false
       options.logger?.('document_worker_dispatch_failed', { code: safeErrorCode(error) })
