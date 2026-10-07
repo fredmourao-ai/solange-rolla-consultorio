@@ -94,11 +94,11 @@ declare
   v_expected_deadline timestamptz;
 begin
   if v_actor is null
-    or v_role not in ('psychologist_owner', 'secretary')
-    or not public.has_permission('appointments.create') then
+    or coalesce(v_role, '') not in ('psychologist_owner', 'secretary')
+    or not coalesce(public.has_permission('appointments.create'), false) then
     raise exception 'AGENDA_APPOINTMENT_WRITE_FORBIDDEN' using errcode = '42501';
   end if;
-  if p_ends_at <= p_starts_at then
+  if p_starts_at is null or p_ends_at is null or p_ends_at <= p_starts_at then
     raise exception 'AGENDA_INVALID_INTERVAL' using errcode = '22007';
   end if;
   select s.duration_minutes
@@ -121,7 +121,7 @@ begin
   order by p.effective_from desc, p.policy_version desc
   limit 1;
 
-  if not found or v_policy.policy_version <> p_policy_version then
+  if not found or p_policy_version is null or v_policy.policy_version <> p_policy_version then
     raise exception 'AGENDA_POLICY_VERSION_INVALID' using errcode = '23514';
   end if;
 
@@ -133,7 +133,7 @@ begin
     'lateCancellationChargeEnabled', v_policy.late_cancellation_charge_enabled,
     'noShowChargeEnabled', v_policy.no_show_charge_enabled
   );
-  if p_cancellation_policy_snapshot <> v_expected_snapshot then
+  if p_cancellation_policy_snapshot is null or p_cancellation_policy_snapshot <> v_expected_snapshot then
     raise exception 'AGENDA_POLICY_SNAPSHOT_INVALID' using errcode = '23514';
   end if;
 
@@ -141,7 +141,7 @@ begin
     p_starts_at,
     v_expected_snapshot
   );
-  if p_cancellation_deadline_at <> v_expected_deadline then
+  if p_cancellation_deadline_at is null or p_cancellation_deadline_at <> v_expected_deadline then
     raise exception 'AGENDA_CANCELLATION_DEADLINE_INVALID' using errcode = '23514';
   end if;
 
@@ -236,11 +236,11 @@ declare
   v_expected_deadline timestamptz;
 begin
   if v_actor is null
-    or v_role not in ('psychologist_owner', 'secretary')
-    or not public.has_permission('appointments.update') then
+    or coalesce(v_role, '') not in ('psychologist_owner', 'secretary')
+    or not coalesce(public.has_permission('appointments.update'), false) then
     raise exception 'AGENDA_APPOINTMENT_WRITE_FORBIDDEN' using errcode = '42501';
   end if;
-  if p_ends_at <= p_starts_at then
+  if p_starts_at is null or p_ends_at is null or p_ends_at <= p_starts_at then
     raise exception 'AGENDA_INVALID_INTERVAL' using errcode = '22007';
   end if;
 
@@ -280,7 +280,7 @@ begin
     v_current.status = 'reschedule_requested'
     or p_starts_at <> v_current.starts_at
     or p_ends_at <> v_current.ends_at
-  ) and not public.has_permission('appointments.reschedule') then
+  ) and not coalesce(public.has_permission('appointments.reschedule'), false) then
     raise exception 'AGENDA_RESCHEDULE_FORBIDDEN' using errcode = '42501';
   end if;
 
@@ -288,7 +288,7 @@ begin
     p_starts_at,
     v_current.cancellation_policy_snapshot
   );
-  if p_cancellation_deadline_at <> v_expected_deadline then
+  if p_cancellation_deadline_at is null or p_cancellation_deadline_at <> v_expected_deadline then
     raise exception 'AGENDA_CANCELLATION_DEADLINE_INVALID' using errcode = '23514';
   end if;
 

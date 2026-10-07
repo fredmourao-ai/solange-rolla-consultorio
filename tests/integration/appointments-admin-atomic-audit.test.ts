@@ -48,6 +48,15 @@ describe('appointment admin atomic audit contract', () => {
     expect(compatibilityMigration).toContain('from (values (0), (1), (2), (3), (4), (5), (6)) as weekday(value)')
   })
 
+  it('fails closed for missing roles, permissions, and nullable boundary inputs', () => {
+    expect(migration).toContain("coalesce(v_role, '') not in ('psychologist_owner', 'secretary')")
+    expect(migration).toContain("not coalesce(public.has_permission('appointments.create'), false)")
+    expect(migration).toContain("not coalesce(public.has_permission('appointments.update'), false)")
+    expect(migration).toContain('p_starts_at is null or p_ends_at is null')
+    expect(migration).toContain('p_cancellation_policy_snapshot is null')
+    expect(migration).toContain('p_cancellation_deadline_at is null')
+  })
+
   it('enforces effective permissions and server-side scheduling invariants', () => {
     expect(migration).toContain("public.has_permission('appointments.create')")
     expect(migration).toContain("public.has_permission('appointments.update')")

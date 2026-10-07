@@ -47,7 +47,7 @@ begin
     raise exception 'CARE_START_FORBIDDEN' using errcode = '42501';
   end if;
 
-  if v_permission is null or not public.has_permission(v_permission) then
+  if v_permission is null or not coalesce(public.has_permission(v_permission), false) then
     raise exception 'AGENDA_STATUS_FORBIDDEN' using errcode = '42501';
   end if;
 

@@ -1,6 +1,6 @@
 begin;
 
-select plan(36);
+select plan(38);
 
 insert into auth.users (id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data)
 values
@@ -157,6 +157,32 @@ $$, '23514', 'AGENDA_POLICY_SNAPSHOT_INVALID', 'direct RPC cannot forge cancella
 
 select throws_ok($$
   select public.create_appointment_with_audit_atomic(
+    'a2070000-0000-4000-8000-000000000112',
+    'a2070000-0000-4000-8000-000000000012',
+    'a2070000-0000-4000-8000-000000000021',
+    '2035-01-05T13:00:00Z',
+    '2035-01-05T13:50:00Z',
+    207,
+    '2035-01-03T13:00:00Z',
+    null
+  )
+$$, '23514', 'AGENDA_POLICY_SNAPSHOT_INVALID', 'direct RPC rejects null cancellation policy snapshot');
+
+select throws_ok($$
+  select public.create_appointment_with_audit_atomic(
+    'a2070000-0000-4000-8000-000000000113',
+    'a2070000-0000-4000-8000-000000000012',
+    'a2070000-0000-4000-8000-000000000021',
+    '2035-01-05T13:00:00Z',
+    '2035-01-05T13:50:00Z',
+    207,
+    null,
+    '{"policyVersion":207,"countableHours":48,"excludedWeekdays":[0,6],"businessTimezone":"America/Sao_Paulo","lateCancellationChargeEnabled":true,"noShowChargeEnabled":true}'::jsonb
+  )
+$$, '23514', 'AGENDA_CANCELLATION_DEADLINE_INVALID', 'direct RPC rejects null cancellation deadline');
+
+select throws_ok($$
+  select public.create_appointment_with_audit_atomic(
     'a2070000-0000-4000-8000-000000000109',
     'a2070000-0000-4000-8000-000000000012',
     'a2070000-0000-4000-8000-000000000021',
@@ -175,7 +201,9 @@ select is((
     'a2070000-0000-4000-8000-000000000106',
     'a2070000-0000-4000-8000-000000000107',
     'a2070000-0000-4000-8000-000000000108',
-    'a2070000-0000-4000-8000-000000000109'
+    'a2070000-0000-4000-8000-000000000109',
+    'a2070000-0000-4000-8000-000000000112',
+    'a2070000-0000-4000-8000-000000000113'
   )
 ), 0, 'invalid direct RPC inputs persist no appointments');
 
