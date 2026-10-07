@@ -127,7 +127,7 @@ language sql
 stable
 security definer
 set search_path = public, auth
-as $ select null::text $;
+as $$ select null::text $$;
 
 set local role authenticated;
 select set_config(
@@ -181,12 +181,12 @@ select set_config(
   true
 );
 
-select throws_ok($
+select throws_ok($$
   select public.transition_appointment_status_atomic(
     'a2090000-0000-4000-8000-000000000101',
     'complete'
   )
-$, '42501', 'CARE_COMPLETE_FORBIDDEN', 'care complete requires owner AAL2 clinical boundary');
+$$, '42501', 'CARE_COMPLETE_FORBIDDEN', 'care complete requires owner AAL2 clinical boundary');
 
 select is((
   select status from public.appointments
