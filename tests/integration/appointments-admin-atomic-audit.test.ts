@@ -45,7 +45,7 @@ describe('appointment admin atomic audit contract', () => {
 
   it('bounds cancellation deadline inputs before walking dates', () => {
     expect(compatibilityMigration).toContain('v_countable_hours > 8760')
-    expect(compatibilityMigration).toContain('generate_series(0, 6)')
+    expect(compatibilityMigration).toContain('from (values (0), (1), (2), (3), (4), (5), (6)) as weekday(value)')
   })
 
   it('enforces effective permissions and server-side scheduling invariants', () => {

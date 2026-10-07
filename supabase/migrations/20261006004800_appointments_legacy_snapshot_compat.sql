@@ -72,7 +72,7 @@ begin
 
   if not exists (
     select 1
-    from generate_series(0, 6) as weekday(value)
+    from (values (0), (1), (2), (3), (4), (5), (6)) as weekday(value)
     where not (v_excluded_weekdays @> jsonb_build_array(weekday.value))
   ) then
     raise exception 'AGENDA_POLICY_SNAPSHOT_INVALID' using errcode = '23514';
