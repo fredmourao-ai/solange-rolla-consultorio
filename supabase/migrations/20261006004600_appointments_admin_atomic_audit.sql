@@ -38,6 +38,7 @@ begin
   v_timezone := p_snapshot ->> 'businessTimezone';
 
   if v_countable_hours <= 0
+    or v_countable_hours > 8760
     or mod(v_countable_hours, 24) <> 0
     or jsonb_array_length(v_excluded_weekdays) = 0
     or v_timezone <> 'America/Sao_Paulo' then
@@ -50,6 +51,14 @@ begin
       raise exception 'AGENDA_POLICY_SNAPSHOT_INVALID' using errcode = '23514';
     end if;
   end loop;
+
+  if not exists (
+    select 1
+    from (values (0), (1), (2), (3), (4), (5), (6)) as weekday(value)
+    where not (v_excluded_weekdays @> jsonb_build_array(weekday.value))
+  ) then
+    raise exception 'AGENDA_POLICY_SNAPSHOT_INVALID' using errcode = '23514';
+  end if;
 
   v_local_start := p_starts_at at time zone v_timezone;
   v_candidate_date := v_local_start::date;
@@ -67,8 +76,7 @@ begin
 end;
 $$;
 
-revoke all on function public.appointment_cancellation_deadline_from_snapshot(timestamptz, jsonb) from public, anon;
-grant execute on function public.appointment_cancellation_deadline_from_snapshot(timestamptz, jsonb) to authenticated;
+revoke all on function public.appointment_cancellation_deadline_from_snapshot(timestamptz, jsonb) from public, anon, authenticated;
 
 create or replace function public.create_appointment_with_audit_atomic(
   p_appointment_id uuid,

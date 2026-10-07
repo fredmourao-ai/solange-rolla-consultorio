@@ -148,7 +148,14 @@ async function changeAppointmentStatusAction(formData: FormData) {
         p_appointment_id: id,
         p_command: command,
       })
-      if (error) throw new Error(error.message.includes('INVALID_APPOINTMENT_TRANSITION') ? 'INVALID_APPOINTMENT_TRANSITION' : 'AGENDA_STATUS_UPDATE_FAILED')
+      if (error) {
+        const code = [
+          'INVALID_APPOINTMENT_TRANSITION',
+          'AGENDA_CANCELLATION_WINDOW_MISMATCH',
+          'AGENDA_NO_SHOW_TOO_EARLY',
+        ].find((candidate) => error.message.includes(candidate))
+        throw new Error(code ?? 'AGENDA_STATUS_UPDATE_FAILED')
+      }
       if (String(data) !== status) throw new Error('AGENDA_STATUS_TRANSITION_DRIFT')
       return { ...appointment, status }
     },

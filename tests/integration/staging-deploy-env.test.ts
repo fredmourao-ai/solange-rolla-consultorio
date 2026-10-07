@@ -95,6 +95,31 @@ describe('staging appointment atomic-boundary rollout', () => {
     expect(rollback).toContain('set-staging-appointment-write-mode.mjs legacy-compatible')
     expect(workflow).toContain('printf \'%s\\n\' "$PROMOTE_SHA" > "$ROOT/state/appointments-atomic-compatible"')
   })
+
+  it('derives atomic compatibility from the deployed SHA when the host marker is missing', () => {
+    const migrationStep = workflow.slice(
+      workflow.indexOf('- name: Apply forward migrations'),
+      workflow.indexOf('- name: Verify staging accounting RLS'),
+    )
+    expect(migrationStep).toContain('DEPLOYED_SHA="$(cat "$STAGING_DEPLOY_ROOT/state/deployed-sha.txt")"')
+    expect(migrationStep).toContain('git cat-file -e "$DEPLOYED_SHA:supabase/migrations/20261006004600_appointments_admin_atomic_audit.sql"')
+    expect(migrationStep.indexOf('set-staging-appointment-write-mode.mjs atomic-only')).toBeLessThan(
+      migrationStep.lastIndexOf('set-staging-appointment-write-mode.mjs legacy-compatible'),
+    )
+  })
+
+  it('continues restoring the release before surfacing a failed compatibility grant restore', () => {
+    const rollback = workflow.slice(workflow.indexOf('- name: Rollback staging release after failed validation'))
+    expect(rollback).toContain('APPOINTMENT_MODE_RESTORE_FAILED=0')
+    expect(rollback).toContain('for attempt in 1 2 3')
+    expect(rollback).toContain('APPOINTMENT_MODE_RESTORE_FAILED=1')
+    expect(rollback.indexOf('docker rm -f "$WEB"')).toBeLessThan(
+      rollback.indexOf('exit "$APPOINTMENT_MODE_RESTORE_FAILED"'),
+    )
+    expect(rollback.indexOf('exit "$APPOINTMENT_MODE_RESTORE_FAILED"')).toBeLessThan(
+      rollback.indexOf('rm -f "$TRANSACTION" "$APPOINTMENT_COMPAT_MARKER"'),
+    )
+  })
 })
 
 describe('staging cloud homologation data contract', () => {

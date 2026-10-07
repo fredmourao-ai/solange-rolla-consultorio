@@ -1,6 +1,6 @@
 begin;
 
-select plan(40);
+select plan(47);
 
 insert into auth.users (id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data)
 values
@@ -19,6 +19,8 @@ values
 insert into public.user_permission_overrides (
   user_id, permission_key, allowed, changed_by_user_id
 ) values
+  ('a2070000-0000-4000-8000-000000000002', 'appointments.create', true, 'a2070000-0000-4000-8000-000000000001'),
+  ('a2070000-0000-4000-8000-000000000002', 'appointments.update', true, 'a2070000-0000-4000-8000-000000000001'),
   ('a2070000-0000-4000-8000-000000000003', 'appointments.create', false, 'a2070000-0000-4000-8000-000000000001'),
   ('a2070000-0000-4000-8000-000000000003', 'appointments.update', false, 'a2070000-0000-4000-8000-000000000001'),
   ('a2070000-0000-4000-8000-000000000004', 'appointments.reschedule', false, 'a2070000-0000-4000-8000-000000000001');
@@ -71,6 +73,18 @@ select set_config(
 );
 
 select is(
+  has_function_privilege(
+    'authenticated',
+    'public.appointment_cancellation_deadline_from_snapshot(timestamptz,jsonb)',
+    'EXECUTE'
+  ),
+  false,
+  'authenticated cannot execute cancellation helper directly'
+);
+
+reset role;
+
+select is(
   public.appointment_cancellation_deadline_from_snapshot(
     '2035-01-01T13:00:00Z',
     '{"policyVersion":1,"countableHours":48,"excludedWeekdays":[0,6]}'::jsonb
@@ -92,6 +106,13 @@ select throws_ok($$
     '{"policyVersion":1,"countableHours":8784,"excludedWeekdays":[0,6]}'::jsonb
   )
 $$, '23514', 'AGENDA_POLICY_SNAPSHOT_INVALID', 'cancellation helper bounds countable hours before walking dates');
+
+set local role authenticated;
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"a2070000-0000-4000-8000-000000000001","aal":"aal2","role":"authenticated"}',
+  true
+);
 
 select is(
   public.create_appointment_with_audit_atomic(
@@ -424,6 +445,22 @@ select is((
 ), '2035-01-02T14:00:00Z'::timestamptz, 'update permission deny preserves appointment');
 
 reset role;
+insert into public.appointments (
+  id, person_id, service_id, starts_at, ends_at, status, policy_version,
+  cancellation_deadline_at, business_timezone, cancellation_policy_snapshot
+) values (
+  'a2070000-0000-4000-8000-000000000112',
+  'a2070000-0000-4000-8000-000000000012',
+  'a2070000-0000-4000-8000-000000000021',
+  '2035-01-02T18:00:00Z',
+  '2035-01-02T18:50:00Z',
+  'scheduled',
+  207,
+  '2034-12-29T18:00:00Z',
+  'America/Sao_Paulo',
+  '{"policyVersion":207,"countableHours":48,"excludedWeekdays":[0,6],"businessTimezone":"America/Sao_Paulo","lateCancellationChargeEnabled":true,"noShowChargeEnabled":true}'::jsonb
+);
+
 set local role authenticated;
 select set_config(
   'request.jwt.claims',
@@ -446,6 +483,22 @@ select is((
   select starts_at from public.appointments
   where id = 'a2070000-0000-4000-8000-000000000103'
 ), '2035-01-02T14:00:00Z'::timestamptz, 'reschedule permission deny preserves appointment');
+
+select throws_ok($$
+  select public.update_appointment_with_audit_atomic(
+    'a2070000-0000-4000-8000-000000000112',
+    'a2070000-0000-4000-8000-000000000012',
+    'a2070000-0000-4000-8000-000000000021',
+    '2035-01-02T19:00:00Z',
+    '2035-01-02T19:50:00Z',
+    '2034-12-29T19:00:00Z'
+  )
+$$, '42501', 'AGENDA_RESCHEDULE_FORBIDDEN', 'scheduled appointment time change requires appointments.reschedule');
+
+select is((
+  select starts_at from public.appointments
+  where id = 'a2070000-0000-4000-8000-000000000112'
+), '2035-01-02T18:00:00Z'::timestamptz, 'scheduled reschedule denial preserves timestamp');
 
 reset role;
 update public.appointments
@@ -517,6 +570,9 @@ select set_config(
   true
 );
 
+select is(public.has_permission('appointments.create'), true, 'accounting create override is active before role boundary');
+select is(public.has_permission('appointments.update'), true, 'accounting update override is active before role boundary');
+
 select throws_ok($$
   select public.create_appointment_with_audit_atomic(
     'a2070000-0000-4000-8000-000000000105',
@@ -534,6 +590,22 @@ select is((
   select count(*)::integer from public.appointments
   where id = 'a2070000-0000-4000-8000-000000000105'
 ), 0, 'forbidden create leaves no row');
+
+select throws_ok($$
+  select public.update_appointment_with_audit_atomic(
+    'a2070000-0000-4000-8000-000000000103',
+    'a2070000-0000-4000-8000-000000000011',
+    'a2070000-0000-4000-8000-000000000021',
+    '2035-01-02T14:00:00Z',
+    '2035-01-02T14:50:00Z',
+    '2034-12-29T14:00:00Z'
+  )
+$$, '42501', 'AGENDA_APPOINTMENT_WRITE_FORBIDDEN', 'accounting cannot update appointment even with explicit override');
+
+select is((
+  select starts_at from public.appointments
+  where id = 'a2070000-0000-4000-8000-000000000103'
+), '2035-01-02T14:00:00Z'::timestamptz, 'forbidden accounting update preserves appointment');
 
 select * from finish();
 rollback;

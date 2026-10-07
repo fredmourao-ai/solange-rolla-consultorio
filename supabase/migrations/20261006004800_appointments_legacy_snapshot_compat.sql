@@ -95,6 +95,4 @@ end;
 $$;
 
 revoke all on function public.appointment_cancellation_deadline_from_snapshot(timestamptz, jsonb)
-from public, anon;
-grant execute on function public.appointment_cancellation_deadline_from_snapshot(timestamptz, jsonb)
-to authenticated;
+from public, anon, authenticated;

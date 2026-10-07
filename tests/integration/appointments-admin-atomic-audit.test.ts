@@ -48,6 +48,15 @@ describe('appointment admin atomic audit contract', () => {
     expect(compatibilityMigration).toContain('from (values (0), (1), (2), (3), (4), (5), (6)) as weekday(value)')
   })
 
+  it('bounds the initial helper before the compatibility migration and keeps it internal', () => {
+    expect(migration).toContain('v_countable_hours > 8760')
+    expect(migration).toContain('from (values (0), (1), (2), (3), (4), (5), (6)) as weekday(value)')
+    expect(migration).toContain('revoke all on function public.appointment_cancellation_deadline_from_snapshot(timestamptz, jsonb) from public, anon, authenticated')
+    expect(migration).not.toContain('grant execute on function public.appointment_cancellation_deadline_from_snapshot(timestamptz, jsonb) to authenticated')
+    expect(compatibilityMigration).toContain('from public, anon, authenticated')
+    expect(compatibilityMigration).not.toContain('grant execute on function public.appointment_cancellation_deadline_from_snapshot(timestamptz, jsonb)')
+  })
+
   it('fails closed for missing roles, permissions, and nullable boundary inputs', () => {
     expect(migration).toContain("coalesce(v_role, '') not in ('psychologist_owner', 'secretary')")
     expect(migration).toContain("not coalesce(public.has_permission('appointments.create'), false)")

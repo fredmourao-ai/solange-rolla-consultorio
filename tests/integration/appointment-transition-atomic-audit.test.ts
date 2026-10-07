@@ -74,4 +74,9 @@ describe('appointment status transition atomic boundary', () => {
     expect(agenda).toContain("command === 'cancel_in_time' || command === 'cancel_late'")
     expect(agenda).toContain("command === 'mark_no_show'")
   })
+
+  it('preserves authoritative timing errors for agenda callers', () => {
+    expect(agenda).toContain("'AGENDA_CANCELLATION_WINDOW_MISMATCH'")
+    expect(agenda).toContain("'AGENDA_NO_SHOW_TOO_EARLY'")
+  })
 })
