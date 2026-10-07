@@ -171,14 +171,15 @@ jobs:
           SUPABASE_PRODUCTION_PROJECT_REF: ${{ secrets.SUPABASE_PRODUCTION_PROJECT_REF }}
         run: |
           set -Eeuo pipefail
-          node scripts/apply-staging-migrations.mjs
           ATOMIC_MARKER="$STAGING_DEPLOY_ROOT/state/appointments-atomic-compatible"
           COMPAT_MARKER="$STAGING_DEPLOY_ROOT/state/appointments-legacy-compat-$PROMOTE_SHA"
           test -d "$STAGING_DEPLOY_ROOT/state"
+          node scripts/apply-staging-migrations.mjs
           if [ ! -f "$ATOMIC_MARKER" ]; then
             node scripts/set-staging-appointment-write-mode.mjs legacy-compatible
             printf '%s\n' "$PROMOTE_SHA" > "$COMPAT_MARKER"
           else
+            node scripts/set-staging-appointment-write-mode.mjs atomic-only
             rm -f "$COMPAT_MARKER"
           fi
 
