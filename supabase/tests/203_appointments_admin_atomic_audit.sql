@@ -79,19 +79,19 @@ select is(
   'legacy cancellation snapshots keep their historical defaults during edits'
 );
 
-select throws_ok($
+select throws_ok($$
   select public.appointment_cancellation_deadline_from_snapshot(
     '2035-01-01T13:00:00Z',
     '{"policyVersion":1,"countableHours":48,"excludedWeekdays":[0,1,2,3,4,5,6]}'::jsonb
   )
-$, '23514', 'AGENDA_POLICY_SNAPSHOT_INVALID', 'cancellation helper rejects snapshots that exclude every weekday');
+$$, '23514', 'AGENDA_POLICY_SNAPSHOT_INVALID', 'cancellation helper rejects snapshots that exclude every weekday');
 
-select throws_ok($
+select throws_ok($$
   select public.appointment_cancellation_deadline_from_snapshot(
     '2035-01-01T13:00:00Z',
     '{"policyVersion":1,"countableHours":8784,"excludedWeekdays":[0,6]}'::jsonb
   )
-$, '23514', 'AGENDA_POLICY_SNAPSHOT_INVALID', 'cancellation helper bounds countable hours before walking dates');
+$$, '23514', 'AGENDA_POLICY_SNAPSHOT_INVALID', 'cancellation helper bounds countable hours before walking dates');
 
 select is(
   public.create_appointment_with_audit_atomic(
@@ -413,7 +413,7 @@ select set_config(
   true
 );
 
-select throws_ok($
+select throws_ok($$
   select public.update_appointment_with_audit_atomic(
     'a2070000-0000-4000-8000-000000000103',
     'a2070000-0000-4000-8000-000000000011',
@@ -422,20 +422,20 @@ select throws_ok($
     '2035-01-02T14:50:00Z',
     '2034-12-29T14:00:00Z'
   )
-$, '42501', 'AGENDA_RESCHEDULE_FORBIDDEN', 'reschedule-requested state cannot advance without reschedule permission at identical time');
+$$, '42501', 'AGENDA_RESCHEDULE_FORBIDDEN', 'reschedule-requested state cannot advance without reschedule permission at identical time');
 
 select is((
   select status from public.appointments
   where id = 'a2070000-0000-4000-8000-000000000103'
 ), 'reschedule_requested', 'denied same-time reschedule preserves requested state');
 
-select throws_ok($
+select throws_ok($$
   update public.appointments
   set starts_at = starts_at + interval '1 minute'
   where id = 'a2070000-0000-4000-8000-000000000103'
-$, '42501', null, 'authenticated direct appointment update is blocked');
+$$, '42501', null, 'authenticated direct appointment update is blocked');
 
-select throws_ok($
+select throws_ok($$
   insert into public.appointment_status_history (appointment_id, from_status, to_status, changed_by_user_id)
   values (
     'a2070000-0000-4000-8000-000000000103',
@@ -443,9 +443,9 @@ select throws_ok($
     'rescheduled',
     'a2070000-0000-4000-8000-000000000004'
   )
-$, '42501', null, 'authenticated direct status-history insert is blocked');
+$$, '42501', null, 'authenticated direct status-history insert is blocked');
 
-select throws_ok($
+select throws_ok($$
   insert into public.appointments (
     id, person_id, service_id, starts_at, ends_at, status, policy_version,
     cancellation_deadline_at, business_timezone, cancellation_policy_snapshot
@@ -461,7 +461,7 @@ select throws_ok($
     'America/Sao_Paulo',
     '{"policyVersion":207,"countableHours":48,"excludedWeekdays":[0,6],"businessTimezone":"America/Sao_Paulo","lateCancellationChargeEnabled":true,"noShowChargeEnabled":true}'::jsonb
   )
-$, '42501', null, 'authenticated direct appointment insert is blocked');
+$$, '42501', null, 'authenticated direct appointment insert is blocked');
 
 reset role;
 set local role authenticated;

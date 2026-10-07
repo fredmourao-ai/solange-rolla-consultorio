@@ -42,6 +42,10 @@ describe('appointment status transition atomic boundary', () => {
     }
   })
 
+  it('keeps agenda transitions role-scoped even when permission overrides exist', () => {
+    expect(migration).toContain("coalesce(v_role, '') not in ('psychologist_owner', 'secretary')")
+  })
+
   it('enforces permission mapping and owner AAL2 for care start inside SQL', () => {
     expect(migration).toContain("not public.has_permission(v_permission)")
     expect(migration).toContain("public.current_app_role() is distinct from 'psychologist_owner'")

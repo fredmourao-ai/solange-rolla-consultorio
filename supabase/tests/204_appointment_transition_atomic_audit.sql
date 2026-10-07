@@ -1,6 +1,6 @@
 begin;
 
-select plan(24);
+select plan(25);
 
 insert into auth.users (id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data)
 values
@@ -126,7 +126,7 @@ language sql
 stable
 security definer
 set search_path = public, auth
-as $ select null::text $;
+as $$ select null::text $$;
 
 set local role authenticated;
 select set_config(
@@ -135,12 +135,12 @@ select set_config(
   true
 );
 
-select throws_ok($
+select throws_ok($$
   select public.transition_appointment_status_atomic(
     'a2090000-0000-4000-8000-000000000101',
     'start'
   )
-$, '42501', 'CARE_START_FORBIDDEN', 'care start fails closed when AAL helper returns NULL');
+$$, '42501', 'CARE_START_FORBIDDEN', 'care start fails closed when AAL helper returns NULL');
 
 reset role;
 create or replace function public.current_aal()
@@ -251,12 +251,22 @@ select is((
 reset role;
 drop trigger reject_transition_audit on public.audit_events;
 
+insert into public.user_permission_overrides (user_id, permission_key, allowed, changed_by_user_id)
+values (
+  'a2090000-0000-4000-8000-000000000002',
+  'appointments.checkin',
+  true,
+  'a2090000-0000-4000-8000-000000000001'
+);
+
 set local role authenticated;
 select set_config(
   'request.jwt.claims',
   '{"sub":"a2090000-0000-4000-8000-000000000002","aal":"aal2","role":"authenticated"}',
   true
 );
+
+select is(public.has_permission('appointments.checkin'), true, 'accounting explicit non-clinical override is effective before role boundary');
 
 select throws_ok($$
   select public.transition_appointment_status_atomic(
@@ -282,12 +292,12 @@ select set_config(
   true
 );
 
-select throws_ok($
+select throws_ok($$
   select public.transition_appointment_status_atomic(
     'a2090000-0000-4000-8000-000000000103',
     'cancel_late'
   )
-$, '22023', 'AGENDA_CANCELLATION_WINDOW_MISMATCH', 'late cancellation cannot be selected before the deadline');
+$$, '22023', 'AGENDA_CANCELLATION_WINDOW_MISMATCH', 'late cancellation cannot be selected before the deadline');
 
 reset role;
 update public.appointments
@@ -301,12 +311,12 @@ select set_config(
   true
 );
 
-select throws_ok($
+select throws_ok($$
   select public.transition_appointment_status_atomic(
     'a2090000-0000-4000-8000-000000000103',
     'cancel_in_time'
   )
-$, '22023', 'AGENDA_CANCELLATION_WINDOW_MISMATCH', 'in-time cancellation cannot be selected after the deadline');
+$$, '22023', 'AGENDA_CANCELLATION_WINDOW_MISMATCH', 'in-time cancellation cannot be selected after the deadline');
 
 reset role;
 update public.appointments
@@ -321,12 +331,12 @@ select set_config(
   true
 );
 
-select throws_ok($
+select throws_ok($$
   select public.transition_appointment_status_atomic(
     'a2090000-0000-4000-8000-000000000103',
     'mark_no_show'
   )
-$, '22023', 'AGENDA_NO_SHOW_TOO_EARLY', 'no-show cannot be recorded before appointment start');
+$$, '22023', 'AGENDA_NO_SHOW_TOO_EARLY', 'no-show cannot be recorded before appointment start');
 
 select * from finish();
 rollback;

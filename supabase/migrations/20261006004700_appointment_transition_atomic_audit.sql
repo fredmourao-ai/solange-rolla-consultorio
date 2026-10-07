@@ -13,12 +13,14 @@ set search_path = public, pg_temp
 as $$
 declare
   v_actor uuid := auth.uid();
+  v_role text := public.current_app_role();
   v_current public.appointments%rowtype;
   v_next_status text;
   v_permission text;
   v_action text;
 begin
-  if v_actor is null then
+  if v_actor is null
+    or coalesce(v_role, '') not in ('psychologist_owner', 'secretary') then
     raise exception 'AGENDA_STATUS_FORBIDDEN' using errcode = '42501';
   end if;
 
