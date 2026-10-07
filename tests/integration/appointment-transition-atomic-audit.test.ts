@@ -49,7 +49,7 @@ describe('appointment status transition atomic boundary', () => {
 
   it('enforces permission mapping and owner AAL2 for care start inside SQL', () => {
     expect(migration).toContain('not coalesce(public.has_permission(v_permission), false)')
-    expect(migration).toContain("public.current_app_role() is distinct from 'psychologist_owner'")
+    expect(migration).toContain("v_role is distinct from 'psychologist_owner'")
     expect(migration).toContain("public.current_aal() is distinct from 'aal2'")
     expect(migration).toContain('for update')
   })
