@@ -41,10 +41,20 @@ begin
 
   if p_command = 'start'
     and (
-      public.current_app_role() is distinct from 'psychologist_owner'
+      v_role is distinct from 'psychologist_owner'
       or public.current_aal() is distinct from 'aal2'
+      or not coalesce(public.has_permission('clinical.create'), false)
     ) then
     raise exception 'CARE_START_FORBIDDEN' using errcode = '42501';
+  end if;
+
+  if p_command = 'complete'
+    and (
+      v_role is distinct from 'psychologist_owner'
+      or public.current_aal() is distinct from 'aal2'
+      or not coalesce(public.has_permission('clinical.create'), false)
+    ) then
+    raise exception 'CARE_COMPLETE_FORBIDDEN' using errcode = '42501';
   end if;
 
   if v_permission is null or not coalesce(public.has_permission(v_permission), false) then

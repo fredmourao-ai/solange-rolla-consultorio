@@ -1,6 +1,6 @@
 begin;
 
-select plan(38);
+select plan(40);
 
 insert into auth.users (id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data)
 values
@@ -114,6 +114,20 @@ select is((
     and entity_id = 'a2070000-0000-4000-8000-000000000101'
     and action = 'appointment.created'
 ), 1, 'atomic create writes one audit event');
+
+select ok(
+  not has_table_privilege('authenticated', 'public.appointments', 'INSERT')
+  and not has_table_privilege('authenticated', 'public.appointments', 'UPDATE')
+  and not has_table_privilege('authenticated', 'public.appointments', 'DELETE'),
+  'authenticated has no direct appointments DML privileges'
+);
+
+select ok(
+  not has_table_privilege('authenticated', 'public.appointment_status_history', 'INSERT')
+  and not has_table_privilege('authenticated', 'public.appointment_status_history', 'UPDATE')
+  and not has_table_privilege('authenticated', 'public.appointment_status_history', 'DELETE'),
+  'authenticated has no direct appointment status-history DML privileges'
+);
 
 
 select throws_ok($$
@@ -301,6 +315,10 @@ $$;
 create trigger reject_agenda_atomic_audit
 before insert on public.audit_events
 for each row execute function pg_temp.reject_agenda_atomic_audit();
+
+update public.appointments
+set status = 'reschedule_requested'
+where id = 'a2070000-0000-4000-8000-000000000103';
 
 set local role authenticated;
 select set_config(

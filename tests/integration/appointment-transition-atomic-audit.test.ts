@@ -54,6 +54,13 @@ describe('appointment status transition atomic boundary', () => {
     expect(migration).toContain('for update')
   })
 
+  it('requires owner AAL2 and clinical.create for both start and complete', () => {
+    expect(migration).toContain("p_command = 'start'")
+    expect(migration).toContain("p_command = 'complete'")
+    expect(migration).toContain("not coalesce(public.has_permission('clinical.create'), false)")
+    expect(migration).toContain("'CARE_COMPLETE_FORBIDDEN'")
+  })
+
   it('classifies cancellation and no-show timing inside the authoritative SQL boundary', () => {
     expect(migration).toContain("'AGENDA_CANCELLATION_WINDOW_MISMATCH'")
     expect(migration).toContain("'AGENDA_NO_SHOW_TOO_EARLY'")

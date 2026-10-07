@@ -259,6 +259,8 @@ begin
     'cancelled_in_time',
     'cancelled_late',
     'cancelled_by_provider',
+    'checked_in',
+    'in_progress',
     'completed',
     'no_show'
   ) then

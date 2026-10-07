@@ -1,6 +1,6 @@
 begin;
 
-select plan(25);
+select plan(27);
 
 insert into auth.users (id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data)
 values
@@ -120,13 +120,14 @@ select is((
 ), 'checked_in', 'AAL1 denial leaves status unchanged');
 
 reset role;
+savepoint aal_null_override;
 create or replace function public.current_aal()
 returns text
 language sql
 stable
 security definer
 set search_path = public, auth
-as $$ select null::text $$;
+as $ select null::text $;
 
 set local role authenticated;
 select set_config(
@@ -143,13 +144,8 @@ select throws_ok($$
 $$, '42501', 'CARE_START_FORBIDDEN', 'care start fails closed when AAL helper returns NULL');
 
 reset role;
-create or replace function public.current_aal()
-returns text
-language sql
-stable
-security definer
-set search_path = public, auth
-as $$ select coalesce(auth.jwt() ->> 'aal', 'aal1') $$;
+rollback to savepoint aal_null_override;
+release savepoint aal_null_override;
 
 set local role authenticated;
 select set_config(
@@ -178,6 +174,30 @@ select is((
   select count(*)::integer from public.appointment_status_history
   where appointment_id = 'a2090000-0000-4000-8000-000000000101'
 ), 2, 'care start appends one history row');
+
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"a2090000-0000-4000-8000-000000000001","aal":"aal1","role":"authenticated"}',
+  true
+);
+
+select throws_ok($
+  select public.transition_appointment_status_atomic(
+    'a2090000-0000-4000-8000-000000000101',
+    'complete'
+  )
+$, '42501', 'CARE_COMPLETE_FORBIDDEN', 'care complete requires owner AAL2 clinical boundary');
+
+select is((
+  select status from public.appointments
+  where id = 'a2090000-0000-4000-8000-000000000101'
+), 'in_progress', 'AAL1 completion denial leaves care in progress');
+
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"a2090000-0000-4000-8000-000000000001","aal":"aal2","role":"authenticated"}',
+  true
+);
 
 select is(
   public.transition_appointment_status_atomic(

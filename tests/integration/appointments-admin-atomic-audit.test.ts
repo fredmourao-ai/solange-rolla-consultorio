@@ -57,6 +57,12 @@ describe('appointment admin atomic audit contract', () => {
     expect(migration).toContain('p_cancellation_deadline_at is null')
   })
 
+  it('keeps checked-in and in-progress clinical encounters immutable to admin edits', () => {
+    expect(migration).toContain("'checked_in'")
+    expect(migration).toContain("'in_progress'")
+    expect(actions).toContain("'checked_in', 'in_progress'")
+  })
+
   it('enforces effective permissions and server-side scheduling invariants', () => {
     expect(migration).toContain("public.has_permission('appointments.create')")
     expect(migration).toContain("public.has_permission('appointments.update')")
