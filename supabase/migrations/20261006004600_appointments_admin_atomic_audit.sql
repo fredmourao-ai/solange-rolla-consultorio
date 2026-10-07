@@ -82,7 +82,7 @@ create or replace function public.create_appointment_with_audit_atomic(
 )
 returns uuid
 language plpgsql
-security invoker
+security definer
 set search_path = public, pg_temp
 as $$
 declare
@@ -224,7 +224,7 @@ create or replace function public.update_appointment_with_audit_atomic(
 )
 returns text
 language plpgsql
-security invoker
+security definer
 set search_path = public, pg_temp
 as $$
 declare
@@ -276,8 +276,11 @@ begin
   if p_ends_at <> p_starts_at + make_interval(mins => v_service_duration) then
     raise exception 'AGENDA_SERVICE_DURATION_MISMATCH' using errcode = '23514';
   end if;
-  if (p_starts_at <> v_current.starts_at or p_ends_at <> v_current.ends_at)
-    and not public.has_permission('appointments.reschedule') then
+  if (
+    v_current.status = 'reschedule_requested'
+    or p_starts_at <> v_current.starts_at
+    or p_ends_at <> v_current.ends_at
+  ) and not public.has_permission('appointments.reschedule') then
     raise exception 'AGENDA_RESCHEDULE_FORBIDDEN' using errcode = '42501';
   end if;
 
@@ -371,3 +374,6 @@ revoke all on function public.update_appointment_with_audit_atomic(
 grant execute on function public.update_appointment_with_audit_atomic(
   uuid, uuid, uuid, timestamptz, timestamptz, timestamptz
 ) to authenticated;
+
+revoke insert, update, delete on public.appointments from authenticated;
+revoke insert, update, delete on public.appointment_status_history from authenticated;

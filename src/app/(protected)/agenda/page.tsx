@@ -69,8 +69,26 @@ function permissionForCommand(command: AppointmentCommand): AppPermission {
   }
 }
 
-function commandsFor(session: StaffSession, status: Appointment['status']) {
-  return availableAppointmentCommands(status).filter((command) => hasSessionPermission(session, permissionForCommand(command)))
+function commandsFor(
+  session: StaffSession,
+  appointment: Pick<Appointment, 'status' | 'startsAt' | 'cancellationDeadlineAt'>,
+) {
+  const now = Date.now()
+  const cancellationDeadline = Date.parse(appointment.cancellationDeadlineAt)
+  const startsAt = Date.parse(appointment.startsAt)
+
+  return availableAppointmentCommands(appointment.status).filter((command) => {
+    if (!hasSessionPermission(session, permissionForCommand(command))) return false
+    if (command === 'cancel_in_time' || command === 'cancel_late') {
+      if (!Number.isFinite(cancellationDeadline)) return false
+      const expected = now <= cancellationDeadline ? 'cancel_in_time' : 'cancel_late'
+      return command === expected
+    }
+    if (command === 'mark_no_show') {
+      return Number.isFinite(startsAt) && now >= startsAt
+    }
+    return true
+  })
 }
 
 function auditRepository(client: Awaited<ReturnType<typeof createServerSupabaseClient>>): AuditEventRepository {
@@ -277,7 +295,11 @@ export default async function AgendaPage({ searchParams }: {
       endsAt: row.ends_at,
       status: row.status as AppointmentCalendarItem['status'],
       cancellationDeadlineAt: row.cancellation_deadline_at,
-      availableCommands: commandsFor(session, row.status as Appointment['status']),
+      availableCommands: commandsFor(session, {
+        status: row.status as Appointment['status'],
+        startsAt: row.starts_at,
+        cancellationDeadlineAt: row.cancellation_deadline_at,
+      }),
       chargeable: hasSessionPermission(session, 'finance.receive') && (
         row.status === 'no_show'
           ? policy.noShowChargeEnabled

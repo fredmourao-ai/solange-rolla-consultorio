@@ -8,7 +8,7 @@ create or replace function public.transition_appointment_status_atomic(
 )
 returns text
 language plpgsql
-security invoker
+security definer
 set search_path = public, pg_temp
 as $$
 declare
@@ -39,8 +39,8 @@ begin
 
   if p_command = 'start'
     and (
-      public.current_app_role() <> 'psychologist_owner'
-      or public.current_aal() <> 'aal2'
+      public.current_app_role() is distinct from 'psychologist_owner'
+      or public.current_aal() is distinct from 'aal2'
     ) then
     raise exception 'CARE_START_FORBIDDEN' using errcode = '42501';
   end if;
@@ -97,6 +97,27 @@ begin
 
   if v_next_status is null then
     raise exception 'INVALID_APPOINTMENT_TRANSITION' using errcode = '55000';
+  end if;
+
+  if p_command = 'cancel_in_time'
+    and (
+      v_current.cancellation_deadline_at is null
+      or clock_timestamp() > v_current.cancellation_deadline_at
+    ) then
+    raise exception 'AGENDA_CANCELLATION_WINDOW_MISMATCH' using errcode = '22023';
+  end if;
+
+  if p_command = 'cancel_late'
+    and (
+      v_current.cancellation_deadline_at is null
+      or clock_timestamp() <= v_current.cancellation_deadline_at
+    ) then
+    raise exception 'AGENDA_CANCELLATION_WINDOW_MISMATCH' using errcode = '22023';
+  end if;
+
+  if p_command = 'mark_no_show'
+    and clock_timestamp() < v_current.starts_at then
+    raise exception 'AGENDA_NO_SHOW_TOO_EARLY' using errcode = '22023';
   end if;
 
   update public.appointments
