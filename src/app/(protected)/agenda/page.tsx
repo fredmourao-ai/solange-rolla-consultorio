@@ -69,8 +69,26 @@ function permissionForCommand(command: AppointmentCommand): AppPermission {
   }
 }
 
-function commandsFor(session: StaffSession, status: Appointment['status']) {
-  return availableAppointmentCommands(status).filter((command) => hasSessionPermission(session, permissionForCommand(command)))
+function commandsFor(
+  session: StaffSession,
+  appointment: Pick<Appointment, 'status' | 'startsAt' | 'cancellationDeadlineAt'>,
+) {
+  const now = Date.now()
+  const cancellationDeadline = Date.parse(appointment.cancellationDeadlineAt)
+  const startsAt = Date.parse(appointment.startsAt)
+
+  return availableAppointmentCommands(appointment.status).filter((command) => {
+    if (!hasSessionPermission(session, permissionForCommand(command))) return false
+    if (command === 'cancel_in_time' || command === 'cancel_late') {
+      if (!Number.isFinite(cancellationDeadline)) return false
+      const expected = now <= cancellationDeadline ? 'cancel_in_time' : 'cancel_late'
+      return command === expected
+    }
+    if (command === 'mark_no_show') {
+      return Number.isFinite(startsAt) && now >= startsAt
+    }
+    return true
+  })
 }
 
 function auditRepository(client: Awaited<ReturnType<typeof createServerSupabaseClient>>): AuditEventRepository {
@@ -100,7 +118,7 @@ async function changeAppointmentStatusAction(formData: FormData) {
   const command = String(formData.get('command') ?? '') as AppointmentCommand
   const permission = permissionForCommand(command)
   const session = await getStaffSession()
-  const authorized = authorizeStaffPermission(session, permission)
+  authorizeStaffPermission(session, permission)
   const client = await createServerSupabaseClient()
   const appointmentId = String(formData.get('appointment_id') ?? '')
   const redirectTo = redirectBackTo(formData)
@@ -126,41 +144,24 @@ async function changeAppointmentStatusAction(formData: FormData) {
 
   const repository: AppointmentStatusRepository = {
     async updateStatus(id, status) {
-      const { data, error } = await client.from('appointments').update({ status }).eq('id', id)
-        .select('id,person_id,service_id,starts_at,ends_at,status,policy_version,cancellation_deadline_at,cancellation_policy_snapshot')
-        .single()
-      if (error || !data) throw new Error('AGENDA_STATUS_UPDATE_FAILED')
-      const { error: historyError } = await client.from('appointment_status_history').insert({
-        appointment_id: id,
-        from_status: appointment.status,
-        to_status: status,
-        changed_by_user_id: authorized.userId,
+      const { data, error } = await client.rpc('transition_appointment_status_atomic', {
+        p_appointment_id: id,
+        p_command: command,
       })
-      if (historyError) throw new Error('AGENDA_STATUS_HISTORY_FAILED')
-      return {
-        id: data.id,
-        personId: data.person_id,
-        serviceId: data.service_id,
-        startsAt: data.starts_at,
-        endsAt: data.ends_at,
-        status: data.status as Appointment['status'],
-        policyVersion: data.policy_version,
-        cancellationDeadlineAt: data.cancellation_deadline_at,
-        cancellationPolicy: normalizeCancellationPolicySnapshot(data.cancellation_policy_snapshot),
+      if (error) {
+        const code = [
+          'INVALID_APPOINTMENT_TRANSITION',
+          'AGENDA_CANCELLATION_WINDOW_MISMATCH',
+          'AGENDA_NO_SHOW_TOO_EARLY',
+        ].find((candidate) => error.message.includes(candidate))
+        throw new Error(code ?? 'AGENDA_STATUS_UPDATE_FAILED')
       }
+      if (String(data) !== status) throw new Error('AGENDA_STATUS_TRANSITION_DRIFT')
+      return { ...appointment, status }
     },
   }
 
-  const updated = await changeAppointmentStatus(appointment, command, repository)
-  await recordAuditEvent({
-    actorId: authorized.userId,
-    action: 'appointment.status_changed',
-    entityType: 'appointment',
-    entityId: appointmentId,
-    correlationId: appointmentId,
-    metadata: { fromStatus: appointment.status, toStatus: updated.status, command },
-  }, auditRepository(client))
-
+  await changeAppointmentStatus(appointment, command, repository)
   redirect(redirectTo)
 }
 
@@ -301,7 +302,11 @@ export default async function AgendaPage({ searchParams }: {
       endsAt: row.ends_at,
       status: row.status as AppointmentCalendarItem['status'],
       cancellationDeadlineAt: row.cancellation_deadline_at,
-      availableCommands: commandsFor(session, row.status as Appointment['status']),
+      availableCommands: commandsFor(session, {
+        status: row.status as Appointment['status'],
+        startsAt: row.starts_at,
+        cancellationDeadlineAt: row.cancellation_deadline_at,
+      }),
       chargeable: hasSessionPermission(session, 'finance.receive') && (
         row.status === 'no_show'
           ? policy.noShowChargeEnabled
