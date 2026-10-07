@@ -81,6 +81,22 @@ describe('staging reconciler transactional rollback', () => {
   })
 })
 
+describe('staging appointment atomic-boundary rollout', () => {
+  it('bridges legacy DML only until the exact-SHA app is swapped and restores it on rollback', () => {
+    expect(workflow).toContain('appointments-atomic-compatible')
+    expect(workflow).toContain('appointments-legacy-compat-$PROMOTE_SHA')
+    expect(workflow).toContain('set-staging-appointment-write-mode.mjs legacy-compatible')
+    expect(workflow).toContain('set-staging-appointment-write-mode.mjs atomic-only')
+    const deploy = workflow.slice(workflow.indexOf('- name: Deploy exact SHA to homologation'))
+    expect(deploy.indexOf('set-staging-appointment-write-mode.mjs atomic-only')).toBeLessThan(
+      deploy.indexOf('docker stop "$WEB"'),
+    )
+    const rollback = workflow.slice(workflow.indexOf('- name: Rollback staging release after failed validation'))
+    expect(rollback).toContain('set-staging-appointment-write-mode.mjs legacy-compatible')
+    expect(workflow).toContain('printf \'%s\\n\' "$PROMOTE_SHA" > "$ROOT/state/appointments-atomic-compatible"')
+  })
+})
+
 describe('staging cloud homologation data contract', () => {
   it('seeds and verifies the same dedicated cloud staging project used by the browser', () => {
     const deploy = workflow.slice(workflow.indexOf('- name: Deploy exact SHA to homologation'))
