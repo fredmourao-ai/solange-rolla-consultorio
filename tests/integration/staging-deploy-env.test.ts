@@ -120,6 +120,19 @@ describe('staging appointment atomic-boundary rollout', () => {
       rollback.indexOf('rm -f "$TRANSACTION" "$APPOINTMENT_COMPAT_MARKER"'),
     )
   })
+
+  it('keeps rollback markers when the deploy trap cannot restore legacy grants', () => {
+    const deploy = workflow.slice(
+      workflow.indexOf('- name: Deploy exact SHA to homologation'),
+      workflow.indexOf('- name: Rollback staging release after failed validation'),
+    )
+    expect(deploy).not.toContain('set-staging-appointment-write-mode.mjs legacy-compatible || true')
+    expect(deploy).toContain('APPOINTMENT_MODE_RESTORE_FAILED=0')
+    expect(deploy).toContain('for attempt in 1 2 3')
+    expect(deploy).toContain('if [ "$APPOINTMENT_MODE_RESTORE_FAILED" -eq 0 ]; then')
+    expect(deploy).toContain('rm -f "$TRANSACTION" "$APPOINTMENT_COMPAT_MARKER"')
+    expect(deploy).toContain('exit "$APPOINTMENT_MODE_RESTORE_FAILED"')
+  })
 })
 
 describe('staging cloud homologation data contract', () => {

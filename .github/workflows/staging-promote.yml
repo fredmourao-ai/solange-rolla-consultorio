@@ -258,10 +258,21 @@ jobs:
           }
           rollback() {
             rc=$?
+            APPOINTMENT_MODE_RESTORE_FAILED=0
             trap - EXIT
             if [ "$rc" -ne 0 ]; then
               if [ -f "$APPOINTMENT_COMPAT_MARKER" ]; then
-                node scripts/set-staging-appointment-write-mode.mjs legacy-compatible || true
+                RESTORED=0
+                for attempt in 1 2 3; do
+                  if node scripts/set-staging-appointment-write-mode.mjs legacy-compatible; then
+                    RESTORED=1
+                    break
+                  fi
+                  sleep "$attempt"
+                done
+                if [ "$RESTORED" -ne 1 ]; then
+                  APPOINTMENT_MODE_RESTORE_FAILED=1
+                fi
               fi
               docker rm -f "${DOC}-candidate" "${MSG}-candidate" "${REC}-candidate" >/dev/null 2>&1 || true
               if [ "$WORKERS_SWAPPED" -eq 1 ]; then
@@ -302,9 +313,15 @@ jobs:
               else
                 rm -f "$RECONCILER_PREVIOUS"
               fi
-              rm -f "$TRANSACTION" "$APPOINTMENT_COMPAT_MARKER"
+              if [ "$APPOINTMENT_MODE_RESTORE_FAILED" -eq 0 ]; then
+                rm -f "$TRANSACTION" "$APPOINTMENT_COMPAT_MARKER"
+              fi
             fi
             cleanup_stage
+            if [ "$APPOINTMENT_MODE_RESTORE_FAILED" -ne 0 ]; then
+              echo "failed to restore legacy-compatible appointment grants during deploy rollback" >&2
+              exit "$APPOINTMENT_MODE_RESTORE_FAILED"
+            fi
             exit "$rc"
           }
           trap rollback EXIT
