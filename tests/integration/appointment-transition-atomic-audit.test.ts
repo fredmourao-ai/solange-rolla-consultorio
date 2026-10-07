@@ -44,8 +44,22 @@ describe('appointment status transition atomic boundary', () => {
 
   it('enforces permission mapping and owner AAL2 for care start inside SQL', () => {
     expect(migration).toContain("not public.has_permission(v_permission)")
-    expect(migration).toContain("public.current_app_role() <> 'psychologist_owner'")
-    expect(migration).toContain("public.current_aal() <> 'aal2'")
+    expect(migration).toContain("public.current_app_role() is distinct from 'psychologist_owner'")
+    expect(migration).toContain("public.current_aal() is distinct from 'aal2'")
     expect(migration).toContain('for update')
+  })
+
+  it('classifies cancellation and no-show timing inside the authoritative SQL boundary', () => {
+    expect(migration).toContain("'AGENDA_CANCELLATION_WINDOW_MISMATCH'")
+    expect(migration).toContain("'AGENDA_NO_SHOW_TOO_EARLY'")
+    expect(migration).toContain('v_current.cancellation_deadline_at')
+    expect(migration).toContain('v_current.starts_at')
+  })
+
+  it('does not offer impossible cancellation or no-show commands in the agenda UI', () => {
+    expect(agenda).toContain('Date.parse(appointment.cancellationDeadlineAt)')
+    expect(agenda).toContain('Date.parse(appointment.startsAt)')
+    expect(agenda).toContain("command === 'cancel_in_time' || command === 'cancel_late'")
+    expect(agenda).toContain("command === 'mark_no_show'")
   })
 })

@@ -1,6 +1,6 @@
 begin;
 
-select plan(20);
+select plan(24);
 
 insert into auth.users (id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data)
 values
@@ -118,6 +118,38 @@ select is((
   select status from public.appointments
   where id = 'a2090000-0000-4000-8000-000000000101'
 ), 'checked_in', 'AAL1 denial leaves status unchanged');
+
+reset role;
+create or replace function public.current_aal()
+returns text
+language sql
+stable
+security definer
+set search_path = public, auth
+as $ select null::text $;
+
+set local role authenticated;
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"a2090000-0000-4000-8000-000000000001","role":"authenticated"}',
+  true
+);
+
+select throws_ok($
+  select public.transition_appointment_status_atomic(
+    'a2090000-0000-4000-8000-000000000101',
+    'start'
+  )
+$, '42501', 'CARE_START_FORBIDDEN', 'care start fails closed when AAL helper returns NULL');
+
+reset role;
+create or replace function public.current_aal()
+returns text
+language sql
+stable
+security definer
+set search_path = public, auth
+as $ select coalesce(auth.jwt() ->> 'aal', 'aal1') $;
 
 select set_config(
   'request.jwt.claims',
@@ -238,6 +270,63 @@ select is((
   select status from public.appointments
   where id = 'a2090000-0000-4000-8000-000000000103'
 ), 'confirmed', 'forbidden transition leaves status unchanged');
+
+update public.appointments
+set cancellation_deadline_at = clock_timestamp() + interval '1 day'
+where id = 'a2090000-0000-4000-8000-000000000103';
+
+set local role authenticated;
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"a2090000-0000-4000-8000-000000000001","aal":"aal2","role":"authenticated"}',
+  true
+);
+
+select throws_ok($
+  select public.transition_appointment_status_atomic(
+    'a2090000-0000-4000-8000-000000000103',
+    'cancel_late'
+  )
+$, '22023', 'AGENDA_CANCELLATION_WINDOW_MISMATCH', 'late cancellation cannot be selected before the deadline');
+
+reset role;
+update public.appointments
+set cancellation_deadline_at = clock_timestamp() - interval '1 day'
+where id = 'a2090000-0000-4000-8000-000000000103';
+
+set local role authenticated;
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"a2090000-0000-4000-8000-000000000001","aal":"aal2","role":"authenticated"}',
+  true
+);
+
+select throws_ok($
+  select public.transition_appointment_status_atomic(
+    'a2090000-0000-4000-8000-000000000103',
+    'cancel_in_time'
+  )
+$, '22023', 'AGENDA_CANCELLATION_WINDOW_MISMATCH', 'in-time cancellation cannot be selected after the deadline');
+
+reset role;
+update public.appointments
+set starts_at = clock_timestamp() + interval '1 hour',
+    ends_at = clock_timestamp() + interval '1 hour 50 minutes'
+where id = 'a2090000-0000-4000-8000-000000000103';
+
+set local role authenticated;
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"a2090000-0000-4000-8000-000000000001","aal":"aal2","role":"authenticated"}',
+  true
+);
+
+select throws_ok($
+  select public.transition_appointment_status_atomic(
+    'a2090000-0000-4000-8000-000000000103',
+    'mark_no_show'
+  )
+$, '22023', 'AGENDA_NO_SHOW_TOO_EARLY', 'no-show cannot be recorded before appointment start');
 
 select * from finish();
 rollback;

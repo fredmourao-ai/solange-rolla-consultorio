@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 
 const actions = readFileSync('src/app/(protected)/agenda/gerenciar/actions.ts', 'utf8')
 const migration = readFileSync('supabase/migrations/20261006004600_appointments_admin_atomic_audit.sql', 'utf8')
+const compatibilityMigration = readFileSync('supabase/migrations/20261006004800_appointments_legacy_snapshot_compat.sql', 'utf8')
 
 describe('appointment admin atomic audit contract', () => {
   it('routes create and update through atomic RPCs without application audit writes', () => {
@@ -26,7 +27,25 @@ describe('appointment admin atomic audit contract', () => {
     expect(migration).toContain('insert into public.audit_events')
     expect(migration).toContain("'appointment.created'")
     expect(migration).toContain("'appointment.updated'")
-    expect(migration).toContain('security invoker')
+    expect(migration.match(/security definer/g)?.length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('closes direct authenticated appointment writes behind security-definer RPCs', () => {
+    expect(migration).toContain('revoke insert, update, delete on public.appointments from authenticated')
+    expect(migration).toContain('revoke insert, update, delete on public.appointment_status_history from authenticated')
+  })
+
+  it('requires reschedule permission when reschedule_requested advances even at the same time', () => {
+    expect(migration).toContain("v_current.status = 'reschedule_requested'")
+  })
+
+  it('uses the same deterministic cancellation-policy tie-breaker as the RPC', () => {
+    expect(actions).toContain(".order('effective_from', { ascending: false }).order('policy_version', { ascending: false })")
+  })
+
+  it('bounds cancellation deadline inputs before walking dates', () => {
+    expect(compatibilityMigration).toContain('v_countable_hours > 8760')
+    expect(compatibilityMigration).toContain('generate_series(0, 6)')
   })
 
   it('enforces effective permissions and server-side scheduling invariants', () => {
