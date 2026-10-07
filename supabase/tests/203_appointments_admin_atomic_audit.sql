@@ -600,7 +600,7 @@ select throws_ok($$
     '2035-01-02T14:50:00Z',
     '2034-12-29T14:00:00Z'
   )
-$, '42501', 'AGENDA_APPOINTMENT_WRITE_FORBIDDEN', 'accounting cannot update appointment even with explicit override');
+$$, '42501', 'AGENDA_APPOINTMENT_WRITE_FORBIDDEN', 'accounting cannot update appointment even with explicit override');
 
 reset role;
 
