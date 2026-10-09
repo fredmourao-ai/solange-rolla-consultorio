@@ -102,7 +102,7 @@ describe('Node mTLS National NFS-e transport', () => {
     expect(() => createNodeMtlsNfseTransport({
       ...transportOptions,
       pfx: Buffer.from('synthetic pfx'),
-    } as NodeMtlsNfseTransportOptions))
+    } as unknown as NodeMtlsNfseTransportOptions))
       .toThrow('NFSE_TRANSPORT_CERTIFICATE_CONFIGURATION_INVALID')
   })
 
