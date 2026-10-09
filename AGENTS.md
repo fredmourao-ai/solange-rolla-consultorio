@@ -1,3 +1,66 @@
+<!-- REMOTE_ACCESS_EXHAUSTION_GATE_V1 -->
+## Regra obrigatoria: esgotamento de todos os acessos remotos autorizados
+Em `Retome`, `Continue`, `Prossiga`, `Siga` e tarefas em hosts, **uma falha de ferramenta, conexao, SSH, MCP, RDC, VPN ou login nao autoriza declarar bloqueio**.
+1. Ler efetivamente `AGENTS.md`, o runbook do host e a referencia canonica `Vivaliz-site/site-shopvivaliz/docs/knowledge/host-access.md`; confirmar identidade do host, permissao e ferramenta.
+2. **Inventariar e avaliar cada rota remota realmente provisionada, apropriada e autorizada**, seguindo a prioridade canonica: ShopVivaliz Remote Control MCP/controlador; RDC e RDC 2 quando habilitados e autorizados para o host; SSH privado/VCN/Tailscale e tuneis/reverse SSH documentados; GUI por `desktop_*`/bridge nativo/RustDesk; OCI Bastion/Compute Run Command/console serial/GitHub Actions **somente para bootstrap, recovery ou reparo** dentro das regras. Usar outras rotas apenas se documentadas e autorizadas.
+3. Verificar cada caminho aplicavel com evidencias atuais de disponibilidade, conexao, permissao e identidade; diagnosticar e corrigir falhas tecnicas, repetir tentativas limitadas/idempotentes e mudar de rota enquanto houver alternativa segura viavel. Nao usar GitHub como transporte normal de comandos de runtime. Navegador ShopVivaliz permanece na VM backend, nunca em Windows sem autorizacao explicita da tarefa.
+4. Persistir checkpoint nao secreto `remote_access_attempts` contendo host, canal, status (`PASS`, `FAILED`, `NOT_PROVISIONED`, `NOT_APPLICABLE`), evidencia, causa, correcao e proximo caminho. Nao afirmar que tentou um canal inexistente.
+5. Manter `RUNNING` ate recuperar acesso e concluir/validar a tarefa; `BLOCKED_EXTERNAL` so depois de **esgotar e comprovar a inviabilidade de todas as rotas adequadas, seguras e autorizadas**. Para permissao humana obrigatoria, `AWAITING_APPROVAL` com acao exata.
+Nao desabilitar MFA, RBAC, branch protection, limitacoes de acesso, controles de seguranca; nao expor credenciais, habilitar SSH publico, ou repetir indefinidamente tentativas improdutivas.
+<!-- /REMOTE_ACCESS_EXHAUSTION_GATE_V1 -->
+
+<!-- MANDATORY_AGENT_RULES_READ_GATE_V1 -->
+## Leitura efetiva de regras antes de Retome/Continue/Prossiga/Siga
+
+Cada comando curto e ordem de execucao. Antes de qualquer mutacao e no inicio de toda retomada, ler `AGENTS.md` vigente e os documentos exigidos em "Ordem de leitura", diretamente no GitHub ou clone atualizado; verificar SHA/ref e registrar checkpoint nao secreto `rules_loaded` com arquivos, SHA, data e sessao. Mera mencao de arquivos ou instrucao de chat nao prova leitura. Se a leitura falhar, registrar `RULES_NOT_LOADED` e recuperar rota autorizada antes de alteracoes; diagnosticos read-only seguros podem continuar. Carregar as regras especificas do modulo e aplicar o ciclo completo de execucao/correcao/teste/validacao, respeitando politica de branches e aprovacoes.
+<!-- /MANDATORY_AGENT_RULES_READ_GATE_V1 -->
+
+<!-- EXHAUST_AUTHORIZED_PATHS_BEFORE_BLOCKED_V1 -->
+## Bloqueio somente apos esgotamento comprovado dos caminhos viaveis
+
+**PROIBIDO declarar `BLOCKED_EXTERNAL`, `IMPEDIDO`, `INCONCLUSIVO` como encerramento ou pedir ao usuario que resolva falha tecnica enquanto existir qualquer acao segura, autorizada e tecnicamente viavel.** Antes de informar bloqueio:
+1. Confirmar estado e causa raiz com logs, codigo, checkpoints, host e testes; distinguir falha transitoria, defeito local, permissao ausente e dependencia externa.
+2. Tentar reparo local, configuracao correta, recuperacao de sessao, retry com backoff limitado e idempotencia, rota alternativa autorizada, ferramenta equivalente e recuperacao de integracao; escolher somente opcoes adequadas ao defeito real, sem repeticoes infinitas.
+3. Em CI ou PR: verificar checks e logs, corrigir causa de falha, atualizar branch e repetir checks; nunca burlar branch protection, aprovacoes obrigatorias ou status checks.
+4. Registrar para cada rota relevante: diagnostico, tentativa e resultado, evidencia, razao objetiva de inviabilidade e proxima alternativa. Se houver alternativa executavel, continuar `RUNNING` sem devolver a tarefa ao usuario.
+5. Somente apos comprovado esgotamento de **todas as alternativas razoaveis e autorizadas aplicaveis**, registrar bloqueio objetivo com checkpoint recuperavel, dependencia externa especifica e passo exato para desbloqueio.
+6. Nao executar ataques, bypass de MFA, captura de secrets, mudanca destrutiva nao autorizada, nem loops ilimitados. Falta de autorizacao obrigatoria permite `AWAITING_APPROVAL`, com escopo e aprovacao exata, sem falsas alegacoes de exaustao.
+
+Esta regra aplica-se aos comandos `Retome`, `Continue`, `Prossiga`, `Siga` e a todas as tarefas operacionais, incluindo subagentes e controladores.
+<!-- /EXHAUST_AUTHORIZED_PATHS_BEFORE_BLOCKED_V1 -->
+
+<!-- RESUME_COMMAND_HARD_GATE_V2 -->
+## GATILHO IMPERATIVO: RETOME / CONTINUE / PROSSIGA / SIGA
+
+Qualquer mensagem do proprietario contendo somente `Retome`, `Continue`, `Prossiga` ou `Siga` (independentemente de maiusculas, minusculas ou pontuacao) e uma **ordem completa de execucao**, nao pedido de status, resumo, proposta, plano ou novo prompt. Nao exigir que o usuario repita a tarefa ou estas regras.
+
+Obrigacoes de cada agente/subagente/worker:
+1. Identificar a ultima tarefa pendente no contexto, checkpoints e estado vivo; comprovar o que ja foi feito e a proxima acao executavel.
+2. Consultar AGENTS.md, regras centralizadas e runbooks do projeto; preservar sessoes, autenticacoes e progresso validos.
+3. Executar a proxima acao imediatamente, continuando em sequencia ate entrega validada enquanto houver capacidade real, autorizacao e caminho seguro. Corrigir falhas de ferramentas, CI, APIs, MCP/RDC, navegador ou infra encontradas no caminho; usar fallback autorizado e retries idempotentes.
+4. Nao encerrar por diagnostico, plano, PR, merge, timeout ou erro transitorio; executar testes, checks, integracao/deploy pertinentes e validacao funcional/E2E antes de `CONCLUIDO`.
+5. Se a sessao/limite de ferramenta impedir continuar, registrar checkpoint fiel e dependencia exata; nao prometer execucao assincrona sem controlador de continuidade comprovadamente ativo.
+6. Nunca burlar politicas de seguranca, revisao, CI, branch protection, MFA ou aprovacao necessaria. Diante de bloqueio externo real, documentar evidencias, alternativas tentadas e passo de desbloqueio; nunca marcar `CONCLUIDO` sem evidencias.
+
+A simples resposta "retomado", um relatorio de problemas ou solicitar "diga prossiga" **nao satisfaz** esta regra. Evidencia de execucao e resultado funcional sao requisitos de aceite. Esta norma complementa, sem enfraquecer, as politicas especificas do repositorio.
+<!-- /RESUME_COMMAND_HARD_GATE_V2 -->
+
+<!-- AUTONOMOUS_RESUME_TO_VALIDATED_COMPLETION_V1 -->
+## Regra obrigatoria: retomar e executar ate conclusao comprovada
+
+- Em toda tarefa operacional, recuperar o ultimo estado e checkpoint confiavel antes de agir; nao repetir operacoes ja concluidas nem descartar trabalho existente.
+- Agir autonomamente dentro das permissoes vigentes. Diagnostico, relatorio, PR aberto, tentativa de comando, timeout ou falha transitoria nao encerram a tarefa.
+- Ciclo obrigatorio: **verificar estado -> executar -> identificar falhas -> investigar causa raiz -> corrigir -> prevenir recorrencia -> testar -> retomar -> validar**.
+- Diante de erro de browser, MCP, RDC, API, CLI, rede, sessao, worker ou integracao, verificar se a acao anterior teve efeito, recuperar de forma idempotente e tentar alternativas tecnicamente viaveis, seguras e autorizadas.
+- Usar checkpoints, logs e estado persistente quando existirem. Nunca alegar trabalho em segundo plano ou retomada automatica se nao houver controlador realmente configurado e ativo.
+- Manter a tarefa `RUNNING` enquanto existir proxima acao segura e viavel no ambiente de execucao. Declarar `CONCLUIDO` apenas com evidencias frescas, testes pertinentes, regressao e validacao runtime/E2E quando aplicavel.
+- Se houver bloqueio externo objetivo ou aprovacao obrigatoria pendente, registrar causa, evidencias, tentativas, checkpoint e acao exata para retomar; nao contornar protecoes de branch, autenticacao, MFA, politicas de seguranca ou controles de aprovacao.
+- Respeitar regras especificas do repositorio, limites da sessao e escopo de autorizacao. Acao destrutiva ou irreversivel exige autorizacao adequada.
+- A regra vale para agentes, subagentes, Codex, MCP/RDC, automacoes, debugging, auditorias, deploys e retomadas; a resposta final deve distinguir entrega comprovada de bloqueio documentado.
+
+Fonte global da politica: `Vivaliz-site/site-shopvivaliz/REGRAS-AGENTES-CENTRALIZADAS.md`.
+<!-- /AUTONOMOUS_RESUME_TO_VALIDATED_COMPLETION_V1 -->
+
 <!-- AUDIT_EXTERNAL_REMEDIATION_V1 -->
 > **AUDITORIA EXTERNA TAMBÉM É CORRETIVA:** auditoria interna, externa, independente, contraditória ou feita por outro agente/revisor segue o mesmo ciclo. Auditor externo com autorização deve corrigir, testar e reauditar. Se for read-only, o relatório não encerra: os achados corrigíveis seguem para executor autorizado e permanecem em andamento até correção + revalidação independente ou bloqueio externo comprovado.
 <!-- /AUDIT_EXTERNAL_REMEDIATION_V1 -->
