@@ -1,3 +1,14 @@
+<!-- REMOTE_ACCESS_EXHAUSTION_GATE_V1 -->
+## Regra obrigatoria: esgotamento de todos os acessos remotos autorizados
+Em `Retome`, `Continue`, `Prossiga`, `Siga` e tarefas em hosts, **uma falha de ferramenta, conexao, SSH, MCP, RDC, VPN ou login nao autoriza declarar bloqueio**.
+1. Ler efetivamente `AGENTS.md`, o runbook do host e a referencia canonica `Vivaliz-site/site-shopvivaliz/docs/knowledge/host-access.md`; confirmar identidade do host, permissao e ferramenta.
+2. **Inventariar e avaliar cada rota remota realmente provisionada, apropriada e autorizada**, seguindo a prioridade canonica: ShopVivaliz Remote Control MCP/controlador; RDC e RDC 2 quando habilitados e autorizados para o host; SSH privado/VCN/Tailscale e tuneis/reverse SSH documentados; GUI por `desktop_*`/bridge nativo/RustDesk; OCI Bastion/Compute Run Command/console serial/GitHub Actions **somente para bootstrap, recovery ou reparo** dentro das regras. Usar outras rotas apenas se documentadas e autorizadas.
+3. Verificar cada caminho aplicavel com evidencias atuais de disponibilidade, conexao, permissao e identidade; diagnosticar e corrigir falhas tecnicas, repetir tentativas limitadas/idempotentes e mudar de rota enquanto houver alternativa segura viavel. Nao usar GitHub como transporte normal de comandos de runtime. Navegador ShopVivaliz permanece na VM backend, nunca em Windows sem autorizacao explicita da tarefa.
+4. Persistir checkpoint nao secreto `remote_access_attempts` contendo host, canal, status (`PASS`, `FAILED`, `NOT_PROVISIONED`, `NOT_APPLICABLE`), evidencia, causa, correcao e proximo caminho. Nao afirmar que tentou um canal inexistente.
+5. Manter `RUNNING` ate recuperar acesso e concluir/validar a tarefa; `BLOCKED_EXTERNAL` so depois de **esgotar e comprovar a inviabilidade de todas as rotas adequadas, seguras e autorizadas**. Para permissao humana obrigatoria, `AWAITING_APPROVAL` com acao exata.
+Nao desabilitar MFA, RBAC, branch protection, limitacoes de acesso, controles de seguranca; nao expor credenciais, habilitar SSH publico, ou repetir indefinidamente tentativas improdutivas.
+<!-- /REMOTE_ACCESS_EXHAUSTION_GATE_V1 -->
+
 <!-- MANDATORY_AGENT_RULES_READ_GATE_V1 -->
 ## Leitura efetiva de regras antes de Retome/Continue/Prossiga/Siga
 
