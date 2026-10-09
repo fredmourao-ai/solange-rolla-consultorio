@@ -23,5 +23,12 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+      - name: Isolate npm cache per runner
+        shell: bash
+        run: echo "NPM_CONFIG_CACHE=$RUNNER_TEMP/npm-cache-governance" >> "$GITHUB_ENV"
+      - name: Use project Node runtime
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24.19.0
       - name: Validate governance contract
         run: bash scripts/repository-governance-validate.sh ci
