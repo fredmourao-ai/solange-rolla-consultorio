@@ -2,9 +2,10 @@ import 'server-only'
 import { request as httpsRequest } from 'node:https'
 import type { NationalNfseTransport } from './national-nfse-provider'
 
-export type NodeMtlsNfseTransportOptions = {
-  cert: string | Buffer
-  key: string | Buffer
+export type NodeMtlsNfseTransportOptions = (
+  | { cert: string | Buffer; key: string | Buffer; pfx?: never }
+  | { pfx: Buffer; cert?: never; key?: never }
+) & {
   ca?: string | Buffer
   passphrase?: string
   timeoutMs?: number
@@ -16,6 +17,17 @@ export function createNodeMtlsNfseTransport(
   const timeoutMs = options.timeoutMs ?? 15_000
   if (!Number.isInteger(timeoutMs) || timeoutMs < 1_000 || timeoutMs > 60_000) {
     throw new Error('NFSE_TRANSPORT_TIMEOUT_INVALID')
+  }
+
+  const hasPfx = options.pfx !== undefined
+  const hasCert = options.cert !== undefined
+  const hasKey = options.key !== undefined
+  if (
+    hasCert !== hasKey ||
+    hasPfx === hasCert ||
+    (hasPfx && (!Buffer.isBuffer(options.pfx) || options.pfx.length === 0))
+  ) {
+    throw new Error('NFSE_TRANSPORT_CERTIFICATE_CONFIGURATION_INVALID')
   }
 
   return async function nationalNfseTransport(input) {
@@ -35,8 +47,7 @@ export function createNodeMtlsNfseTransport(
           port: url.port ? Number(url.port) : 443,
           path: `${url.pathname}${url.search}`,
           method: input.method,
-          cert: options.cert,
-          key: options.key,
+          ...(hasPfx ? { pfx: options.pfx } : { cert: options.cert, key: options.key }),
           ca: options.ca,
           passphrase: options.passphrase,
           rejectUnauthorized: true,

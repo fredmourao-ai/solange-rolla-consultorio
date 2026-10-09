@@ -30,7 +30,9 @@ Elegibilidade retorna blockers sanitizados e separa `ready`, `review` e `not_rea
 ## Worker e providers
 O worker consome mensagens da fila `fiscal`, arquiva somente jobs processados e reencaminha falhas com atraso.
 
-O adapter nacional segue o contrato oficial da SEFIN Nacional: autenticação mútua por certificado é responsabilidade do `NationalNfseTransport`; a DPS e o pedido de evento devem chegar previamente assinados em XMLDSIG e compactados em GZip/Base64 pelo `NationalNfsePayloadFactory`. Emissão usa `POST /nfse`, consulta usa `GET /nfse/{chaveAcesso}` e cancelamento usa `POST /nfse/{chaveAcesso}/eventos`.
+O adapter nacional segue o contrato oficial da SEFIN Nacional: autenticação mútua por certificado é responsabilidade do `NationalNfseTransport`; a DPS e o pedido de evento devem chegar previamente assinados em XMLDSIG e compactados em GZip/Base64 pelo `NationalNfsePayloadFactory`.
+
+Para certificados A1 exportados como PKCS#12 (`.p12`/`.pfx`), o transporte Node aceita `pfx: Buffer` com `passphrase` recuperada exclusivamente de secret store externo. O material PKCS#12 deve ser lido server-side de um caminho privado protegido, nunca da UI, logs, ambiente público ou repositório. A alternativa PEM (`cert` e `key`) continua disponível; as duas formas não podem ser misturadas e configurações incompletas falham antes da conexão. Para homologação, usar apenas a SEFIN de Produção Restrita e operações de leitura até validar certificado, perfil fiscal e assinatura DPS. Emissão usa `POST /nfse`, consulta usa `GET /nfse/{chaveAcesso}` e cancelamento usa `POST /nfse/{chaveAcesso}/eventos`.
 
 `liveEnabled` sozinho nunca habilita tráfego: ambiente (`restricted` ou `production`), transporte mTLS e fábrica de payload assinado são obrigatórios. O ambiente restrito aponta para a SEFIN de Produção Restrita e produção usa o host oficial de produção. Não existe fallback para Bearer token nem para o antigo contrato genérico `/documents`.
 

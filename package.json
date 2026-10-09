@@ -49,13 +49,13 @@
     "@types/nodemailer": "^7.0.2",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
+    "braces": "file:vendor/braces",
     "dependency-cruiser": "18.2.0",
     "eslint": "9.39.5",
     "eslint-config-next": "16.3.8",
     "js-yaml": "^4.3.2",
     "typescript": "5.9.2",
-    "vitest": "4.1.11",
-    "braces": "file:vendor/braces"
+    "vitest": "4.1.11"
   },
   "overrides": {
     "minimatch@3.1.5": {
@@ -66,7 +66,7 @@
     },
     "next@16.3.8": {
       "postcss": "8.5.26",
-      "sharp": "0.35.4"
+      "sharp": "0.35.5"
     },
     "braces": "$braces"
   }
