@@ -1,3 +1,9 @@
+<!-- MANDATORY_AGENT_RULES_READ_GATE_V1 -->
+## Leitura efetiva de regras antes de Retome/Continue/Prossiga/Siga
+
+Cada comando curto e ordem de execucao. Antes de qualquer mutacao e no inicio de toda retomada, ler `AGENTS.md` vigente e os documentos exigidos em "Ordem de leitura", diretamente no GitHub ou clone atualizado; verificar SHA/ref e registrar checkpoint nao secreto `rules_loaded` com arquivos, SHA, data e sessao. Mera mencao de arquivos ou instrucao de chat nao prova leitura. Se a leitura falhar, registrar `RULES_NOT_LOADED` e recuperar rota autorizada antes de alteracoes; diagnosticos read-only seguros podem continuar. Carregar as regras especificas do modulo e aplicar o ciclo completo de execucao/correcao/teste/validacao, respeitando politica de branches e aprovacoes.
+<!-- /MANDATORY_AGENT_RULES_READ_GATE_V1 -->
+
 <!-- EXHAUST_AUTHORIZED_PATHS_BEFORE_BLOCKED_V1 -->
 ## Bloqueio somente apos esgotamento comprovado dos caminhos viaveis
 
