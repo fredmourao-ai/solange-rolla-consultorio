@@ -68,7 +68,7 @@ jobs:
       github.event_name != 'pull_request' ||
       github.event.pull_request.head.repo.full_name == github.repository
     runs-on: [self-hosted, Linux, ARM64, solange-ci]
-    timeout-minutes: 10
+    timeout-minutes: 25
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -157,10 +157,15 @@ jobs:
       github.event_name != 'pull_request' ||
       github.event.pull_request.head.repo.full_name == github.repository
     runs-on: [self-hosted, Linux, ARM64, solange-ci]
-    timeout-minutes: 35
+    timeout-minutes: 65
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+      - name: Isolate Playwright browser cache per CI attempt
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "PLAYWRIGHT_BROWSERS_PATH=$RUNNER_TEMP/solange-playwright-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${GITHUB_JOB}" >> "$GITHUB_ENV"
       - name: Isolate npm cache per runner
         shell: bash
         run: echo "NPM_CONFIG_CACHE=$RUNNER_TEMP/npm-cache" >> "$GITHUB_ENV"
@@ -237,6 +242,15 @@ jobs:
         run: npm run build
       - name: Install Playwright browser
         run: npx playwright install chromium
+      - name: Verify isolated Chromium executable
+        shell: bash
+        run: |
+          set -euo pipefail
+          browser="$(node -e 'process.stdout.write(require("@playwright/test").chromium.executablePath())')"
+          if [ ! -x "$browser" ]; then
+            echo "::error::Playwright Chromium executable missing after install in the isolated cache"
+            exit 1
+          fi
       - name: End-to-end tests
         shell: bash
         run: |

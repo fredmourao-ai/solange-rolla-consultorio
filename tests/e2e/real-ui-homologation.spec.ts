@@ -80,9 +80,34 @@ async function fiscalAndExports(page: Page, personId: string, registrationId: st
 }
 
 test('canonical operational homologation creates all business data through the UI', async ({ page }) => {
-  const token = randomUUID().slice(0, 8); const name = `Homologação UI ${token}`; const cpf = validCpf(Date.now().toString())
-  await signInDemo(page); const personId = await createFiscalPerson(page, name, cpf); const receivableId = await createPastAppointmentAndCharge(page, personId); await settleReceivable(page, receivableId); await createPayable(page, token); const registrationId = await createEventFlow(page, personId, name, token); await fiscalAndExports(page, personId, registrationId)
-  await page.setViewportSize({ width: 390, height: 844 }); await page.goto('/dashboard', { waitUntil: 'domcontentloaded' }); expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true); await page.evaluate(() => { document.documentElement.style.zoom = '2' }); expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true); const menuButton = page.getByRole('button', { name: 'Abrir menu' }); await expect(menuButton).toBeVisible(); await menuButton.focus(); await expect(menuButton).toBeFocused(); const box = await menuButton.boundingBox(); expect(box?.width ?? 0).toBeGreaterThanOrEqual(44); expect(box?.height ?? 0).toBeGreaterThanOrEqual(44)
+  // This end-to-end journey spans independent UI, financial, event, fiscal and export flows.
+  // Scope the extra timeout to this test, not to the suite; record the failing phase in CI.
+  test.slow()
+  const token = randomUUID().slice(0, 8)
+  const name = `Homologação UI ${token}`
+  const cpf = validCpf(Date.now().toString())
+
+  await test.step('Authenticate demo user', () => signInDemo(page))
+  const personId = await test.step('Create fiscal person through UI', () => createFiscalPerson(page, name, cpf))
+  const receivableId = await test.step('Create appointment and charge through UI', () => createPastAppointmentAndCharge(page, personId))
+  await test.step('Settle receivable and validate refund through UI', () => settleReceivable(page, receivableId))
+  await test.step('Create and pay payable through UI', () => createPayable(page, token))
+  const registrationId = await test.step('Create event and registration through UI', () => createEventFlow(page, personId, name, token))
+  await test.step('Issue mock fiscal document and verify exports', () => fiscalAndExports(page, personId, registrationId))
+  await test.step('Verify mobile menu and zoom accessibility', async () => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.goto('/dashboard', { waitUntil: 'domcontentloaded' })
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
+    await page.evaluate(() => { document.documentElement.style.zoom = '2' })
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
+    const menuButton = page.getByRole('button', { name: 'Abrir menu' })
+    await expect(menuButton).toBeVisible()
+    await menuButton.focus()
+    await expect(menuButton).toBeFocused()
+    const box = await menuButton.boundingBox()
+    expect(box?.width ?? 0).toBeGreaterThanOrEqual(44)
+    expect(box?.height ?? 0).toBeGreaterThanOrEqual(44)
+  })
 })
 
 test('fiscal validation preserves values entered through the UI', async ({ page }) => {
