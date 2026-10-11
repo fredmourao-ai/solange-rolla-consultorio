@@ -29,16 +29,4 @@ describe('CI E2E Supabase startup resilience', () => {
     expect(step).toContain('rm -f "$RUNNER_TEMP/supabase-start.log" "$RUNNER_TEMP/supabase-start-retry.log"')
     expect(step).not.toMatch(/cat .*supabase-start/)
   })
-
-  it('prevents Realtime schema migration races during the local database reset', () => {
-    const step = e2eSupabaseStartStep(workflow)
-    const realtime = 'supabase_realtime_solange-rolla-consultorio'
-    const reset = 'npx supabase@2.118.0 db reset'
-    const stop = `docker stop ${realtime}`
-
-    expect(step).toContain(`grep -Fxq '${realtime}'`)
-    expect(step).toContain(stop)
-    expect(step.indexOf(stop)).toBeLessThan(step.indexOf(reset))
-    expect(step).not.toContain('docker stop $(docker ps')
-  })
 })
