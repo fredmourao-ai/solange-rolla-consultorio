@@ -12,6 +12,35 @@ function makeExecutable(file: string) {
 }
 
 describe('backup restore drill readiness', () => {
+  it('avoids ephemeral Alpine ownership containers and retains the PostgreSQL backup client image', () => {
+    const source = readFileSync(path.join(projectRoot, 'scripts/backup-homologation.sh'), 'utf8')
+    const installerFile = path.join(projectRoot, 'ops/backup/run-demo-scheduler.sh')
+    const installer = readFileSync(installerFile, 'utf8')
+    expect(source).toContain('chown 1001:1001 "$FULLTMP" "$APPTMP"')
+    expect(source).toContain('chmod 0600 "$FULL.sha256" "$APP.sha256" "$DEST/LAST_SUCCESS"')
+    expect(source).not.toContain('alpine sh -lc')
+    expect(installer).toContain('CLIENT_IMAGE=postgres:15-alpine')
+    expect(installer).toContain('CLIENT_ANCHOR=solange-backup-pg15-client-image-anchor')
+    expect(installer).toContain('docker create --name "$CLIENT_ANCHOR" --network none --read-only --restart no')
+    expect(installer).toContain('docker container inspect "$CLIENT_ANCHOR"')
+    expect(spawnSync('sh', ['-n', path.join(projectRoot, 'scripts/backup-homologation.sh')]).status).toBe(0)
+    expect(spawnSync('bash', ['-n', installerFile]).status).toBe(0)
+  })
+
+  it('uses the database network namespace without exposing long-lived database credentials', () => {
+    const source = path.join(projectRoot, 'scripts/backup-homologation.sh')
+    const body = readFileSync(source, 'utf8')
+    expect(body).not.toContain('Config.Env')
+    expect(body).not.toContain('POSTGRES_PASSWORD')
+    expect(body).not.toContain('PGPASSWORD')
+    expect(body.match(/--network "container:\$SOURCE_CONTAINER"/g)).toHaveLength(2)
+    expect(body.match(/--entrypoint pg_dump postgres:15-alpine -h 127\.0\.0\.1/g)).toHaveLength(2)
+    expect(body).toContain("backup_failed: db_not_running")
+    expect(body).toContain('sha256sum "$FULL"')
+    expect(body).toContain('sha256sum "$APP"')
+    expect(spawnSync('sh', ['-n', source], { encoding: 'utf8' }).status).toBe(0)
+  })
+
   it('waits for final startup and restores into a clean Supabase-compatible database', () => {
     const root = mkdtempSync(path.join(os.tmpdir(), 'restore-readiness-'))
     const bin = path.join(root, 'bin')
