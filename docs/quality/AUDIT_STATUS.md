@@ -73,7 +73,7 @@ Esta entrada cobre o código-fonte no SHA `2fe4699...` quanto aos checks locais 
 
 - Base SHA: 500890047d5ad725c462c14a02c206a2d02651b4
 - Impacto: publicacao continua do staging passa a exigir DNS, TLS, HTTP e JSON com SHA correspondente ao estado implantado antes de registrar URL/HEALTHY; invalida referencias stale quando indisponivel, restaura APP_URL em falhas de restart e mantem loop com alerta observavel.
-- Testes: reproducao RED mostrou probe ausente; suite original 12/12 GREEN; revisao adversarial gerou quatro falhas RED de JSON aparentemente valido e rollback parcial, remediadas; suite 15/15 aprovada em tres repeticoes independentes e sintaxe POSIX shell validada.
+- Testes: reproducao RED mostrou probe ausente; suite original 12/12 GREEN; revisao adversarial gerou quatro falhas RED de JSON aparentemente valido e rollback parcial, remediadas; suite 15/15 aprovada em tres repeticoes independentes e evoluida para 17/17 apos reauditoria de compatibilidade real BusyBox/TLS; sintaxe POSIX shell validada. O HTTPS publico foi comprovado usando Node real com validacao explicita de certificado, com teste positivo do SHA efetivo e negativo para SHA diferente.
 - Evidencias: issue #268, ops/staging/reconcile-demo.sh, tests/test_staging_reconcile_public_health.py; runtime de staging em 2026-10-13 tinha tunel running com URLs diferentes e publicacao obsoleta, sem healthcheck do reconciliador.
 - Pendencias: PR/CI/revisao/merge, promocao e reauditoria do runtime no mesmo SHA, browser grafico de ponta a ponta, testes de recovery, backup/restore e V5 integral. Nao houve alteracao em containers publicados ou dados de pacientes.
 - Estado: NAO_APTO

@@ -39,18 +39,7 @@ class PublicReconcilerTests(unittest.TestCase):
         self.docker_calls = self.root / "docker-calls.txt"
         self.executable("getent", "#!/bin/sh\nif [ \"$FAKE_DNS_DOWN\" = 1 ]; then exit 2; fi\nprintf '192.0.2.1\\n'\n")
         self.executable("wget", "#!/bin/sh\nif [ \"$FAKE_PUBLIC_DOWN\" = 1 ]; then exit 4; fi\nprintf '%s' \"$FAKE_HEALTH_BODY\"\n")
-        self.executable(
-            "docker",
-            "#!/bin/sh\n"
-            "printf '%s\\n' \"$1\" >> \"$FAKE_DOCKER_CALLS\"\n"
-            "case \"$1\" in\n"
-            "  inspect) printf 'running\\n' ;;\n"
-            "  logs) printf 'routing %s\\n' \"$FAKE_TUNNEL_URL\" ;;\n"
-            "  exec) python3 -c 'import sys,json; d=json.load(sys.stdin); assert isinstance(d,dict) and d.get(\"status\")==\"ok\" and d.get(\"environment\")==\"staging\"; print(d.get(\"buildSha\",\"\"))' ;;\n"
-            "  start|restart) exit 0 ;;\n"
-            "  *) exit 88 ;;\n"
-            "esac\n",
-        )
+        self.executable("docker", self.fake_docker())
         self.environment = {
             **os.environ,
             "PATH": str(self.bins) + os.pathsep + os.environ["PATH"],
@@ -62,6 +51,25 @@ class PublicReconcilerTests(unittest.TestCase):
             "FAKE_TUNNEL_URL": URL,
             "FAKE_HEALTH_BODY": self.body(SHA),
         }
+
+    def fake_docker(self, fail_restart=False):
+        return """#!/bin/sh
+printf '%s\\n' "$1" >> "$FAKE_DOCKER_CALLS"
+case "$1" in
+  inspect) echo running ;;
+  logs) printf 'routing %s\\n' "$FAKE_TUNNEL_URL" ;;
+  exec)
+    if [ "$FAKE_PUBLIC_DOWN" = 1 ] || [ "$FAKE_TLS_BAD" = 1 ]; then exit 4; fi
+    if [ -n "$FAKE_EXEC_CALLED" ]; then
+      if [ -f "$FAKE_EXEC_CALLED" ]; then exit 4; fi
+      touch "$FAKE_EXEC_CALLED"
+    fi
+    python3 -c 'import os,json,re; d=json.loads(os.environ["FAKE_HEALTH_BODY"]); assert isinstance(d,dict) and d.get("status")=="ok" and d.get("environment")=="staging" and isinstance(d.get("buildSha"),str) and re.fullmatch("[a-f0-9]{40}",d["buildSha"]); print(d["buildSha"])' ;;
+  restart) """ + ("exit 5" if fail_restart else "exit 0") + """ ;;
+  start) exit 0 ;;
+  *) exit 88 ;;
+esac
+"""
 
     def executable(self, name, content):
         f = self.bins / name
@@ -78,6 +86,15 @@ class PublicReconcilerTests(unittest.TestCase):
             capture_output=True, text=True, timeout=15,
             env=self.environment if env is None else {**self.environment, **env},
         )
+
+    def test_probe_enforces_node_certificate_verification(self):
+        script = SCRIPT.read_text(encoding="utf-8")
+        self.assertIn("rejectUnauthorized: true", script)
+        self.assertNotIn("--tries=1", script)
+
+    def test_probe_rejects_tls_certificate_error(self):
+        result = self.execute("--probe-public", URL, SHA, env={"FAKE_TLS_BAD": "1"})
+        self.assertNotEqual(0, result.returncode)
 
     def test_probe_accepts_public_tls_health_exact_sha(self):
         p = self.execute("--probe-public", URL, SHA)
@@ -132,14 +149,7 @@ class PublicReconcilerTests(unittest.TestCase):
                 self.assertNotEqual(0, p.returncode)
 
     def test_once_post_restart_external_failure_restores_previous_app_url(self):
-        self.executable(
-            "wget",
-            "#!/bin/sh\n"
-            "if [ -f \"$FAKE_WGET_CALLED\" ]; then exit 4; fi\n"
-            "touch \"$FAKE_WGET_CALLED\"\n"
-            "printf '%s' \"$FAKE_HEALTH_BODY\"\n",
-        )
-        p = self.execute("--once", env={"FAKE_WGET_CALLED": str(self.root / "wget-called")})
+        p = self.execute("--once", env={"FAKE_EXEC_CALLED": str(self.root / "node-called")})
         self.assertNotEqual(0, p.returncode)
         self.assertIn("restart", self.docker_calls.read_text())
         env = (self.app / ".env.production.local").read_text()
@@ -148,18 +158,7 @@ class PublicReconcilerTests(unittest.TestCase):
         self.assertEqual("UNHEALTHY\n", self.status.read_text())
 
     def test_once_web_restart_error_restores_previous_app_url(self):
-        self.executable(
-            "docker",
-            "#!/bin/sh\n"
-            "printf '%s\\n' \"$1\" >> \"$FAKE_DOCKER_CALLS\"\n"
-            "case \"$1\" in\n"
-            "  inspect) echo running ;;\n"
-            "  logs) printf 'routing %s\\n' \"$FAKE_TUNNEL_URL\" ;;\n"
-            "  exec) python3 -c 'import sys,json; d=json.load(sys.stdin); assert isinstance(d,dict) and d.get(\"status\")==\"ok\" and d.get(\"environment\")==\"staging\"; print(d.get(\"buildSha\",\"\"))' ;;\n"
-            "  restart) exit 5 ;;\n"
-            "  *) exit 0 ;;\n"
-            "esac\n",
-        )
+        self.executable("docker", self.fake_docker(fail_restart=True))
         p = self.execute("--once")
         self.assertNotEqual(0, p.returncode)
         self.assertIn("restart", self.docker_calls.read_text())

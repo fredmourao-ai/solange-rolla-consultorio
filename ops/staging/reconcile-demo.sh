@@ -27,30 +27,55 @@ verify_public_release() {
   host=${url#https://}
   # DNS lookup must succeed now, and wget must verify TLS and return 2xx.
   getent hosts "$host" >/dev/null 2>&1 || return 1
-  payload=$(wget -q -O - -T 8 --tries=1 "$url/api/health" 2>/dev/null) || return 1
-  [ "${#payload}" -le 16384 ] || return 1
-  # Parse real JSON, not apparent success markers in malformed HTTP 200.
+  # Use a single HTTPS response with strict certificate and JSON validation.
+  # BusyBox wget in docker:27-cli lacks --tries and can vary TLS behavior.
+  # The existing web container has Node 24 and the same staging network.
   actual=$(
-    printf '%s' "$payload" | docker exec -i "$WEB" node -e '
-      let raw = "";
-      process.stdin.setEncoding("utf8");
-      process.stdin.on("data", chunk => {
-        raw += chunk;
-        if (raw.length > 16384) process.exit(2);
-      });
-      process.stdin.on("end", () => {
-        try {
-          const obj = JSON.parse(raw);
-          if (!obj || Array.isArray(obj) || typeof obj !== "object" ||
-              obj.status !== "ok" || obj.environment !== "staging" ||
-              typeof obj.buildSha !== "string" ||
-              !/^[a-f0-9]{40}$/.test(obj.buildSha)) process.exit(1);
-          process.stdout.write(obj.buildSha);
-        } catch {
-          process.exit(1);
+    docker exec "$WEB" node -e '
+      const https = require("node:https");
+      const endpoint = new URL(process.argv[1] + "/api/health");
+      let seen = 0;
+      const request = https.get(endpoint, {
+        rejectUnauthorized: true,
+        timeout: 8000,
+      }, (response) => {
+        if (response.statusCode !== 200) {
+          response.resume();
+          process.exitCode = 1;
+          return;
         }
+        let raw = "";
+        response.setEncoding("utf8");
+        response.on("data", (chunk) => {
+          seen += Buffer.byteLength(chunk, "utf8");
+          if (seen > 16384) {
+            request.destroy(new Error("health_response_too_large"));
+            return;
+          }
+          raw += chunk;
+        });
+        response.on("end", () => {
+          try {
+            const obj = JSON.parse(raw);
+            if (!obj || Array.isArray(obj) || typeof obj !== "object" ||
+                obj.status !== "ok" || obj.environment !== "staging" ||
+                typeof obj.buildSha !== "string" ||
+                !/^[a-f0-9]{40}$/.test(obj.buildSha)) {
+              process.exitCode = 1;
+              return;
+            }
+            process.stdout.write(obj.buildSha);
+          } catch {
+            process.exitCode = 1;
+          }
+        });
+        response.on("error", () => { process.exitCode = 1; });
       });
-    ' 2>/dev/null
+      request.on("timeout", () => {
+        request.destroy(new Error("health_timeout"));
+      });
+      request.on("error", () => { process.exitCode = 1; });
+    ' "$url" 2>/dev/null
   ) || return 1
   [ "$actual" = "$expected" ]
 }
