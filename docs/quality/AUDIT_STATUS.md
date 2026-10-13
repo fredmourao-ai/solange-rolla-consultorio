@@ -78,3 +78,14 @@ Esta entrada cobre o código-fonte no SHA `2fe4699...` quanto aos checks locais 
 - Pendencias: atualizar evidencias apos a execucao dos checks do PR e de main; nenhum destes testes certifica seguranca clinica, staging publico, workers, emissao NFS-e, restore de Storage, rollback ou paridade de release; aplicar integralmente o protocolo V5 antes de certificar producao.
 - Estado: NAO_APTO
 <!-- /AUDIT_DELTA_V1 -->
+
+<!-- AUDIT_DELTA_V1 -->
+## 2026-10-13 — Auditoria corretiva de proveniência de backup gerenciado (#191)
+
+- Base SHA: 16b8713f95197bad39782ff3929f965b7146c60f
+- Impacto: código do backup local recusa o banco Docker como substituto do Supabase gerenciado, healthcheck exige proveniência do projeto; workflow independente consulta metadados de backups gerenciados somente no ambiente staging e em main.
+- Testes: RED 19 testes sem verificador e 9 falhas novas de proveniência da fonte; GREEN 31/31 testes Python, cenários de cross-project, tempo, status, erro da API, segredo não impresso, backup local, checksum e fonte incorreta; verificação read-only na VM de homologação reprovou o backup legado corretamente. Suites de CI e jobs agendados ainda em validação.
+- Evidencias: issue #191; scripts/verify-managed-backup-evidence.py, tests/test_managed_backup_evidence.py, tests/test_backup_source_guard.py, scripts/backup-homologation.sh, scripts/check-backup-health.sh e workflow staging-managed-backup-evidence.yml; logs sanitizados de staging com último LAST_SUCCESS anterior a esta rodada.
+- Pendencias: confirmar backup gerenciado do projeto correto via Management API após merge; exportação cifrada/off-host quando exigida, restauração isolada real, integridade de Storage privado #206, RPO/RTO, retomada da automação, branch checks/merge e execução completa do certificador V5 no release exato. Nenhuma restauração ou dump de dados reais foi executada.
+- Estado: NAO_APTO
+<!-- /AUDIT_DELTA_V1 -->

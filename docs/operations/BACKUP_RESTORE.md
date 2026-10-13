@@ -34,3 +34,27 @@ Na auditoria independente de 15/09/2026, o último backup observado em `/home/ub
 ## Storage e chaves externas
 
 O dump PostgreSQL não substitui backup de objetos privados nem das chaves externas. Antes de produção, validar backup/retention do Storage privado no provedor e manter versões das chaves de criptografia fora do banco/backup. Logs e evidências não devem conter PII, tokens, CPF, respostas clínicas ou conteúdo clínico.
+
+## Auditoria de proveniência de backup — 13/10/2026
+
+A auditoria V5 reproduziu a divergência entre o runtime de homologação, que usa um
+projeto Supabase gerenciado, e o script legado
+`scripts/backup-homologation.sh`, que tentava copiar exclusivamente o banco
+Docker local `supabase_db_solange-client-demo`. O container local não está ativo,
+e o último backup local observado não prova recuperação do banco gerenciado.
+
+A execução do script legado agora recusa fonte incompatível antes de iniciar
+`pg_dump`. O healthcheck de artefatos exige `source_kind=managed_supabase`
+e `source_ref` equivalente ao projeto de staging efetivamente configurado no
+runtime. Backups antigos sem essa identidade são explicitamente rejeitados.
+
+`.github/workflows/staging-managed-backup-evidence.yml` consulta apenas
+**metadados** das cópias mantidas pelo provedor através da Management API,
+usando secrets restritos ao ambiente `staging`. Não baixa conteúdo clínico,
+não cria backups adicionais, não restaura dados e não acessa produção. Essa
+consulta verifica existência/recência do backup do projeto correto, mas **não
+certifica restore de PostgreSQL, Storage privado, chaves externas ou RPO/RTO**.
+
+Até haver exportação/retention adequada, restore isolado da fonte efetiva e
+prova separada dos objetos privados, o estado permanece **NÃO APTO**; nunca
+reinterpretar checksum local como recuperação do sistema publicado.
