@@ -15,7 +15,7 @@ import sys
 import time
 from pathlib import Path
 from urllib.parse import urlsplit
-from urllib.request import Request, urlopen
+from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 WEB = "solange-client-demo-web"
 WORKERS = ("solange-document-worker", "solange-messaging-worker",
@@ -68,10 +68,23 @@ def docker_env_value(container: str, key: str) -> str:
     return value
 
 
+class _ForbidHealthRedirects(HTTPRedirectHandler):
+    def redirect_request(self, request, fp, code, msg, headers, newurl):
+        # Never fetch a redirected URL, even if its release metadata looks valid.
+        raise ValueError("health redirect forbidden")
+
+
+def urlopen(request: Request, timeout: float):
+    """Use normal TLS validation but disable automatic HTTP redirects."""
+    return build_opener(_ForbidHealthRedirects()).open(request, timeout=timeout)
+
+
 def read_health(url: str) -> dict:
     """TLS, DNS, HTTP and JSON are all required. Never expose response bodies."""
     request = Request(url, headers={"User-Agent": "SolangeRuntimeParityV1/1"})
     with urlopen(request, timeout=10) as response:
+        if response.geturl() != url:
+            raise ValueError("health final URL differs from requested endpoint")
         if response.status != 200:
             raise RuntimeError("health returned non-200")
         data = response.read(16385)

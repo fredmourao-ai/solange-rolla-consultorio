@@ -177,6 +177,7 @@ class StagingParityTests(unittest.TestCase):
             def __init__(self,data): self.data=data
             def __enter__(self): return self
             def __exit__(self,*args): return False
+            def geturl(self): return guard.LOCAL_HEALTH_URL
             def read(self,size): return self.data
         for first in (OLD,GOOD):
             raw=('{"status":"ok","environment":"staging","buildSha":"'
@@ -191,6 +192,7 @@ class StagingParityTests(unittest.TestCase):
             status=200
             def __enter__(self): return self
             def __exit__(self,*args): return False
+            def geturl(self): return guard.LOCAL_HEALTH_URL
             def read(self,size):
                 return ('{"status":"bad","status":"ok","environment":"staging",'
                         '"buildSha":"' + GOOD + '"}').encode()
