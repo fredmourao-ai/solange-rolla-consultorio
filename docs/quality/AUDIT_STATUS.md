@@ -78,3 +78,13 @@ Esta entrada cobre o código-fonte no SHA `2fe4699...` quanto aos checks locais 
 - Pendencias: atualizar evidencias apos a execucao dos checks do PR e de main; nenhum destes testes certifica seguranca clinica, staging publico, workers, emissao NFS-e, restore de Storage, rollback ou paridade de release; aplicar integralmente o protocolo V5 antes de certificar producao.
 - Estado: NAO_APTO
 <!-- /AUDIT_DELTA_V1 -->
+
+<!-- AUDIT_DELTA_V1 -->
+## 2026-10-13 — Detecção fail-closed de E2E flaky (#149)
+- Base SHA: 16b8713f95197bad39782ff3929f965b7146c60f
+- Impacto: o teste browser E2E da PR #286 registrou uma falha autenticação/retry na jornada de acessibilidade, classificou um teste como flaky e ainda devolveu SUCCESS no job; o novo gate configura Playwright para falhar em CI se qualquer teste estiver flaky, mantendo até duas tentativas para diagnóstico e sem aumentar exposição de dados nem tocar staging.
+- Testes: RED remoto no CI da PR #286, job E2E 115373378648, com 1 flaky e 70 passed sob exit 0; regressão AST dedicada verifica failOnFlakyTests atrelado ao ambiente CI e política de retries original. GREEN remoto do commit desta PR deve ser observado, não presumido.
+- Evidencias: issue #149; GitHub Actions run 38419673460/job/115373378648; tests/e2e/demo-auth.ts toHaveURL(/dashboard/) timeout 5000ms na primeira tentativa; documentação oficial Playwright CLI --fail-on-flaky-tests e property testConfig.failOnFlakyTests disponível na versão 1.62.
+- Pendencias: identificar e resolver causa funcional ou de pressão da VM do teste flaky, executar CI e E2E sem flakiness após a correção, revisões independentes, PRs #283/#286/#288, release exato, staging, backup/restore Supabase gerenciado, Storage e autenticação, UI real e certificação V5.
+- Estado: NAO_APTO
+<!-- /AUDIT_DELTA_V1 -->
