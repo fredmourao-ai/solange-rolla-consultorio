@@ -78,3 +78,16 @@ Esta entrada cobre o código-fonte no SHA `2fe4699...` quanto aos checks locais 
 - Pendencias: atualizar evidencias apos a execucao dos checks do PR e de main; nenhum destes testes certifica seguranca clinica, staging publico, workers, emissao NFS-e, restore de Storage, rollback ou paridade de release; aplicar integralmente o protocolo V5 antes de certificar producao.
 - Estado: NAO_APTO
 <!-- /AUDIT_DELTA_V1 -->
+
+
+<!-- AUDIT_DELTA_UI_FIRST_V5_20261013 -->
+## 2026-10-13 - Gate UI-first obrigatorio para Auditoria Extrema V5 (PR #287)
+
+- Base SHA do PR: `16b8713f95197bad39782ff3929f965b7146c60f`. Head submetido inicialmente: `9b945375f2efe01f611985a2130e75719378ca54`.
+- Escopo: endurecimento das instrucoes para todos os agentes em `AGENTS.md`, `CLAUDE.md` e `GEMINI.md`. Auditorias extremas de jornada com UI obrigam o executor a navegar, interagir e reauditar pela interface real; API/CLI/headless/screenshots isolados nao bastam.
+- Certificacao: `scripts/certify-audit-manifest.py` rejeita `browser.required=false` com controles/jornadas de UI, jornada `ui` omitida, falta de artefato visual e falsa ausencia de UI sem inventario negativo e referencia de evidencia. Template, testes e manifesto de paridade global atualizados para as respectivas revisoes.
+- Evidencia executada: workflow `Absolute Audit Governance` do PR #287 (run 38408428102) retornou `success`. Workflow `Repository Governance Gate` run 38408427853 executou 28 testes do validador de ledger com resultado PASS, mas corretamente bloqueou o merge por falta desta entrada; entrada inserida nesta rodada. Demais checks de CI, build e E2E estavam em fila no momento deste registro.
+- Limitacao deliberada: esta PR melhora o processo de auditoria; **nao constitui auditoria E2E das jornadas clinicas publicadas**. Nao ha alegacao de acesso, navegacao ou validacao real da UI de producao nesta rodada. Qualquer jornada ainda nao percorrida na UI real permanece `NAO_VALIDADO_UI`, sem certificado `AUDIT_VERDICT=APTO`.
+- Validacao restante: reexecutar gate de ledger, esperar checks obrigatorios, realizar merge protegido e verificar revisao em `main`. Futuras auditorias devem corrigir e repetir navegacao na UI real apos cada alteracao.
+- Estado de certificacao operacional: **NAO_APTO** ate que protocolo V5 completo com evidencia de runtime publicado seja executado.
+<!-- /AUDIT_DELTA_UI_FIRST_V5_20261013 -->
