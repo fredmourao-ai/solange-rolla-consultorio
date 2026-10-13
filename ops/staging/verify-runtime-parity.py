@@ -77,7 +77,17 @@ def read_health(url: str) -> dict:
         data = response.read(16385)
     if len(data) > 16384:
         raise ValueError("oversized health response")
-    value = json.loads(data)
+    # JSON permits repeated object keys syntactically, but Python's default
+    # decoder silently keeps the last value. Never certify ambiguous identity.
+    def unique_pairs(pairs):
+        value = {}
+        for key, item in pairs:
+            if key in value:
+                raise ValueError("duplicate health JSON property")
+            value[key] = item
+        return value
+
+    value = json.loads(data, object_pairs_hook=unique_pairs)
     if not isinstance(value, dict):
         raise ValueError("invalid health response")
     return value
@@ -91,8 +101,11 @@ def expected_identifiers(root: Path, relative: str) -> dict[str, str]:
     # Only allowlisted SHA names. Never log file lines or other variable values.
     for line in path.read_text(encoding="utf-8").splitlines():
         key, separator, value = line.partition("=")
-        if separator and key.strip() in REQUIRED_SHA_KEYS:
-            identities[key.strip()] = value.strip().strip('"').strip("'")
+        key = key.strip()
+        if separator and key in REQUIRED_SHA_KEYS:
+            if key in identities:
+                raise ValueError("duplicate release identity key")
+            identities[key] = value.strip().strip('"').strip("'")
     return identities
 
 

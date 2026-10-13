@@ -155,6 +155,49 @@ class StagingParityTests(unittest.TestCase):
         self.assertIn("container_not_running", r.details)
         self.assertIn("local_health_invalid", r.details)
 
+    def test_rejects_duplicate_staging_identity_even_when_last_is_expected(self):
+        p=self.root / "staging.env"
+        for first in (OLD, GOOD):
+            with self.subTest(first=first):
+                self.env("staging.env", first)
+                with p.open("a",encoding="utf-8") as f:
+                    f.write("APP_BUILD_SHA=" + GOOD + "\nSTAGING_COMMIT_SHA=" + GOOD + "\n")
+                self.assertIn("staging_env_missing",self.assert_rejected().details)
+
+    def test_rejects_duplicate_app_identity_even_when_last_is_expected(self):
+        p=self.root / "app/.env.production.local"
+        self.env("app/.env.production.local", OLD)
+        with p.open("a",encoding="utf-8") as f:
+            f.write("APP_BUILD_SHA=" + GOOD + "\nSTAGING_COMMIT_SHA=" + GOOD + "\n")
+        self.assertIn("app_env_missing",self.assert_rejected().details)
+
+    def test_read_health_rejects_duplicate_build_sha_keys(self):
+        class Response:
+            status=200
+            def __init__(self,data): self.data=data
+            def __enter__(self): return self
+            def __exit__(self,*args): return False
+            def read(self,size): return self.data
+        for first in (OLD,GOOD):
+            raw=('{"status":"ok","environment":"staging","buildSha":"'
+                 + first + '","buildSha":"' + GOOD + '"}').encode()
+            with self.subTest(first=first):
+                with patch.object(guard,"urlopen",return_value=Response(raw)):
+                    with self.assertRaises(ValueError):
+                        guard.read_health("http://127.0.0.1:3200/api/health")
+
+    def test_read_health_rejects_duplicate_status_keys(self):
+        class Response:
+            status=200
+            def __enter__(self): return self
+            def __exit__(self,*args): return False
+            def read(self,size):
+                return ('{"status":"bad","status":"ok","environment":"staging",'
+                        '"buildSha":"' + GOOD + '"}').encode()
+        with patch.object(guard,"urlopen",return_value=Response()):
+            with self.assertRaises(ValueError):
+                guard.read_health("http://127.0.0.1:3200/api/health")
+
     def test_workflow_runs_guard_before_browser_acceptance(self):
         wf = (SCRIPT.parents[2] / ".github/workflows/staging-promote.yml").read_text()
         gate = wf.index("ops/staging/verify-runtime-parity.py")
