@@ -218,6 +218,7 @@ jobs:
           REC_SWAPPED=0
           SHA_SWAPPED=0
           RECONCILER_SWAPPED=0
+          ENV_SNAPSHOT_TAKEN=0
 
           # docker run without --user leaves root-owned files behind (see below); a plain
           # `rm -rf` as the non-root runner user then can't remove them. Retry with sudo -n
@@ -273,6 +274,9 @@ jobs:
               else
                 rm -f "$RECONCILER_PREVIOUS"
               fi
+              if [ "$ENV_SNAPSHOT_TAKEN" -eq 1 ]; then
+                bash "$GITHUB_WORKSPACE/ops/staging/runtime-env-transaction.sh" restore "$ROOT"
+              fi
               rm -f "$TRANSACTION"
             fi
             cleanup_stage
@@ -289,6 +293,12 @@ jobs:
           mkdir -p "$ROOT/backups"
           chmod 700 "$ROOT/backups"
           SOLANGE_BACKUP_DEST="$ROOT/backups" scripts/backup-homologation.sh
+
+          # Snapshot the existing (possibly credential-bearing) runtime env before
+          # the candidate rewrites it. Failure and post-acceptance rollback must
+          # restore this exact configuration together with the previous web.
+          bash "$GITHUB_WORKSPACE/ops/staging/runtime-env-transaction.sh" snapshot "$ROOT"
+          ENV_SNAPSHOT_TAKEN=1
 
           force_rm "$STAGE" "$PREVIOUS" "$CANDIDATE_STATE"
           mkdir -p "$STAGE" "$CANDIDATE_STATE/document" "$CANDIDATE_STATE/messaging" "$CANDIDATE_STATE/recurring"
@@ -623,6 +633,7 @@ jobs:
             mv "$ROOT/state/previous-deployed-sha.txt" "$ROOT/state/deployed-sha.txt"
           fi
           force_rm "$ROOT/state/candidate-$PROMOTE_SHA"
+          bash "$GITHUB_WORKSPACE/ops/staging/runtime-env-transaction.sh" restore "$ROOT"
           rm -f "$TRANSACTION"
 
       - name: Finalize promoted release
@@ -635,5 +646,6 @@ jobs:
           rm -rf "$ROOT/app-previous" 2>/dev/null || sudo -n rm -rf "$ROOT/app-previous"
           rm -f "$ROOT/state/previous-deployed-sha.txt" "$TRANSACTION"
           rm -f "$ROOT/reconcile-previous.sh"
+          bash "$GITHUB_WORKSPACE/ops/staging/runtime-env-transaction.sh" finalize "$ROOT"
           # Keep the promoted release state directory: the canonical workers bind-mount it
           # and need the same host path to exist after container restarts.

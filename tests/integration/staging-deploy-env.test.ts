@@ -104,4 +104,14 @@ describe('staging exact-release runtime parity self-tests', () => {
     expect(result.error, result.stderr || 'python3 execution failed').toBeUndefined()
     expect(result.status, [result.stdout, result.stderr].join('\n')).toBe(0)
   }, 120_000)
+
+  it('runs synthetic env snapshot/rollback/finalize fault-injection regressions in CI', () => {
+    const result = spawnSync('python3', ['-m', 'unittest', 'tests.test_staging_env_transaction'], {
+      encoding: 'utf8',
+      timeout: 120_000,
+      env: { ...process.env, PYTHONDONTWRITEBYTECODE: '1' },
+    })
+    expect(result.error, result.stderr || 'python3 execution failed').toBeUndefined()
+    expect(result.status, [result.stdout, result.stderr].join('\n')).toBe(0)
+  }, 120_000)
 })
