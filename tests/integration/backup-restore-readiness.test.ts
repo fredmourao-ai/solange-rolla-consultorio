@@ -12,6 +12,20 @@ function makeExecutable(file: string) {
 }
 
 describe('backup restore drill readiness', () => {
+  it('uses the database network namespace without exposing long-lived database credentials', () => {
+    const source = path.join(projectRoot, 'scripts/backup-homologation.sh')
+    const body = readFileSync(source, 'utf8')
+    expect(body).not.toContain('Config.Env')
+    expect(body).not.toContain('POSTGRES_PASSWORD')
+    expect(body).not.toContain('PGPASSWORD')
+    expect(body.match(/--network "container:\$SOURCE_CONTAINER"/g)).toHaveLength(2)
+    expect(body.match(/--entrypoint pg_dump postgres:15-alpine -h 127\.0\.0\.1/g)).toHaveLength(2)
+    expect(body).toContain("backup_failed: db_not_running")
+    expect(body).toContain('sha256sum "$FULL"')
+    expect(body).toContain('sha256sum "$APP"')
+    expect(spawnSync('sh', ['-n', source], { encoding: 'utf8' }).status).toBe(0)
+  })
+
   it('waits for final startup and restores into a clean Supabase-compatible database', () => {
     const root = mkdtempSync(path.join(os.tmpdir(), 'restore-readiness-'))
     const bin = path.join(root, 'bin')
