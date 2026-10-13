@@ -79,6 +79,27 @@ class ManagedEvidenceTests(unittest.TestCase):
         p["physical_backup_data"]={"latest_physical_backup_date_unix":int((NOW-dt.timedelta(hours=2)).timestamp())}
         result=checker.verify_backups(p,NOW)
         self.assertEqual(result["source"],"pitr")
+    def test_recent_pitr_is_authoritative_when_snapshot_is_stale(self):
+        # PITR replaces daily backups; an old daily snapshot is not the latest source.
+        p=document([backup(age=172800)],pitr=True)
+        p["physical_backup_data"]={"latest_physical_backup_date_unix":int((NOW-dt.timedelta(hours=2)).timestamp())}
+        result=checker.verify_backups(p,NOW)
+        self.assertEqual(result["source"],"pitr")
+        self.assertEqual(result["age_seconds"],7200)
+    def test_stale_pitr_rejected_even_when_snapshot_is_recent(self):
+        p=document([backup(age=3600)],pitr=True)
+        p["physical_backup_data"]={"latest_physical_backup_date_unix":int((NOW-dt.timedelta(days=2)).timestamp())}
+        with self.assertRaises(checker.AuditFailure):
+            checker.verify_backups(p,NOW)
+    def test_missing_pitr_metadata_rejected_even_when_snapshot_is_recent(self):
+        p=document([backup(age=3600)],pitr=True)
+        with self.assertRaises(checker.AuditFailure):
+            checker.verify_backups(p,NOW)
+    def test_invalid_pitr_metadata_rejected_even_when_snapshot_is_recent(self):
+        p=document([backup(age=3600)],pitr=True)
+        p["physical_backup_data"]={"latest_physical_backup_date_unix":"invalid"}
+        with self.assertRaises(checker.AuditFailure):
+            checker.verify_backups(p,NOW)
     def test_pitr_without_valid_latest_time_rejected(self):
         p=document([],pitr=True)
         p["physical_backup_data"]={"latest_physical_backup_date_unix":"not-a-number"}
