@@ -15,6 +15,7 @@ const runnerLineExceptions: Record<string, string> = {
   'staging-promote.yml': `runs-on: [${[...runnerLabels, 'solange-staging-host'].join(', ')}]`,
   'diag-staging-host.yml': `runs-on: [${[...runnerLabels, 'solange-staging-host'].join(', ')}]`,
   'historical-state-audit.yml': `runs-on: [${[...runnerLabels, 'solange-staging-host'].join(', ')}]`,
+  'staging-managed-backup-evidence.yml': `runs-on: [${[...runnerLabels, 'solange-staging-host'].join(', ')}]`,
 }
 const sameRepoGuard = 'github.event.pull_request.head.repo.full_name == github.repository'
 type PullRequestEvent = 'pull_request' | 'pull_request_target'
@@ -220,6 +221,21 @@ describe('GitHub Actions runner policy', () => {
         expect(allowed, `${workflow.name}: ${line.trim()}`).toContain(line.trim())
       }
     }
+  })
+
+  it('keeps the managed backup evidence job on the dedicated staging host and main only', () => {
+    const workflow = workflows().find(({ name }) => name === 'staging-managed-backup-evidence.yml')
+    expect(workflow).toBeDefined()
+    const parsed = parsedWorkflow(workflow?.content ?? '')
+    const triggers = parsed?.on as Record<string, unknown> | undefined
+    expect(Object.keys(triggers ?? {}).sort()).toEqual(['schedule', 'workflow_dispatch'])
+    expect(parsed?.permissions).toEqual({ contents: 'read' })
+    const jobs = parsed?.jobs as Record<string, Record<string, unknown>> | undefined
+    const verifier = jobs?.['verify-provider-backups']
+    expect(verifier?.['runs-on']).toEqual([...runnerLabels, 'solange-staging-host'])
+    expect(verifier?.if).toBe("github.ref == 'refs/heads/main'")
+    expect(verifier?.environment).toBe('staging')
+    expect(workflow?.content).toContain('persist-credentials: false')
   })
 
   it('guards every pull-request runner job at job level for every PR event', () => {
