@@ -10,6 +10,24 @@ chmod 700 "$RUNTIME" "$DEST"
 install -m 755 "$ROOT/scripts/backup-homologation.sh" "$RUNTIME/backup-homologation.sh"
 install -m 755 "$ROOT/scripts/check-backup-health.sh" "$RUNTIME/check-backup-health.sh"
 install -m 755 "$ROOT/ops/backup/run-scheduler.sh" "$RUNTIME/run-scheduler.sh"
+# Keep the tested PG15 dump client referenced: the OCI disk guard prunes
+# every unused Docker image, otherwise scheduled backups may block on pulls.
+CLIENT_IMAGE=postgres:15-alpine
+CLIENT_ANCHOR=solange-backup-pg15-client-image-anchor
+if ! docker image inspect "$CLIENT_IMAGE" >/dev/null 2>&1; then
+  docker pull "$CLIENT_IMAGE" >/dev/null
+fi
+client_sha="$(docker image inspect "$CLIENT_IMAGE" --format '{{.Id}}')"
+if docker container inspect "$CLIENT_ANCHOR" >/dev/null 2>&1; then
+  [ "$(docker container inspect "$CLIENT_ANCHOR" --format '{{.Image}}')" = "$client_sha" ] || {
+    echo 'backup image anchor has unexpected image; refusing to replace' >&2
+    exit 1
+  }
+else
+  docker create --name "$CLIENT_ANCHOR" --network none --read-only --restart no \
+    --label 'shopvivaliz.purpose=retain-postgres15-backup-client-for-disk-guard' \
+    "$CLIENT_IMAGE" true >/dev/null
+fi
 docker rm -f "$CONTAINER" >/dev/null 2>&1 || true
 docker run -d --name "$CONTAINER" --restart unless-stopped \
   -e SOLANGE_BACKUP_DEST="$DEMO/backups" \
