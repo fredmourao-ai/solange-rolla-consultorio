@@ -24,4 +24,7 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - name: Validate governance contract
+        env:
+          AUDIT_LEDGER_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          AUDIT_LEDGER_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: bash scripts/repository-governance-validate.sh ci

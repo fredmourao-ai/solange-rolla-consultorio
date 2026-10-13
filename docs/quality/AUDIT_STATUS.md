@@ -69,9 +69,20 @@ Diferente da rodada anterior (2026-09-17), **pgTAP/RLS e E2E local não são mai
 Esta entrada cobre o código-fonte no SHA `2fe4699...` quanto aos checks locais listados (build/lint/typecheck/unit/arquitetura/migrations), **e também quanto a pgTAP/RLS e E2E local via UI real (Chromium)**, ambos comprovados PASS nesta rodada via Docker/Supabase local. Não recertifica homologação, produção, backup/restore gerenciado real, rollback real, workers em ambiente implantado nem paridade de runtime publicado — todos permanecem `NÃO VALIDADO`, agora restritos especificamente ao que depende de rota de rede para staging/produção publicados, que esta sessão não tem. Qualquer mudança material subsequente (schema, auth, financeiro, workers, deploy, backup, staging) invalida esta cobertura e exige nova entrada. A correção do achado de produto desta rodada (favicon ausente, causa das 60 falhas E2E iniciais) está em PR #258, ainda não mesclada no momento desta entrada — enquanto não mesclada, o SHA de `main` ainda não contém o fix, apenas o branch desta auditoria o valida localmente.
 
 <!-- AUDIT_DELTA_V1 -->
-## 2026-10-13 - Paridade de staging em fail-closed (issue #269)
+## 2026-10-13 - Remediacao incremental de governanca (#281)
 
 - Base SHA: 500890047d5ad725c462c14a02c206a2d02651b4
+- Impacto: corrigido o mecanismo de auditoria para detectar PRs e pushes materiais que tentem entrar sem atualizar o ledger; politica e historico antigo preservados; somente o repositorio ativo e afetado.
+- Testes: 28 testes unittest em repositorios Git isolados aprovados no ambiente de desenvolvimento, incluindo RED para mudanca material sem ledger, GREEN para registro completo, exclusao de documento, merge-base avancado, SHA invalido, evidencia falsa e verificacao do wiring; seis falhas RED adicionais (deleção isolada do ledger, reescrita histórica isolada, especificações e planos materiais, README de regras de negócio, registro de release/linhagem), corrigidas para GREEN; mais cinco asserções RED para documentos críticos/contratos Markdown desconhecidos, corrigidas para GREEN; sintaxe bash e compilacao Python verificadas.
+- Evidencias: issue #281; validador scripts/validate-audit-ledger-delta.py; testes tests/test_validate_audit_ledger_delta.py; integracao em repository-governance-validate.sh e workflow repository-governance.yml; CI remoto, PR e revalidacao pos-merge ainda devem ser observados.
+- Pendencias: atualizar evidencias apos a execucao dos checks do PR e de main; nenhum destes testes certifica seguranca clinica, staging publico, workers, emissao NFS-e, restore de Storage, rollback ou paridade de release; aplicar integralmente o protocolo V5 antes de certificar producao.
+- Estado: NAO_APTO
+<!-- /AUDIT_DELTA_V1 -->
+
+<!-- AUDIT_DELTA_V1 -->
+## 2026-10-13 - Paridade de staging em fail-closed (issue #269)
+
+- Base SHA: 16b8713f95197bad39782ff3929f965b7146c60f
 - Impacto: detector de proveniencia e disponibilidade do release confere SHA de staging.env, app env, estado, web, workers e endpoints local/publico; remediacao adicional implementa snapshot e restore fail-closed de staging.env nos dois caminhos de rollback, evitando drift causado por promocao parcial. Nenhuma credencial e impressa.
 - Testes: 19 testes Python de paridade e 12 testes Python adicionais de transacao do runtime env, total 31/31 PASS em clone isolado; os 12 testes novos falharam antes da implementacao (RED) e passaram apos snapshot/restore/finalize (GREEN). Cobertos rollback preexistente, instalacao inicial, limpeza, colisao, seguranca de permissoes e dois caminhos de rollback no workflow. Sintaxe sh/Python e diff PASS; detector recusou o main stale em staging real.
 - Evidencias: issue #269, ops/staging/verify-runtime-parity.py, ops/staging/runtime-env-transaction.sh, tests/test_staging_runtime_parity.py, tests/test_staging_env_transaction.py, staging-promote.yml e logs sanitizados. Staging servia d46b7352, staging.env anunciava c9175886, main era 50089004. Banco local legado de backup ausente e scheduler unhealthy nao cobrem o banco gerenciado realmente usado; issue #191 permanece aberta.
