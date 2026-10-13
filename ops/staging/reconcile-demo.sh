@@ -10,7 +10,13 @@ app_valid() {
   [ -f "$APP/package.json" ] && [ -f "$APP/.env.production.local" ]
 }
 current_tunnel_url() {
-  docker logs solange-demo-tunnel 2>&1 | grep -Eo 'https://[a-z0-9-]+\.trycloudflare\.com' | tail -1 || true
+  # Quick tunnel URLs expire on restart. Reject stopped tunnel logs and
+  # ignore URLs from earlier runs of the same Docker container.
+  running=$(docker inspect -f '{{.State.Running}}' solange-demo-tunnel 2>/dev/null || true)
+  [ "$running" = true ] || return 0
+  started=$(docker inspect -f '{{.State.StartedAt}}' solange-demo-tunnel 2>/dev/null || true)
+  [ -n "$started" ] || return 0
+  docker logs --since "$started" solange-demo-tunnel 2>&1 | grep -Eo 'https://[a-z0-9-]+\.trycloudflare\.com' | tail -1 || true
 }
 ensure_running() {
   for c in solange-demo-gateway solange-demo-tunnel; do
@@ -35,6 +41,12 @@ reconcile_url() {
   app_valid || { log 'app incomplete; URL reconcile deferred'; return 0; }
   url=$(current_tunnel_url)
   [ -n "$url" ] || { log 'tunnel URL unavailable'; return 0; }
+  # Do not publish an expired hostname or restart web with a dead APP_URL.
+  # docker:27-cli includes getent; guard is DNS-only, no secret-bearing HTTP.
+  if ! getent hosts "${url#https://}" >/dev/null 2>&1; then
+    log 'tunnel DNS unavailable; URL reconcile deferred'
+    return 0
+  fi
   printf '%s\n' "$url" > "$URL_FILE"
   current=$(sed -n 's/^APP_URL=//p' "$APP/.env.production.local" | tail -1)
   [ "$current" = "$url" ] && return 0

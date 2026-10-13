@@ -78,3 +78,13 @@ Esta entrada cobre o código-fonte no SHA `2fe4699...` quanto aos checks locais 
 - Pendencias: atualizar evidencias apos a execucao dos checks do PR e de main; nenhum destes testes certifica seguranca clinica, staging publico, workers, emissao NFS-e, restore de Storage, rollback ou paridade de release; aplicar integralmente o protocolo V5 antes de certificar producao.
 - Estado: NAO_APTO
 <!-- /AUDIT_DELTA_V1 -->
+
+<!-- AUDIT_DELTA_V1 -->
+## 2026-10-13 — Staging quick-tunnel DNS and lifecycle fail-closed (#149)
+- Base SHA: 16b8713f95197bad39782ff3929f965b7146c60f
+- Impacto: impedir que o reconciliador de staging publique hostname trycloudflare expirado em APP_URL ou reinicie a aplicação com URL sem DNS. Corrige também consumo de URLs históricas do log de container stopped/restarted sem afetar produção ou dados.
+- Testes: RED 0/4 em execução POSIX isolada contra o script anterior, com stubs Docker e DNS; GREEN 4/4 contra correção candidata; sh -n PASS. Nova suíte integrada ao Vitest cobre URL stale, container parado, DNS indisponível e troca válida sem desativar controles. CI remoto e UI staging continuam pendentes.
+- Evidencias: inspeção autorizada VM backend em 2026-10-13 confirmou solange-demo-tunnel running desde 2026-10-09, URL registrada em state/current-url.txt sem DNS (getent unresolved), browser isolado antes retornou ENOTFOUND; imagem docker:27-cli do reconciliador contém getent. Fonte ops/staging/reconcile-demo.sh e tests/integration/staging-tunnel-reconciler.test.ts.
+- Pendencias: revisão, checks GREEN da PR, merge conforme proteções, promoção/release exatos com autorização, recomposição da URL de staging com controle de concorrência, testes reais de browser e autenticação, Storage e Supabase gerenciado com restauração isolada, certificador oficial V5. Proteção contra URL vencida não torna o tunnel atual acessível automaticamente.
+- Estado: NAO_APTO
+<!-- /AUDIT_DELTA_V1 -->
