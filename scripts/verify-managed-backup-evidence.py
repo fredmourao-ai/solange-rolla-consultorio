@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import json
+import math
 import os
 import re
 import sys
@@ -101,29 +102,34 @@ def verify_backups(payload: object, now: dt.datetime,
         raise AuditFailure("provider_response_invalid_shape")
     if now.tzinfo is None or not 0 < max_age_seconds <= 604800:
         raise AuditFailure("verification_parameters_invalid")
+    # PITR mode is authoritative. A missing/malformed boolean must never
+    # silently downgrade verification to a recent historical snapshot.
+    pitr_enabled = payload.get("pitr_enabled")
+    if type(pitr_enabled) is not bool:
+        raise AuditFailure("pitr_state_invalid")
+    if pitr_enabled:
+        physical = payload.get("physical_backup_data")
+        if not isinstance(physical, dict):
+            raise AuditFailure("pitr_physical_backup_metadata_missing")
+        latest = physical.get("latest_physical_backup_date_unix")
+        if (type(latest) not in (int, float) or not math.isfinite(latest)
+                or latest <= 0 or latest >= 1e12):
+            raise AuditFailure("pitr_physical_backup_metadata_invalid")
+        try:
+            stamp = dt.datetime.fromtimestamp(latest, tz=dt.timezone.utc)
+        except (OverflowError, OSError, ValueError):
+            raise AuditFailure("pitr_physical_backup_metadata_invalid") from None
+        age = _age(stamp, now, max_age_seconds)
+        return {"ok": True, "completed_count": 0, "age_seconds": age,
+                "source": "pitr"}
+    # Only inspect historical snapshots when PITR is explicitly disabled.
     completed = []
     for backup in payload["backups"]:
         if not isinstance(backup, dict):
             raise AuditFailure("provider_response_invalid_shape")
         if backup.get("status") != "COMPLETED":
             continue
-        # The management API exposes completed logical and physical snapshots.
-        # Completed physical snapshots and PITR are counted as DB backup only,
-        # never as private object/storage recovery.
         completed.append(_timestamp(backup.get("inserted_at")))
-    # With PITR enabled, daily snapshots are historical and must never mask
-    # stale/missing physical-backup metadata or falsely fail a fresh PITR source.
-    if payload.get("pitr_enabled") is True:
-        physical = payload.get("physical_backup_data")
-        if not isinstance(physical, dict):
-            raise AuditFailure("pitr_physical_backup_metadata_missing")
-        latest = physical.get("latest_physical_backup_date_unix")
-        if type(latest) not in (int, float) or latest <= 0 or latest >= 1e12:
-            raise AuditFailure("pitr_physical_backup_metadata_invalid")
-        stamp = dt.datetime.fromtimestamp(latest, tz=dt.timezone.utc)
-        age = _age(stamp, now, max_age_seconds)
-        return {"ok": True, "completed_count": 0, "age_seconds": age,
-                "source": "pitr"}
     if completed:
         age = _age(max(completed), now, max_age_seconds)
         return {"ok": True, "completed_count": len(completed),

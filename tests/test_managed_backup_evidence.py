@@ -136,4 +136,35 @@ class ManagedEvidenceTests(unittest.TestCase):
         self.assertNotIn(REF,out.getvalue()+err.getvalue())
         self.assertIn("MANAGED_STAGING_BACKUP=FAIL",out.getvalue()+err.getvalue())
 
+    def test_missing_pitr_state_fails_closed_with_recent_snapshot(self):
+        p=document()
+        p.pop("pitr_enabled")
+        with self.assertRaises(checker.AuditFailure):
+            checker.verify_backups(p,NOW)
+
+    def test_pitr_state_must_be_boolean_even_with_recent_snapshot(self):
+        for state in (None, "false", "true", 0, 1, [], {}):
+            with self.subTest(state=repr(state)), self.assertRaises(checker.AuditFailure):
+                checker.verify_backups({**document(), "pitr_enabled":state},NOW)
+
+    def test_nonfinite_pitr_timestamps_rejected_without_uncaught_errors(self):
+        for latest in (float("nan"),float("inf"),float("-inf")):
+            p=document([],pitr=True)
+            p["physical_backup_data"]={"latest_physical_backup_date_unix":latest}
+            with self.subTest(latest=str(latest)), self.assertRaises(checker.AuditFailure):
+                checker.verify_backups(p,NOW)
+
+    def test_out_of_range_pitr_timestamp_rejected_without_crash(self):
+        p=document([],pitr=True)
+        p["physical_backup_data"]={"latest_physical_backup_date_unix":9.99e11}
+        with self.assertRaises(checker.AuditFailure):
+            checker.verify_backups(p,NOW)
+
+    def test_valid_pitr_not_blocked_by_unrelated_old_snapshot_timestamp(self):
+        p=document([backup()],pitr=True)
+        p["backups"][0]["inserted_at"]="not-a-valid-timestamp"
+        p["physical_backup_data"]={"latest_physical_backup_date_unix":int((NOW-dt.timedelta(hours=2)).timestamp())}
+        result=checker.verify_backups(p,NOW)
+        self.assertEqual(result["source"],"pitr")
+
 if __name__=="__main__": unittest.main()

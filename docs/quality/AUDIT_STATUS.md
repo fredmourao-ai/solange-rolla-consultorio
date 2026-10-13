@@ -80,25 +80,12 @@ Esta entrada cobre o código-fonte no SHA `2fe4699...` quanto aos checks locais 
 <!-- /AUDIT_DELTA_V1 -->
 
 <!-- AUDIT_DELTA_V1 -->
-## 2026-10-13 — Auditoria corretiva de proveniência de backup gerenciado (#191)
+## 2026-10-13 — Remediação SAFE de proveniência e PITR Supabase (#191 / #149 / PR #286)
 
 - Base SHA: 16b8713f95197bad39782ff3929f965b7146c60f
-- Impacto: código do backup local recusa o banco Docker como substituto do Supabase gerenciado, healthcheck exige proveniência do projeto; workflow independente consulta metadados de backups gerenciados somente no ambiente staging e em main.
-- Testes: RED 19 testes sem verificador e 9 falhas novas de proveniência da fonte; GREEN 31/31 testes Python, cenários de cross-project, tempo, status, erro da API, segredo não impresso, backup local, checksum e fonte incorreta; verificação read-only na VM de homologação reprovou o backup legado corretamente. Suites de CI e jobs agendados ainda em validação.
-- Evidencias: issue #191; scripts/verify-managed-backup-evidence.py, tests/test_managed_backup_evidence.py, tests/test_backup_source_guard.py, scripts/backup-homologation.sh, scripts/check-backup-health.sh e workflow staging-managed-backup-evidence.yml; logs sanitizados de staging com último LAST_SUCCESS anterior a esta rodada.
-- Pendencias: confirmar backup gerenciado do projeto correto via Management API após merge; exportação cifrada/off-host quando exigida, restauração isolada real, integridade de Storage privado #206, RPO/RTO, retomada da automação, branch checks/merge e execução completa do certificador V5 no release exato. Nenhuma restauração ou dump de dados reais foi executada.
+- Impacto: o script de dump local recusa a fonte Docker incorreta em staging gerenciado; health de backup exige identidade de projeto; workflow restrito a main/staging usa apenas metadados da API Supabase; PITR habilitado prevalece sobre snapshots, exige estado booleano explícito e timestamp finito/representável, rejeita metadados ausentes ou inválidos sem falso-verde nem exceção não tratada; snapshots históricos só contam com PITR explicitamente desabilitado. Preservados o isolamento e a ausência de dados clínicos e segredos.
+- Testes: RED inicial 19 testes de verificador ausente e 9 casos de proveniência; GREEN inicial 31/31 Python. RED focal adicional no código exato ee950c6 da PR #286 com 8 falhas e 3 erros (PITR ausente/tipos errados, NaN, fora de intervalo, timestamp de snapshot irrelevante); GREEN no checkout isolado do mesmo SHA mais correção: 28/28 testes managed-backup e 12/12 source-guard, git diff --check aprovado. CI remoto exact-head pós-correção e regressão completa ainda não comprovados.
+- Evidencias: scripts/verify-managed-backup-evidence.py, scripts/backup-homologation.sh, scripts/check-backup-health.sh, tests/test_managed_backup_evidence.py, tests/test_backup_source_guard.py, .github/workflows/staging-managed-backup-evidence.yml, PR #286; fault check read-only anterior identificou source_identity_mismatch e source_provenance no estágio legado; registro contemporâneo e links do CI na issue #149. A correção de dois blocos AUDIT_DELTA_V1 na mesma PR foi consolidada em um único registro requerido pelo validador, mantendo os achados.
+- Pendencias: revisão independente, todos os checks obrigatórios exact-head e merge protegido; paridade global de políticas depende da correção em PR #288, ainda não mesclada; comprovação da API do Supabase gerenciado no projeto staging correto, backup/restore real isolado, retenção/RPO/RTO, Storage privado, autenticação/AAL2 e recuperação, identidade de release exata, navegador E2E real sem flaky e certificador oficial V5 no mesmo SHA/release/ambiente. Nenhum dado clínico, dump ou produção alterado.
 - Estado: NAO_APTO
-<!-- /AUDIT_DELTA_V1 -->
-
-<!-- AUDIT_DELTA_V1 -->
-## 2026-10-13 — PITR autoritativo e regressão no CI (#191 / PR #286)
-
-- Base auditada: main `16b8713f95197bad39782ff3929f965b7146c60f`; alterações isoladas na PR #286. Staging e produção não sofreram mutação.
-- Achado P1 (DEFECT): `scripts/verify-managed-backup-evidence.py` avaliava snapshots antigos antes de `physical_backup_data` mesmo com `pitr_enabled=true`. Isso podia aprovar PITR stale usando snapshot recente ou rejeitar PITR fresco por snapshot stale. A API oficial do Supabase fornece ambos os campos; o modo PITR deve prevalecer sobre snapshots históricos.
-- Reprodução RED: três cenários sintéticos em cópia isolada fiel da função original falharam (1 erro, 2 falhas); quarto caso equivalente de metadados PITR inválidos foi acrescentado.
-- Correção SAFE: `pitr_enabled=true` passa a exigir metadados físicos válidos e frescos antes de avaliar snapshots; falha fechado quando ausentes/inválidos. `pitr_enabled=false` mantém a política de snapshot existente; sem secrets/dumps/produção.
-- GREEN focal: 4/4 testes sintéticos passaram no código corrigido reproduzido de forma isolada; quatro regressões acrescentadas ao `tests/test_managed_backup_evidence.py` versionado. O job `unit` do CI agora executa também `test_managed_backup_evidence.py` e `test_backup_source_guard.py`; resultado remoto completo ainda pendente e **não** tratado como GREEN.
-- Evidências: PR #286, commits `6484d4f007623df1c2b0b5103f6d1ea85b2ee2c9`, `43ccec7e28e23c5279660b49e49ba1e964ee3cc0`, `d220786b6ef340f19f3099f3d18378d84ecdda09`. Runbook, política de escopo e proteções mantidos.
-- Dívida: revisão independente, todos checks exact-head, merge condicionado às proteções e à autorização, evidência da API real do projeto gerenciado, Storage privado, restore isolado e RPO/RTO, identidade de release e navegador E2E, certificador oficial V5 para o mesmo SHA/release/ambiente.
-- Estado: NAO_APTO. Metadados de backup sozinhos nunca certificam recuperação.
 <!-- /AUDIT_DELTA_V1 -->
