@@ -89,3 +89,16 @@ Esta entrada cobre o código-fonte no SHA `2fe4699...` quanto aos checks locais 
 - Pendencias: confirmar backup gerenciado do projeto correto via Management API após merge; exportação cifrada/off-host quando exigida, restauração isolada real, integridade de Storage privado #206, RPO/RTO, retomada da automação, branch checks/merge e execução completa do certificador V5 no release exato. Nenhuma restauração ou dump de dados reais foi executada.
 - Estado: NAO_APTO
 <!-- /AUDIT_DELTA_V1 -->
+
+<!-- AUDIT_DELTA_V1 -->
+## 2026-10-13 — PITR autoritativo e regressão no CI (#191 / PR #286)
+
+- Base auditada: main `16b8713f95197bad39782ff3929f965b7146c60f`; alterações isoladas na PR #286. Staging e produção não sofreram mutação.
+- Achado P1 (DEFECT): `scripts/verify-managed-backup-evidence.py` avaliava snapshots antigos antes de `physical_backup_data` mesmo com `pitr_enabled=true`. Isso podia aprovar PITR stale usando snapshot recente ou rejeitar PITR fresco por snapshot stale. A API oficial do Supabase fornece ambos os campos; o modo PITR deve prevalecer sobre snapshots históricos.
+- Reprodução RED: três cenários sintéticos em cópia isolada fiel da função original falharam (1 erro, 2 falhas); quarto caso equivalente de metadados PITR inválidos foi acrescentado.
+- Correção SAFE: `pitr_enabled=true` passa a exigir metadados físicos válidos e frescos antes de avaliar snapshots; falha fechado quando ausentes/inválidos. `pitr_enabled=false` mantém a política de snapshot existente; sem secrets/dumps/produção.
+- GREEN focal: 4/4 testes sintéticos passaram no código corrigido reproduzido de forma isolada; quatro regressões acrescentadas ao `tests/test_managed_backup_evidence.py` versionado. O job `unit` do CI agora executa também `test_managed_backup_evidence.py` e `test_backup_source_guard.py`; resultado remoto completo ainda pendente e **não** tratado como GREEN.
+- Evidências: PR #286, commits `6484d4f007623df1c2b0b5103f6d1ea85b2ee2c9`, `43ccec7e28e23c5279660b49e49ba1e964ee3cc0`, `d220786b6ef340f19f3099f3d18378d84ecdda09`. Runbook, política de escopo e proteções mantidos.
+- Dívida: revisão independente, todos checks exact-head, merge condicionado às proteções e à autorização, evidência da API real do projeto gerenciado, Storage privado, restore isolado e RPO/RTO, identidade de release e navegador E2E, certificador oficial V5 para o mesmo SHA/release/ambiente.
+- Estado: NAO_APTO. Metadados de backup sozinhos nunca certificam recuperação.
+<!-- /AUDIT_DELTA_V1 -->
