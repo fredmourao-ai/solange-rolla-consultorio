@@ -18,15 +18,22 @@ END = "<!-- /AUDIT_DELTA_V1 -->"
 
 # Conservative: unknown files are material unless explicitly documentary.
 MATERIAL_DOCUMENTS = {
-    "AGENTS.md", "AGENTS.override.md", "CLAUDE.md", "GEMINI.md",
+    "AGENTS.md", "AGENTS.override.md", "AGENTS-VM-ACCESS.md", "CLAUDE.md", "GEMINI.md",
     "AI-TO-CLI-PROTOCOL.md", "REGRAS-AGENTES-CENTRALIZADAS.md",
     "AUDIT_POLICY.md", "REPOSITORY-GOVERNANCE.md",
     "docs/ARCHITECTURE.md", "docs/DEFINITION_OF_DONE.md",
     "docs/SECURITY_PRIVACY.md", "docs/LEGAL_COMPLIANCE.md",
     "docs/ENVIRONMENTS.md", "docs/SCHEMA_OWNERSHIP.md",
     "docs/DATA_MODEL.md", "docs/REQUIREMENTS_TRACEABILITY.md",
+    "docs/ACCESS_CONTROL_MATRIX.md", "docs/AGENT_EXECUTION_WORKFLOW.md",
+    "docs/AGENT_OPERATING_MODEL.md", "docs/INTEGRATIONS.md",
+    "docs/TESTING_DEPLOYMENT.md", "docs/MODULE_BOUNDARIES.md",
+    "docs/SCHEMA_OWNERSHIP.md", "docs/PRODUCT_FLOWS.md",
+    "docs/DATA_INVENTORY.md", "docs/PROJECT_MASTER_PLAN.md",
+    "docs/PROJECT_AGENT_MEMORY.md", "docs/CREDENTIALS-ROTATION-BEFORE-PRODUCTION.md",
 }
-MATERIAL_DOC_PREFIXES = ("docs/quality/", "docs/operations/", "docs/adr/")
+MATERIAL_DOC_PREFIXES = ("docs/quality/", "docs/operations/", "docs/adr/",
+                         "docs/homologacao/", "docs/knowledge/")
 
 
 def is_material(path: str) -> bool:
