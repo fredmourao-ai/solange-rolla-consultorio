@@ -505,6 +505,17 @@ jobs:
           payload=$(curl --fail --silent --show-error --retry 3 "$STAGING_APP_URL/api/health")
           test "$(printf '%s' "$payload" | jq -r '.buildSha')" = "$PROMOTE_SHA"
 
+      - name: Verify complete staging identity and public endpoint
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          # Fail closed before browser acceptance if the published tunnel serves
+          # a different release or an out-of-sync web/worker/config artifact.
+          python3 ops/staging/verify-runtime-parity.py \
+            --root "$STAGING_DEPLOY_ROOT" \
+            --expected-sha "$PROMOTE_SHA" \
+            --require-public --retries 12 --delay 5
+
       - name: Install Playwright browser for staging acceptance
         run: npx playwright install chromium
 

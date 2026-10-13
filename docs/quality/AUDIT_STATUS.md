@@ -67,3 +67,14 @@ Diferente da rodada anterior (2026-09-17), **pgTAP/RLS e E2E local não são mai
 
 ## Regra de validade
 Esta entrada cobre o código-fonte no SHA `2fe4699...` quanto aos checks locais listados (build/lint/typecheck/unit/arquitetura/migrations), **e também quanto a pgTAP/RLS e E2E local via UI real (Chromium)**, ambos comprovados PASS nesta rodada via Docker/Supabase local. Não recertifica homologação, produção, backup/restore gerenciado real, rollback real, workers em ambiente implantado nem paridade de runtime publicado — todos permanecem `NÃO VALIDADO`, agora restritos especificamente ao que depende de rota de rede para staging/produção publicados, que esta sessão não tem. Qualquer mudança material subsequente (schema, auth, financeiro, workers, deploy, backup, staging) invalida esta cobertura e exige nova entrada. A correção do achado de produto desta rodada (favicon ausente, causa das 60 falhas E2E iniciais) está em PR #258, ainda não mesclada no momento desta entrada — enquanto não mesclada, o SHA de `main` ainda não contém o fix, apenas o branch desta auditoria o valida localmente.
+
+<!-- AUDIT_DELTA_V1 -->
+## 2026-10-13 - Paridade de staging em fail-closed (issue #269)
+
+- Base SHA: 500890047d5ad725c462c14a02c206a2d02651b4
+- Impacto: detector de proveniencia e disponibilidade do release de staging confere o mesmo SHA em staging.env, app env, deployed-sha, web, workers, health loopback e HTTPS publico; restart policies e processos sao conferidos sem ler ou registrar secrets.
+- Testes: 19 testes Python em fixtures de containers e HTTP passaram (incluindo divergent SHA, estado, politica de restart, DNS/TLS/HTTP indisponivel, bad JSON/status, URL insegura e processo ausente); workflow YAML e Python compilam; no staging real o detector recusou o main atual conforme esperado.
+- Evidencias: issue #269, ops/staging/verify-runtime-parity.py, tests/test_staging_runtime_parity.py, workflow staging-promote.yml e logs sanitizados desta rodada de auditoria; release efetivamente servido d46b7352 enquanto main e 50089004, state/env divergem; backup de homologacao unhealthy nao e cobertura de recovery.
+- Pendencias: PR, CI, revisao independente, merge e verificacao de runtime no mesmo SHA; o detector nao comprova por si sozinho E2E real, seguranca clinica, NFS-e, storage restore, rollback ou a auditoria V5 absoluta. Staging nao promovido e producao nao alterada.
+- Estado: NAO_APTO
+<!-- /AUDIT_DELTA_V1 -->
