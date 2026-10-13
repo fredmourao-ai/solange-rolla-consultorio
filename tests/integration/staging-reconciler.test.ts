@@ -1,3 +1,4 @@
+import { spawnSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
@@ -13,4 +14,19 @@ describe('staging demo reconciler', () => {
     expect(script).toContain('docker restart solange-client-demo-web')
     expect(script).not.toContain('npm run build')
   })
+
+  it('keeps strict TLS and avoids unsupported BusyBox wget flags', () => {
+    expect(script).toContain('rejectUnauthorized: true')
+    expect(script).not.toContain('--tries=1')
+  })
+
+  it('runs fail-closed public tunnel regression tests as part of CI', () => {
+    const result = spawnSync('python3', ['-m', 'unittest', 'tests.test_staging_reconcile_public_health'], {
+      encoding: 'utf8',
+      timeout: 120_000,
+      env: { ...process.env, PYTHONDONTWRITEBYTECODE: '1' },
+    })
+    expect(result.error, result.stderr || 'python3 execution failed').toBeUndefined()
+    expect(result.status, [result.stdout, result.stderr].join('\n')).toBe(0)
+  }, 120_000)
 })
