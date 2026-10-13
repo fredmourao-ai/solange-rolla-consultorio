@@ -91,9 +91,9 @@ class LedgerGateTests(unittest.TestCase):
         self.assertFalse(ok)
 
     def test_renamed_document_to_runtime_is_material(self):
-        self.write("docs/memo.md", "prose\n")
+        self.write("docs/notes/memo.md", "prose\n")
         self.commit("documentation")
-        execute(self.repo, "mv", "docs/memo.md", "runtime.config")
+        execute(self.repo, "mv", "docs/notes/memo.md", "runtime.config")
         ok, _ = self.check(self.commit("move doc to runtime"))
         self.assertFalse(ok)
 
@@ -110,7 +110,7 @@ class LedgerGateTests(unittest.TestCase):
         self.assertTrue(ok)
 
     def test_doc_only_does_not_require_record(self):
-        self.write("docs/meeting-notes.md", "notes\n")
+        self.write("docs/notes/meeting-notes.md", "notes\n")
         ok, message = self.check(self.commit("docs only"))
         self.assertTrue(ok)
         self.assertIn("SKIP", message)
@@ -122,7 +122,7 @@ class LedgerGateTests(unittest.TestCase):
 
     def test_new_base_changes_do_not_make_docs_only_pr_material(self):
         execute(self.repo, "switch", "-qc", "topic")
-        self.write("docs/meeting-notes.md", "a docs change\n")
+        self.write("docs/notes/meeting-notes.md", "a docs change\n")
         topic = self.commit("docs on branch")
         execute(self.repo, "switch", "-q", "main")
         self.write("src/example.ts", "export const x = 2;\n")
@@ -215,6 +215,21 @@ class LedgerGateTests(unittest.TestCase):
         self.write("docs/releases/new-release.md", "Different release criteria\n")
         ok, message = self.check(self.commit("change release evidence"))
         self.assertFalse(ok, message)
+
+    def test_unknown_markdown_contract_defaults_to_material(self):
+        self.write("docs/new-security-contract.md", "new AAL2 invariant\n")
+        ok, message = self.check(self.commit("add a new security contract"))
+        self.assertFalse(ok, message)
+
+    def test_existing_critical_root_docs_are_material(self):
+        for path in (
+            "docs/PLATFORM_RESOURCES.md",
+            "docs/VERCEL_SETUP.md",
+            "docs/BRAND_TOKENS.md",
+            "docs/REFERENCES.md",
+        ):
+            with self.subTest(path=path):
+                self.assertTrue(validator.is_material(path), path)
 
     def test_unknown_extension_is_material(self):
         self.write("runtime.mycustom", "changed\n")

@@ -35,6 +35,8 @@ MATERIAL_DOCUMENTS = {
 MATERIAL_DOC_PREFIXES = ("docs/quality/", "docs/operations/", "docs/adr/",
                          "docs/homologacao/", "docs/knowledge/",
                          "docs/superpowers/", "docs/releases/", "docs/legacy/")
+# Only expressly non-normative notes are exempt. Unknown documents fail closed.
+NONMATERIAL_DOC_PREFIXES = ("docs/notes/",)
 
 
 def is_material(path: str) -> bool:
@@ -43,7 +45,7 @@ def is_material(path: str) -> bool:
     if path in MATERIAL_DOCUMENTS or path.startswith(MATERIAL_DOC_PREFIXES):
         return True
     if path.startswith("docs/") and path.endswith(".md"):
-        return False
+        return not path.startswith(NONMATERIAL_DOC_PREFIXES)
     if path.endswith(".md") and "/" not in path:
         return True
     # Other files, including build/CI, fixtures, scripts and unknown paths,
