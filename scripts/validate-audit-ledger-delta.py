@@ -33,7 +33,8 @@ MATERIAL_DOCUMENTS = {
     "docs/PROJECT_AGENT_MEMORY.md", "docs/CREDENTIALS-ROTATION-BEFORE-PRODUCTION.md",
 }
 MATERIAL_DOC_PREFIXES = ("docs/quality/", "docs/operations/", "docs/adr/",
-                         "docs/homologacao/", "docs/knowledge/")
+                         "docs/homologacao/", "docs/knowledge/",
+                         "docs/superpowers/", "docs/releases/", "docs/legacy/")
 
 
 def is_material(path: str) -> bool:
@@ -44,7 +45,7 @@ def is_material(path: str) -> bool:
     if path.startswith("docs/") and path.endswith(".md"):
         return False
     if path.endswith(".md") and "/" not in path:
-        return False
+        return True
     # Other files, including build/CI, fixtures, scripts and unknown paths,
     # need an explicit audit delta before merging.
     return True
@@ -88,13 +89,8 @@ def evaluate(root: Path, base_sha: str, head_sha: str) -> tuple[bool, str]:
     # commits subsequently merged into the protected branch.
     common_base = git(root, "merge-base", base, head).decode("ascii").strip()
     paths = changed_paths(root, common_base, head)
-    critical = [item for item in paths if is_material(item)]
-    if not critical:
-        return True, "SKIP: no material change in the compared commits"
-    if LEDGER not in paths:
-        return False, (f"material paths changed ({len(critical)}) without an updated "
-                       f"{LEDGER}; include an audit delta and evidence")
-
+    # Ledger integrity is mandatory even for documentation-only changes.
+    # No missing ledger or rewritten history can be silently treated as SKIP.
     try:
         before = commit_file(root, common_base, LEDGER)
         after = commit_file(root, head, LEDGER)
@@ -102,6 +98,13 @@ def evaluate(root: Path, base_sha: str, head_sha: str) -> tuple[bool, str]:
         return False, f"required audit ledger is unreadable: {error}"
     if not after.startswith(before):
         return False, "audit ledger must preserve its previous history (append only)"
+    critical = [item for item in paths if is_material(item)]
+    if not critical:
+        return True, "SKIP: no material change in the compared commits"
+    if LEDGER not in paths:
+        return False, (f"material paths changed ({len(critical)}) without an updated "
+                       f"{LEDGER}; include an audit delta and evidence")
+
     added = after[len(before):]
     if added.count(BEGIN) != 1 or added.count(END) != 1:
         return False, "append one AUDIT_DELTA_V1 evidence record to the ledger"

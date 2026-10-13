@@ -186,6 +186,36 @@ class LedgerGateTests(unittest.TestCase):
         ok, _ = self.check(self.commit("delete ledger"))
         self.assertFalse(ok)
 
+    def test_ledger_only_deletion_fails_closed(self):
+        (self.repo / validator.LEDGER).unlink()
+        ok, message = self.check(self.commit("delete only audit ledger"))
+        self.assertFalse(ok, message)
+
+    def test_ledger_history_rewrite_without_material_fails(self):
+        self.write(validator.LEDGER, "forged historical audit result\n")
+        ok, message = self.check(self.commit("forge old ledger without product change"))
+        self.assertFalse(ok, message)
+
+    def test_superpowers_spec_change_is_material(self):
+        self.write("docs/superpowers/specs/new-security-design.md", "change auth requirements\n")
+        ok, message = self.check(self.commit("change security design"))
+        self.assertFalse(ok, message)
+
+    def test_superpowers_plan_change_is_material(self):
+        self.write("docs/superpowers/plans/new-clinical-plan.md", "change clinical acceptance plan\n")
+        ok, message = self.check(self.commit("change clinical plan"))
+        self.assertFalse(ok, message)
+
+    def test_project_readme_business_rules_are_material(self):
+        self.write("README.md", "Approved cancellation policy changed.\n")
+        ok, message = self.check(self.commit("change business rules"))
+        self.assertFalse(ok, message)
+
+    def test_release_and_lineage_evidence_is_material(self):
+        self.write("docs/releases/new-release.md", "Different release criteria\n")
+        ok, message = self.check(self.commit("change release evidence"))
+        self.assertFalse(ok, message)
+
     def test_unknown_extension_is_material(self):
         self.write("runtime.mycustom", "changed\n")
         ok, _ = self.check(self.commit("unknown runtime"))
