@@ -1,3 +1,8 @@
+<!-- AUDIT_UI_EVIDENCE_INTEGRITY_V2 -->
+## Auditoria Extrema V5: validacao E2E real e remediacao ate APTO
+A auditoria extrema/completa/V5 de sistema com UI obriga o proprio agente a testar integralmente as jornadas e casos reais pela interface grafica, registrar midia e trace verificaveis (SHA-256 dos bytes), realizar RED/GREEN, corrigi-los, reauditar por segundo agente independente e repetir no release pos-deploy. API, shell, banco, mocks, screenshot isolado e somente headless sao auxiliares, nao prova de UI. O veredito so e APTO quando scripts/certify-audit-manifest.py com --evidence-root comprovar SHA/release/ambiente e toda a cobertura. Enquanto NAO_APTO, tarefa RUNNING com next_action e retomada, sem abandono em PR, diagnostico, limite de turno ou erro recuperavel. BLOCKED_EXTERNAL somente comprovado apos alternativas, nunca sucesso. Preservar MFA, sessoes, RBAC, leases e autorizacoes irreversiveis.
+<!-- /AUDIT_UI_EVIDENCE_INTEGRITY_V2 -->
+
 <!-- REMOTE_ACCESS_EXHAUSTION_GATE_V1 -->
 ## Regra obrigatoria: esgotamento de todos os acessos remotos autorizados
 Em `Retome`, `Continue`, `Prossiga`, `Siga` e tarefas em hosts, **uma falha de ferramenta, conexao, SSH, MCP, RDC, VPN ou login nao autoriza declarar bloqueio**.
