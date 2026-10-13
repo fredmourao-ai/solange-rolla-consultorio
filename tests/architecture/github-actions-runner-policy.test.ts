@@ -38,7 +38,8 @@ function parsedWorkflow(content: string): Record<string, unknown> | undefined {
 function isSolangeRunner(value: unknown): boolean {
   return (
     Array.isArray(value) &&
-    value.length === runnerLabels.length &&
+    (value.length === runnerLabels.length ||
+      (value.length === runnerLabels.length + 1 && value[runnerLabels.length] === 'solange-staging-host')) &&
     runnerLabels.every((label, index) => value[index] === label)
   )
 }
@@ -288,6 +289,18 @@ describe('GitHub Actions runner policy', () => {
   it('rejects same-repo guards nested inside index expressions', () => {
     const bypass = `fromJSON('{"false":true,"true":true}')[true && ${sameRepoGuard} && false]`
     expect(conditionRequiresSameRepoOnPullRequest(bypass)).toBe(false)
+  })
+
+  it('also enforces the PR trust boundary for jobs on the dedicated staging runner', () => {
+    const workflow = [
+      'on: pull_request_target',
+      'jobs:',
+      '  exposed:',
+      `    runs-on: [${[...runnerLabels, 'solange-staging-host'].join(', ')}]`,
+    ].join('\n')
+    const [job] = runnerJobs(workflow)
+    expect(job?.name).toBe('exposed')
+    expect(conditionRequiresSameRepoOnEvent(job?.condition ?? '', 'pull_request_target')).toBe(false)
   })
 
   it('recognizes inline and quoted pull-request trigger syntax', () => {
