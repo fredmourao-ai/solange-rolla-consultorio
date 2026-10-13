@@ -7,11 +7,10 @@ NETWORK=${SOLANGE_DB_NETWORK:-supabase_network_solange-client-demo}
 TS=$(date -u +%Y%m%dT%H%M%SZ)
 FULL="$DEST/solange-homologacao-$TS.dump"; APP="$DEST/solange-homologacao-app-auth-$TS.dump"
 FULLTMP="$FULL.partial"; APPTMP="$APP.partial"
-PW=$(docker inspect "$SOURCE_CONTAINER" --format '{{range .Config.Env}}{{println .}}{{end}}' | sed -n 's/^POSTGRES_PASSWORD=//p' | head -1)
-[ -n "$PW" ] || { echo 'backup_failed: database credential unavailable' >&2; exit 1; }
+[ "$(docker inspect "$SOURCE_CONTAINER" --format '{{.State.Running}}' 2>/dev/null || true)" = true ] || { echo "backup_failed: db_not_running" >&2; exit 1; }
 trap 'rm -f "$FULLTMP" "$APPTMP"' EXIT
-docker run --rm --network "$NETWORK" -e PGPASSWORD="$PW" -v "$DEST:/backup" postgres:15-alpine pg_dump -h "$SOURCE_CONTAINER" -U postgres -d postgres -Fc -f "/backup/$(basename "$FULLTMP")"
-docker run --rm --network "$NETWORK" -e PGPASSWORD="$PW" -v "$DEST:/backup" postgres:15-alpine pg_dump -h "$SOURCE_CONTAINER" -U postgres -d postgres -Fc -n public -n clinical -n auth -f "/backup/$(basename "$APPTMP")"
+docker run --rm --user 0:0 --network "container:$SOURCE_CONTAINER" -v "$DEST:/backup" --entrypoint pg_dump postgres:15-alpine -h 127.0.0.1 -U postgres -d postgres -Fc -f "/backup/$(basename "$FULLTMP")"
+docker run --rm --user 0:0 --network "container:$SOURCE_CONTAINER" -v "$DEST:/backup" --entrypoint pg_dump postgres:15-alpine -h 127.0.0.1 -U postgres -d postgres -Fc -n public -n clinical -n auth -f "/backup/$(basename "$APPTMP")"
 docker run --rm -v "$DEST:/backup" alpine sh -lc "chown 1001:1001 '/backup/$(basename "$FULLTMP")' '/backup/$(basename "$APPTMP")'; chmod 600 '/backup/$(basename "$FULLTMP")' '/backup/$(basename "$APPTMP")'"
 [ -s "$FULLTMP" ] && [ -s "$APPTMP" ] || { echo 'backup_failed: empty dump' >&2; exit 1; }
 mv "$FULLTMP" "$FULL"; mv "$APPTMP" "$APP"
