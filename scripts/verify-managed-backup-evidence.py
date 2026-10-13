@@ -65,8 +65,19 @@ def fetch_backups(staging_ref: str, access_token: str, *, opener=urlopen) -> dic
         raise AuditFailure("provider_query_failed_" + type(exc).__name__) from None
     if len(payload) > MAX_RESPONSE:
         raise AuditFailure("provider_response_oversized")
+    # Provider JSON with repeated keys is ambiguous. In particular,
+    # duplicated pitr_enabled/backups may downgrade a stale PITR to a snapshot.
+    # Reject duplicates at every depth before trusting any backup metadata.
+    def unique_pairs(pairs):
+        result = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError("duplicate provider metadata property")
+            result[key] = value
+        return result
+
     try:
-        decoded = json.loads(payload)
+        decoded = json.loads(payload, object_pairs_hook=unique_pairs)
     except (UnicodeDecodeError, ValueError):
         raise AuditFailure("provider_response_invalid_json") from None
     if not isinstance(decoded, dict):

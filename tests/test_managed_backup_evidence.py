@@ -105,6 +105,27 @@ class ManagedEvidenceTests(unittest.TestCase):
         p["physical_backup_data"]={"latest_physical_backup_date_unix":"not-a-number"}
         with self.assertRaises(checker.AuditFailure):
             checker.verify_backups(p,NOW)
+    def test_management_api_rejects_duplicate_identity_or_backup_keys(self):
+        class Response:
+            def __init__(self,data): self.data=data.encode("utf-8")
+            def __enter__(self): return self
+            def __exit__(self,*args): return False
+            def read(self,size=-1): return self.data
+
+        recent=json.dumps([backup()])
+        fresh=int((NOW-dt.timedelta(hours=2)).timestamp())
+        stale=int((NOW-dt.timedelta(days=3)).timestamp())
+        payloads=[
+            '{"pitr_enabled":true,"pitr_enabled":false,"backups":'+recent+'}',
+            '{"pitr_enabled":false,"backups":[],"backups":'+recent+'}',
+            '{"pitr_enabled":true,"backups":[],"physical_backup_data":{"latest_physical_backup_date_unix":'
+            +str(stale)+',"latest_physical_backup_date_unix":'+str(fresh)+'}}',
+        ]
+        for case,body in enumerate(payloads):
+            with self.subTest(case=case):
+                with self.assertRaises(checker.AuditFailure):
+                    checker.fetch_backups(REF,TOKEN,opener=lambda request,timeout=0:Response(body))
+
     def test_api_errors_are_sanitized(self):
         class Rejected:
             def __call__(self,request,timeout=0):
