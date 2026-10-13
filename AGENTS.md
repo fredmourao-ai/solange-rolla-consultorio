@@ -1,3 +1,8 @@
+<!-- AUDIT_UI_EVIDENCE_INTEGRITY_V2 -->
+## Gate de aceite da Auditoria Extrema V5
+Todo agente, incluido subagente e revisor, deve seguir docs/quality/AUDIT_UI_EVIDENCE_INTEGRITY_V2.md: auditoria completa pelas telas de UI reais com navegador grafico autorizado, cliques/formularios, casos e estados, provas em disco e hashes confirmados, regressao RED/GREEN, reauditoria independente e E2E pos-deploy do mesmo SHA/release. Nenhuma API, screenshot, job, PR ou resultado textual substitui o E2E. Se nao APTO, manter tarefa RUNNING no controlador com next_action e checkpoint; interrupcao de stream/timeout nao autoriza abandonar. CONCLUIDO somente apos veredito real AUDIT_VERDICT=APTO do certifier, ou registrar bloqueio externo genuino sem alegar sucesso. Respeitar MFA, permissao e aprovacoes para efeitos irreversiveis.
+<!-- /AUDIT_UI_EVIDENCE_INTEGRITY_V2 -->
+
 <!-- REMOTE_ACCESS_EXHAUSTION_GATE_V1 -->
 ## Regra obrigatoria: esgotamento de todos os acessos remotos autorizados
 Em `Retome`, `Continue`, `Prossiga`, `Siga` e tarefas em hosts, **uma falha de ferramenta, conexao, SSH, MCP, RDC, VPN ou login nao autoriza declarar bloqueio**.
