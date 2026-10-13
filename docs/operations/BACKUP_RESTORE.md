@@ -34,3 +34,13 @@ Na auditoria independente de 15/09/2026, o último backup observado em `/home/ub
 ## Storage e chaves externas
 
 O dump PostgreSQL não substitui backup de objetos privados nem das chaves externas. Antes de produção, validar backup/retention do Storage privado no provedor e manter versões das chaves de criptografia fora do banco/backup. Logs e evidências não devem conter PII, tokens, CPF, respostas clínicas ou conteúdo clínico.
+
+## Recuperação V5 do backup de homologação — 2026-10-13
+
+O PostgreSQL local da demonstração foi recuperado de seu volume preservado após snapshot físico íntegro, ensaio isolado de crash recovery e validação dos schemas públicos, clínicos e de autenticação. O serviço deve permanecer somente na rede Docker privativa, sem publicação de porta do banco no host.
+
+A rotina de backup usa o cliente `postgres:15-alpine` dentro do namespace de rede do contêiner PostgreSQL, acessando exclusivamente o loopback local. Não extrai `POSTGRES_PASSWORD` do Docker nem transmite a senha em argumentos CLI. Os arquivos temporários são promovidos somente após dois dumps não vazios, e checksum, permissões restritivas e `LAST_SUCCESS` continuam obrigatórios.
+
+Para impedir que a limpeza frequente `docker image prune -af` elimine o cliente necessário ao backup diário, o instalador mantém um contêiner **criado e nunca iniciado** chamado `solange-backup-pg15-client-image-anchor`. Ele serve apenas como referência à imagem, sem porta, rede ou processo; sua imagem é conferida antes de reutilização. Não deve ser confundido com um serviço em falha, nem removido pelos jobs genéricos de limpeza.
+
+O diagnóstico exige tanto o health check `/check-backup-health.sh` quanto uma exportação real, dois SHA-256 válidos, `pg_restore --list` e ensaio periódico de restauração em um PostgreSQL isolado. Nunca reinicializar o volume de produção/homologação como teste.
