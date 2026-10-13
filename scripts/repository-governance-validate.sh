@@ -3,6 +3,18 @@ set -Eeuo pipefail
 
 root="$(git rev-parse --show-toplevel)"
 cd "$root"
+
+# Fail before expensive CI if material changes lack a fresh audit delta.
+# The GitHub event supplies commit IDs. Local/manual runs self-test this
+# freshness gate but do not claim certification of an unselected release.
+PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests/test_validate_audit_ledger_delta.py
+if [[ "${GITHUB_EVENT_NAME:-}" == "pull_request" || "${GITHUB_EVENT_NAME:-}" == "push" ]]; then
+  : "${AUDIT_LEDGER_BASE_SHA:?AUDIT_LEDGER_BASE_SHA must be supplied by the workflow}"
+  : "${AUDIT_LEDGER_HEAD_SHA:?AUDIT_LEDGER_HEAD_SHA must be supplied by the workflow}"
+  python3 scripts/validate-audit-ledger-delta.py --base "$AUDIT_LEDGER_BASE_SHA" --head "$AUDIT_LEDGER_HEAD_SHA"
+else
+  echo 'AUDIT_LEDGER_DELTA=SKIP: non-PR/push run; not a certification result'
+fi
 bash scripts/absolute-audit-governance-validate.sh "${1:-manual}"
 bash scripts/agent-continuity-validate.sh
 staged_index="${SOLANGE_GIT_INDEX_FILE-}"
