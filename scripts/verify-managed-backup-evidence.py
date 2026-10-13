@@ -111,10 +111,8 @@ def verify_backups(payload: object, now: dt.datetime,
         # Completed physical snapshots and PITR are counted as DB backup only,
         # never as private object/storage recovery.
         completed.append(_timestamp(backup.get("inserted_at")))
-    if completed:
-        age = _age(max(completed), now, max_age_seconds)
-        return {"ok": True, "completed_count": len(completed),
-                "age_seconds": age, "source": "snapshot"}
+    # With PITR enabled, daily snapshots are historical and must never mask
+    # stale/missing physical-backup metadata or falsely fail a fresh PITR source.
     if payload.get("pitr_enabled") is True:
         physical = payload.get("physical_backup_data")
         if not isinstance(physical, dict):
@@ -126,6 +124,10 @@ def verify_backups(payload: object, now: dt.datetime,
         age = _age(stamp, now, max_age_seconds)
         return {"ok": True, "completed_count": 0, "age_seconds": age,
                 "source": "pitr"}
+    if completed:
+        age = _age(max(completed), now, max_age_seconds)
+        return {"ok": True, "completed_count": len(completed),
+                "age_seconds": age, "source": "snapshot"}
     raise AuditFailure("no_completed_managed_backup")
 
 
