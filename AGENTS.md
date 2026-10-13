@@ -1,3 +1,9 @@
+<!-- AUDIT_UI_EVIDENCE_INTEGRITY_V2 -->
+## Auditoria extrema V5 obrigatoriamente pela UI real e ate APTO
+
+Use `docs/quality/AUDIT_UI_EVIDENCE_INTEGRITY_V2.md`: abrir UI grafica real do consultorio, percorrer cada jornada e classe de caso, comprovar clicks/edicoes, recarregar/persistir e reconciliar de forma independente. Capturar traces/midia reais e verificar SHA-256 em disco; corrigir RED/GREEN/regressao, reauditar por outro agente/sessao e executar UI pos-deploy. API, CLI, SQL, headless-only e screenshot isolado nao substituem testes. Manter checkpoint `RUNNING` com `next_action` ate `AUDIT_VERDICT=APTO` do certifier e teste terminal do controller; nunca abandonar devido a PR, demora, erro ou limite de turno. Acoes irreversiveis exigem autorizacao, preservar dados sensiveis e sessoes.
+<!-- /AUDIT_UI_EVIDENCE_INTEGRITY_V2 -->
+
 <!-- REMOTE_ACCESS_EXHAUSTION_GATE_V1 -->
 ## Regra obrigatoria: esgotamento de todos os acessos remotos autorizados
 Em `Retome`, `Continue`, `Prossiga`, `Siga` e tarefas em hosts, **uma falha de ferramenta, conexao, SSH, MCP, RDC, VPN ou login nao autoriza declarar bloqueio**.
