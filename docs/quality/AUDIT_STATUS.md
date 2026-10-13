@@ -78,3 +78,14 @@ Esta entrada cobre o código-fonte no SHA `2fe4699...` quanto aos checks locais 
 - Pendencias: atualizar evidencias apos a execucao dos checks do PR e de main; nenhum destes testes certifica seguranca clinica, staging publico, workers, emissao NFS-e, restore de Storage, rollback ou paridade de release; aplicar integralmente o protocolo V5 antes de certificar producao.
 - Estado: NAO_APTO
 <!-- /AUDIT_DELTA_V1 -->
+
+<!-- AUDIT_DELTA_V1 -->
+## 2026-10-13 — Sincronização canônica da política UI V5 (#290)
+
+- Base SHA: 16b8713f95197bad39782ff3929f965b7146c60f
+- Impacto: somente repositório ativo; sincronizados 11 blobs globais SHA-idênticos ao manifesto canônico, marcadores de UI no AGENTS sem substituir instruções clínicas e gate executável de integridade de evidências reais na certificação.
+- Testes: RED reproduzido nos workflows 38419673048 e 38419672972 (GLOBAL_MANIFEST_LOCAL_PARITY FAIL, blobs divergentes e falta de markers); testes de certifier, UI-evidence, governança e CI do novo SHA requeridos, sem alegar conclusão antes de resultado.
+- Evidencias: issue #290, manifesto global versão 2026-10-13, pipeline canônico main, SHA dos blobs globais e checks do PR; corrigir falha de CI sem bypass.
+- Pendencias: CI no commit exato, revisão independente, merge com proteções, validação pós-merge, provas visuais das jornadas stateful no mesmo release publicado; todo o projeto permanece NAO_APTO.
+- Estado: NAO_APTO
+<!-- /AUDIT_DELTA_V1 -->
