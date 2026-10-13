@@ -75,6 +75,16 @@ class LedgerGateTests(unittest.TestCase):
         self.assertIn('--base "$AUDIT_LEDGER_BASE_SHA" --head "$AUDIT_LEDGER_HEAD_SHA"', source)
         self.assertIn("bash scripts/absolute-audit-governance-validate.sh", source)
 
+    def test_vm_access_runbook_change_is_material(self):
+        self.write("AGENTS-VM-ACCESS.md", "new host requirements\n")
+        ok, _ = self.check(self.commit("change authorized access contract"))
+        self.assertFalse(ok)
+
+    def test_access_control_matrix_change_is_material(self):
+        self.write("docs/ACCESS_CONTROL_MATRIX.md", "new role permissions\n")
+        ok, _ = self.check(self.commit("change access control matrix"))
+        self.assertFalse(ok)
+
     def test_schema_migration_is_material(self):
         self.write("supabase/migrations/20261013000000_change.sql", "create table t(id int);\n")
         ok, _ = self.check(self.commit("migration"))
