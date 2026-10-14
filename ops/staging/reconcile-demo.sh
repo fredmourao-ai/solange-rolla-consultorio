@@ -45,17 +45,29 @@ reconcile_url() {
     log 'current tunnel URL health unavailable; marker unchanged'
     return 0
   fi
-  printf '%s\n' "$url" > "$URL_FILE"
   current=$(sed -n 's/^APP_URL=//p' "$APP/.env.production.local" | tail -1)
-  [ "$current" = "$url" ] && return 0
+  published=$(cat "$URL_FILE" 2>/dev/null || true)
+  [ "$current" = "$url" ] && [ "$published" = "$url" ] && return 0
 
-  log "tunnel URL changed; updating APP_URL"
-  if grep -q '^APP_URL=' "$APP/.env.production.local"; then
-    sed -i -E "s#^APP_URL=.*#APP_URL=$url#" "$APP/.env.production.local"
-  else
-    printf 'APP_URL=%s\n' "$url" >> "$APP/.env.production.local"
+  if [ "$current" != "$url" ]; then
+    log "tunnel URL changed; updating APP_URL"
+    if grep -q '^APP_URL=' "$APP/.env.production.local"; then
+      sed -i -E "s#^APP_URL=.*#APP_URL=$url#" "$APP/.env.production.local"
+    else
+      printf 'APP_URL=%s\n' "$url" >> "$APP/.env.production.local"
+    fi
   fi
-  docker restart solange-client-demo-web >/dev/null
+  # A failed restart must not publish a new marker. Keeping the old marker
+  # also forces a retry next cycle when APP_URL was already updated.
+  if ! docker restart solange-client-demo-web >/dev/null; then
+    log 'web restart failed; tunnel URL marker unchanged'
+    return 0
+  fi
+  if ! wget -q -T 8 -O /dev/null "$url/api/health"; then
+    log 'post-restart public health unavailable; tunnel URL marker unchanged'
+    return 0
+  fi
+  printf '%s\n' "$url" > "$URL_FILE"
   log "web restarted for $url"
 }
 

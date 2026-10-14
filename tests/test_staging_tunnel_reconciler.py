@@ -48,6 +48,7 @@ logs)
   ;;
 restart)
   printf 'restart:%s\\n' "$*" >> "$MOCK_DOCKER_CALLS"
+  [ "${MOCK_RESTART_OK:-1}" = 1 ] || exit 1
   ;;
 *)
   exit 90
@@ -80,6 +81,7 @@ printf '%s\\n' "$*" >> "$MOCK_WGET_CALLS"
             MOCK_DOCKER_CALLS=str(self.docker_calls),
             MOCK_WGET_CALLS=str(self.wget_calls),
             MOCK_WGET_OK="0",
+            MOCK_RESTART_OK="1",
             TEST_APP_DIR=str(self.app),
             TEST_MARKER=str(self.marker),
             TEST_FUNCTIONS=str(self.root / "functions.sh"),
@@ -130,6 +132,22 @@ reconcile_url
         self.assertIn("restart:restart solange-client-demo-web", self.docker_calls.read_text())
         self.assertIn(NEW + "/api/health", self.wget_calls.read_text())
 
+
+
+    def test_restart_failure_keeps_prior_marker_for_retry(self):
+        body = """
+APP="$TEST_APP_DIR"
+URL_FILE="$TEST_MARKER"
+app_valid() { return 0; }
+current_tunnel_url() { printf '%s\\n' "$MOCK_RECENT_URL"; }
+reconcile_url
+"""
+        self.run_shell(body, MOCK_WGET_OK="1", MOCK_RESTART_OK="0")
+        self.assertEqual(self.marker.read_text().strip(), OLD)
+        self.assertEqual((self.app / ".env.production.local").read_text().strip(), "APP_URL=" + NEW)
+        self.assertIn("restart:restart solange-client-demo-web", self.docker_calls.read_text())
+        self.run_shell(body, MOCK_WGET_OK="1", MOCK_RESTART_OK="1")
+        self.assertEqual(self.marker.read_text().strip(), NEW)
 
 if __name__ == "__main__":
     unittest.main()

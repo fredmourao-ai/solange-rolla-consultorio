@@ -22,9 +22,12 @@ describe('staging demo reconciler', () => {
 
   it('verifies public HTTPS health before publishing a new quick-tunnel URL', () => {
     const guard = script.indexOf('if ! wget -q -T 8 -O /dev/null "$url/api/health"')
+    const restart = script.indexOf('if ! docker restart solange-client-demo-web >/dev/null; then')
     const publish = script.indexOf('> "$URL_FILE"')
     expect(guard).toBeGreaterThan(0)
-    expect(publish).toBeGreaterThan(guard)
-    expect(script).toContain('marker unchanged')
+    expect(restart).toBeGreaterThan(guard)
+    expect(publish).toBeGreaterThan(restart)
+    expect(script).toContain('published=$(cat "$URL_FILE" 2>/dev/null || true)')
+    expect(script).toContain('web restart failed; tunnel URL marker unchanged')
   })
 })
