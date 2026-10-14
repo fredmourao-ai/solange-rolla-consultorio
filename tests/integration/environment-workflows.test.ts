@@ -193,12 +193,22 @@ describe('environment workflow contracts', () => {
     expect(workflow).toContain("'--workers=1'")
   })
 
-  it('keeps staging backups host-local and independent of Fred-Win', () => {
+  it('preflights the actual managed staging database before migrations without legacy Docker backup', () => {
     const workflow = readFileSync(stagingWorkflow, 'utf8')
     const backup = readFileSync(backupScript, 'utf8')
     expect(backup).toContain('DEST=${SOLANGE_BACKUP_DEST:-/home/ubuntu/solange-client-demo/backups}')
     expect(backup).not.toContain('/mnt/fredwin-backup')
-    expect(workflow).toContain('SOLANGE_BACKUP_DEST="$ROOT/backups" scripts/backup-homologation.sh')
+    expect(backup).toContain('backup_failed: source_identity_mismatch')
+    const preflight = workflow.indexOf('Verify managed backup before staging database changes')
+    const migration = workflow.indexOf('Apply forward migrations')
+    const seed = workflow.indexOf('Seed synthetic staging fixtures')
+    const deploy = workflow.indexOf('Deploy exact SHA to homologation')
+    expect(preflight).toBeGreaterThan(0)
+    expect(preflight).toBeLessThan(migration)
+    expect(migration).toBeLessThan(seed)
+    expect(seed).toBeLessThan(deploy)
+    expect(workflow).toContain('python3 scripts/verify-managed-backup-evidence.py --max-age-seconds 90000')
+    expect(workflow).not.toContain('SOLANGE_BACKUP_DEST="$ROOT/backups" scripts/backup-homologation.sh')
     expect(workflow).not.toContain('/home/ubuntu/.local/bin/solange-backup.sh')
   })
 
