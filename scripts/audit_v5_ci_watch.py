@@ -159,7 +159,7 @@ def render_status(records: list[tuple[int, str, str, str]], retry_note: str) -> 
 
 def run(api: GitHub) -> dict:
     records: list[tuple[int, str, str, str]] = []
-    retry_target: tuple[int, str, Check] | None = None
+    retry_candidates: list[tuple[int, str, Check]] = []
     for pr in PRS:
         payload = api.get(f"/repos/{REPOSITORY}/pulls/{pr}")
         if (payload.get("head") or {}).get("repo", {}).get("full_name") != REPOSITORY:
@@ -175,39 +175,48 @@ def run(api: GitHub) -> dict:
         status = classify(checks)
         complete = f"{sum(checks.get(n) is not None and checks[n].conclusion == 'success' for n in REQUIRED)}/{len(REQUIRED)}"
         records.append((pr, sha, complete, status))
-        if retry_target is None and status == "CHECKS_CANCELLED_RETRY_ELIGIBLE":
+        if status == "CHECKS_CANCELLED_RETRY_ELIGIBLE":
             for n in REQUIRED:
                 c = checks.get(n)
                 if c and c.conclusion == "cancelled" and c.status == "completed" and c.job_id:
-                    retry_target = (pr, sha, c)
-                    break
+                    retry_candidates.append((pr, sha, c))
 
     comments = issue_comments(api)
+    # A previously reserved cancellation must not starve other cancelled
+    # required jobs. Scan in deterministic PR/check order, choose one *new*
+    # reservation per cycle, and never repeat an already reserved attempt.
+    retry_target = next((
+        candidate for candidate in retry_candidates
+        if not any(
+            github_bot_comment(comment) and
+            retry_marker(candidate[0], candidate[1], candidate[2].name) in str(comment.get("body") or "")
+            for comment in comments
+        )
+    ), None)
     retry_note = "nenhuma"
     if retry_target:
         pr, sha, check = retry_target
         marker = retry_marker(pr, sha, check.name)
-        if any(github_bot_comment(c) and marker in str(c.get("body") or "") for c in comments):
-            retry_note = f"#{pr}/{check.name}: já tentada neste SHA; sem repetição automática"
+        # Reservation precedes the external write for at-most-one retry per
+        # SHA/check across scheduled runs, including partial failures.
+        reservation = api.post(f"/repos/{REPOSITORY}/issues/{ISSUE}/comments", {
+            "body": marker + "\nReexecução de check cancelado reservada. "
+            "Uma tentativa somente; nenhum merge, deploy ou mudança de produção."
+        })
+        comment_id = reservation.get("id")
+        if not isinstance(comment_id, int):
+            raise ApiError("retry_reservation_not_persisted")
+        try:
+            api.post(f"/repos/{REPOSITORY}/actions/jobs/{check.job_id}/rerun", {})
+        except ApiError:
+            retry_note = f"#{pr}/{check.name}: rerun recusado (revisão manual)"
         else:
-            # Reservation precedes the external write for at-most-one retry per
-            # SHA/check across scheduled runs, including partial failures.
-            reservation = api.post(f"/repos/{REPOSITORY}/issues/{ISSUE}/comments", {
-                "body": marker + "\nReexecução de check cancelado reservada. "
-                "Uma tentativa somente; nenhum merge, deploy ou mudança de produção."
-            })
-            comment_id = reservation.get("id")
-            if not isinstance(comment_id, int):
-                raise ApiError("retry_reservation_not_persisted")
-            try:
-                api.post(f"/repos/{REPOSITORY}/actions/jobs/{check.job_id}/rerun", {})
-            except ApiError:
-                retry_note = f"#{pr}/{check.name}: rerun recusado (revisão manual)"
-            else:
-                retry_note = f"#{pr}/{check.name}: rerun solicitado uma vez"
-            api.patch(f"/repos/{REPOSITORY}/issues/comments/{comment_id}", {
-                "body": marker + "\n" + retry_note + ". Sem merge/deploy ou certificação V5."
-            })
+            retry_note = f"#{pr}/{check.name}: rerun solicitado uma vez"
+        api.patch(f"/repos/{REPOSITORY}/issues/comments/{comment_id}", {
+            "body": marker + "\n" + retry_note + ". Sem merge/deploy ou certificação V5."
+        })
+    elif retry_candidates:
+        retry_note = "todos os jobs cancelados deste escopo já possuem reserva; não repetir"
 
     body = render_status(records, retry_note)
     digest = hashlib.sha256(body.encode()).hexdigest()

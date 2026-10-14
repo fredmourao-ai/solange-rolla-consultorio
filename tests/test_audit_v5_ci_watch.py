@@ -74,10 +74,26 @@ class WatchTests(unittest.TestCase):
 
     def test_old_reservation_prevents_retry_loop(self):
         api = FakeApi(cancelled=True)
-        api.comments = [{'id':2, 'user':{'login':'github-actions[bot]'},
-                         'body':watch.retry_marker(296,SHA,'architecture')}]
+        api.comments = [{'id':i+2, 'user':{'login':'github-actions[bot]'},
+                         'body':watch.retry_marker(pr,SHA,'architecture')}
+                        for i,pr in enumerate(watch.PRS)]
         watch.run(api)
         self.assertFalse(any('/actions/jobs/' in path for path,_ in api.posts))
+
+    def test_reserved_first_cancelled_check_does_not_starve_second(self):
+        class TwoCancelled(FakeApi):
+            def get(self, path):
+                value = super().get(path)
+                if '/check-runs?' in path:
+                    value['check_runs'][1]['conclusion'] = 'cancelled'
+                return value
+
+        api = TwoCancelled(cancelled=True)
+        api.comments = [{'id': 10, 'user': {'login': 'github-actions[bot]'},
+                         'body': watch.retry_marker(296, SHA, 'architecture')}]
+        watch.run(api)
+        reruns = [path for path, _ in api.posts if '/actions/jobs/' in path]
+        self.assertEqual(reruns, [f'/repos/{watch.REPOSITORY}/actions/jobs/21/rerun'])
 
     def test_no_retry_on_failed_but_not_cancelled(self):
         self.assertEqual(watch.classify(watch.current_checks([row('e2e', conclusion='failure')])),
