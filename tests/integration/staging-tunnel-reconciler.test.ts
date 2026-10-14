@@ -29,19 +29,43 @@ const fakeRuntime = [
   '      esac ;;',
   '    logs)',
   '      if [ "$2" = "--since" ] && [ "$3" = "$TEST_STARTED" ]; then',
-  '        printf "%s\\n" "$TEST_CURRENT_LOG"',
+  '        if [ "$TEST_SINCE_EMPTY" != yes ]; then printf "%s\\n" "$TEST_CURRENT_LOG"; fi',
   '      else',
-  '        printf "%s\\n" "$TEST_HISTORIC_LOG"',
+  '        printf "%s\\n" "$TEST_TIMESTAMPED_LOG"',
   '      fi ;;',
   '    restart) printf "%s\\n" "$*" >> "$TEST_RESTART_LOG" ;;',
   '    *) return 1 ;;',
   '  esac',
   '}',
   'getent() { [ "$TEST_DNS_RESOLVES" = yes ]; }',
+  'wget() {',
+  '  [ "$TEST_HTTP_HEALTHY" = yes ] || return 1',
+  '  printf \'{"status":"ok","buildSha":"%s"}\' "$TEST_HEALTH_SHA"',
+  '}',
+  'RELEASE_SHA_FILE="$TEST_RELEASE_SHA_FILE"',
 ].join('\n')
 
-type Scenario = { running?: boolean; dns?: boolean; action?: 'current_tunnel_url' | 'reconcile_url' }
-function exercise({ running = true, dns = true, action = 'reconcile_url' }: Scenario = {}) {
+type Scenario = {
+  running?: boolean
+  dns?: boolean
+  emptySince?: boolean
+  publicHealthy?: boolean
+  publicShaMatches?: boolean
+  recentUrl?: boolean
+  action?: 'current_tunnel_url' | 'reconcile_url'
+}
+const expectedSha = 'a'.repeat(40)
+const wrongSha = 'b'.repeat(40)
+
+function exercise({
+  running = true,
+  dns = true,
+  emptySince = false,
+  publicHealthy = true,
+  publicShaMatches = true,
+  recentUrl = true,
+  action = 'reconcile_url',
+}: Scenario = {}) {
   const root = mkdtempSync(join(tmpdir(), 'solange-staging-tunnel-'))
   try {
     const app = join(root, 'app')
@@ -54,6 +78,8 @@ function exercise({ running = true, dns = true, action = 'reconcile_url' }: Scen
     writeFileSync(envPath, 'APP_URL=' + priorUrl + '\n')
     writeFileSync(urlPath, priorUrl + '\n')
     writeFileSync(restartPath, '')
+    const releaseShaPath = join(state, 'deployed-sha.txt')
+    writeFileSync(releaseShaPath, expectedSha + '\n')
 
     const result = spawnSync('sh', ['-c', functions + '\n' + fakeRuntime + '\n' + action], {
       encoding: 'utf8',
@@ -68,6 +94,15 @@ function exercise({ running = true, dns = true, action = 'reconcile_url' }: Scen
         TEST_STARTED: tunnelStarted,
         TEST_CURRENT_LOG: 'current startup ' + liveUrl,
         TEST_HISTORIC_LOG: 'old run ' + staleUrl,
+        TEST_TIMESTAMPED_LOG: [
+          '2026-10-08T09:00:00.000000000Z prior run ' + staleUrl,
+          '2026-10-09T10:00:35.700000000Z same-second prior ' + staleUrl,
+          ...(recentUrl ? ['2026-10-09T10:00:36.000000000Z fresh ' + liveUrl] : []),
+        ].join('\n'),
+        TEST_SINCE_EMPTY: emptySince ? 'yes' : 'no',
+        TEST_HTTP_HEALTHY: publicHealthy ? 'yes' : 'no',
+        TEST_HEALTH_SHA: publicShaMatches ? expectedSha : wrongSha,
+        TEST_RELEASE_SHA_FILE: releaseShaPath,
       },
     })
     if (result.error) throw result.error
@@ -93,6 +128,24 @@ describe('staging tunnel reconciler fails closed on expired Cloudflare URLs', ()
   it('does not publish an unresolved URL or restart the staging web container', () => {
     const result = exercise({ dns: false })
     expect(result.env).toBe('APP_URL=' + priorUrl + '\n')
+    expect(result.state).toBe(priorUrl + '\n')
+    expect(result.restarts).toBe('')
+  })
+  it('recovers from silent Docker --since log filtering without using old run URLs', () => {
+    const result = exercise({ emptySince: true })
+    expect(result.state).toBe(liveUrl + '\n')
+    expect(result.env).toBe('APP_URL=' + liveUrl + '\n')
+  })
+  it('does not read a prior quick-tunnel URL even in the same start second', () => {
+    expect(exercise({ action: 'current_tunnel_url', emptySince: true, recentUrl: false }).stdout.trim()).toBe('')
+  })
+  it('rejects a DNS-resolving but unreachable public health endpoint', () => {
+    const result = exercise({ publicHealthy: false })
+    expect(result.state).toBe(priorUrl + '\n')
+    expect(result.restarts).toBe('')
+  })
+  it('rejects a public health endpoint serving a different deployment SHA', () => {
+    const result = exercise({ publicShaMatches: false })
     expect(result.state).toBe(priorUrl + '\n')
     expect(result.restarts).toBe('')
   })

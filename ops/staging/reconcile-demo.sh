@@ -3,6 +3,7 @@ set -eu
 
 APP=/app
 URL_FILE=/state/current-url.txt
+RELEASE_SHA_FILE=/state/deployed-sha.txt
 WEB=solange-client-demo-web
 
 log() { printf '%s %s\n' "$(date -u +%FT%TZ)" "$*"; }
@@ -16,7 +17,21 @@ current_tunnel_url() {
   [ "$running" = true ] || return 0
   started=$(docker inspect -f '{{.State.StartedAt}}' solange-demo-tunnel 2>/dev/null || true)
   [ -n "$started" ] || return 0
-  docker logs --since "$started" solange-demo-tunnel 2>&1 | grep -Eo 'https://[a-z0-9-]+\.trycloudflare\.com' | tail -1 || true
+  # docker logs --since can silently return no rows even for post-start
+  # records on the deployed Docker daemon. Use bounded timestamped logs and
+  # fail closed on URLs belonging to any older process start (including one
+  # started within the same second). Never trust a URL from a previous run.
+  docker logs --timestamps --tail 3000 solange-demo-tunnel 2>&1 |
+    awk -v started="$started" '
+      function key(stamp, fractional) {
+        fractional = substr(stamp, 21)
+        sub(/[^0-9].*$/, "", fractional)
+        return substr(stamp, 1, 19) "." substr(fractional "000000000", 1, 9)
+      }
+      BEGIN { cutoff = key(started) }
+      $1 ~ /^20[0-9][0-9]-/ && key($1) >= cutoff { print }
+    ' |
+    grep -Eo 'https://[a-z0-9-]+\.trycloudflare\.com' | tail -1 || true
 }
 ensure_running() {
   for c in solange-demo-gateway solange-demo-tunnel; do
@@ -47,6 +62,28 @@ reconcile_url() {
     log 'tunnel DNS unavailable; URL reconcile deferred'
     return 0
   fi
+  # DNS alone is not proof of a live tunnel: Cloudflare can return 401/502,
+  # or another process may serve a stale/wrong release on the same hostname.
+  # Verify the public HTTPS health and exact deployed SHA before any mutation.
+  release_sha=$(cat "$RELEASE_SHA_FILE" 2>/dev/null || true)
+  if ! printf '%s\n' "$release_sha" | grep -Eq '^[0-9a-f]{40}$'; then
+    log 'release identity invalid; URL reconcile deferred'
+    return 0
+  fi
+  if ! health_json=$(wget -q -T 11 -O - "$url/api/health" 2>/dev/null); then
+    log 'tunnel public health unavailable; URL reconcile deferred'
+    return 0
+  fi
+  compact_health=$(printf '%s' "$health_json" | tr -d '[:space:]')
+  case "$compact_health" in
+    *'"status":"ok"'*) ;;
+    *) log 'tunnel public health not OK; URL reconcile deferred'; return 0 ;;
+  esac
+  case "$compact_health" in
+    *'"buildSha":"'"$release_sha"'"'*) ;;
+    *) log 'tunnel public health wrong release; URL reconcile deferred'; return 0 ;;
+  esac
+
   printf '%s\n' "$url" > "$URL_FILE"
   current=$(sed -n 's/^APP_URL=//p' "$APP/.env.production.local" | tail -1)
   [ "$current" = "$url" ] && return 0
