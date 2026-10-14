@@ -188,4 +188,33 @@ class ManagedEvidenceTests(unittest.TestCase):
         result=checker.verify_backups(p,NOW)
         self.assertEqual(result["source"],"pitr")
 
+    def test_promotion_requires_managed_backup_before_staging_mutations(self):
+        workflow = (Path(__file__).resolve().parents[1]/
+                    ".github"/"workflows"/"staging-promote.yml").read_text()
+        sections = [
+            "      - name: Validate serialized staging promotion",
+            "      - name: Verify managed backup before staging database changes",
+            "      - name: Apply forward migrations",
+            "      - name: Verify staging accounting RLS",
+            "      - name: Seed synthetic staging fixtures",
+            "      - name: Deploy exact SHA to homologation",
+        ]
+        locations = [workflow.index(section) for section in sections]
+        self.assertEqual(locations, sorted(locations))
+        gate = workflow[locations[1]:locations[2]]
+        for required in ("environment: staging", "SUPABASE_STAGING_PROJECT_REF",
+                         "SUPABASE_PRODUCTION_PROJECT_REF", "NEXT_PUBLIC_SUPABASE_URL",
+                         "SUPABASE_ACCESS_TOKEN",
+                         "python3 scripts/verify-managed-backup-evidence.py"):
+            source = workflow if required == "environment: staging" else gate
+            self.assertIn(required, source)
+
+    def test_managed_staging_never_dumps_unrelated_local_postgres(self):
+        workflow = (Path(__file__).resolve().parents[1]/
+                    ".github"/"workflows"/"staging-promote.yml").read_text()
+        deploy = workflow[workflow.index("      - name: Deploy exact SHA to homologation"):]
+        self.assertNotIn('SOLANGE_BACKUP_DEST="$ROOT/backups" scripts/backup-homologation.sh', deploy)
+        self.assertIn("SUPABASE_ACCESS_TOKEN:", deploy)
+        self.assertIn("python3 scripts/verify-managed-backup-evidence.py", deploy)
+
 if __name__=="__main__": unittest.main()
