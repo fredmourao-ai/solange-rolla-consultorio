@@ -80,9 +80,21 @@ Esta entrada cobre o código-fonte no SHA `2fe4699...` quanto aos checks locais 
 <!-- /AUDIT_DELTA_V1 -->
 
 <!-- AUDIT_DELTA_V1 -->
-## 2026-10-13 — Remediação SAFE de proveniência e PITR Supabase (#191 / #149 / PR #286)
+## 2026-10-13 — Correção do gate global V5: UI obrigatória e certifier à prova de falso-verde (#149)
 
 - Base SHA: 16b8713f95197bad39782ff3929f965b7146c60f
+- Evidencias: manifest oficial V5 ref 6df9d8bdaddf0639e1d0a123df27452b9c941681; CI RED #38423275686: divergencias nos blobs AUDIT_POLICY, certifier, browser/apto protocol, gate UI V2, regras e governance script; scripts/audit_ui_evidence_gate.py, tests/test_audit_ui_evidence_gate.py, docs/quality/AUDIT_UI_EVIDENCE_INTEGRITY_V2.md; PR #288 e issue #149.
+- Impacto: sincronizacao fail-closed do contrato canônico V5 UI-first e AUDIT_UI_EVIDENCE_INTEGRITY_V2 no repositorio ativo, incluindo a verificacao de artefatos UI assinados por hashes, inventario de casos, rastros de browser, reauditoria independente e persistencia pos-deploy, sem tocar producao nem rebaixar protecoes.
+- SAFE: sincronizados, sem reescritas locais ad hoc, `docs/quality/GLOBAL_AUDIT_MANIFEST.json`, `docs/quality/AUDIT_CERTIFICATION_MANIFEST_TEMPLATE.json`, `scripts/certify-audit-manifest.py` e `tests/test_certify_audit_manifest.py` com blobs **idênticos ao repositório canônico** (SHAs validados). `AGENTS.md` recebeu somente o novo bloco de UI-FIRST na cabeça, preservando todas as instruções específicas existentes. Escopo de correção isolado em branch/PR próprios.
+- Testes: RED remoto no Absolute Audit Governance #38423275686 e no Repository Governance #38426386701 devido a duas mudancas subsequentes na politica canonica apos evolucao de politica oficial durante a PR; novos scripts e suites adversariais copiados com SHA oficiais do commit canônico 6df9d8bdaddf0639e1d0a123df27452b9c941681. GREEN remoto do head corrigido ainda pendente, nao autoriza AUDIT_VERDICT=APTO.
+- Pendencias: checks do SHA final, review contraditoria humana autorizada, PRs #283/#286, paridade de main-releases-web-workers-staging, URL DNS, backup gerenciado Supabase e restore isolado, Storage privado, Auth/AAL2 e E2E grafico real com prova visual do mesmo release, certificador V5. A retencao de evidencias nao substitui operacao real.
+- Estado: NAO_APTO
+<!-- /AUDIT_DELTA_V1 -->
+
+<!-- AUDIT_DELTA_V1 -->
+## 2026-10-13 — Remediação SAFE de proveniência e PITR Supabase (#191 / #149 / PR #286)
+
+- Base SHA: abf049e70da017781ad0d14ca99028487c8e6513
 - Impacto: o script de dump local recusa a fonte Docker incorreta em staging gerenciado; health de backup exige identidade de projeto; workflow restrito a main/staging usa apenas metadados da API Supabase; a resposta JSON do provedor rejeita chaves repetidas em qualquer profundidade antes de decidir o modo de recuperação; PITR habilitado prevalece sobre snapshots, exige estado booleano explícito e timestamp finito/representável, rejeita metadados ausentes ou inválidos sem falso-verde nem exceção não tratada; snapshots históricos só contam com PITR explicitamente desabilitado. Preservados o isolamento e a ausência de dados clínicos e segredos.
 - Testes: RED inicial 19 testes de verificador ausente e 9 casos de proveniência; GREEN inicial 31/31 Python. RED focal adicional no código exato ee950c6 da PR #286 com 8 falhas e 3 erros (PITR ausente/tipos errados, NaN, fora de intervalo, timestamp de snapshot irrelevante); GREEN no checkout isolado do mesmo SHA mais correção: 28/28 testes managed-backup e 12/12 source-guard, git diff --check aprovado. RED de busca de equivalente no head real 2628a8e: 3 falhas, em pitr_enabled, backups e latest_physical_backup_date_unix duplicados. GREEN no checkout isolado após correção: 29/29 managed-backup e 12/12 source-guard PASS, py_compile e git diff --check PASS. CI remoto exact-head pós-correção e regressão completa ainda não comprovados.
 - Evidencias: scripts/verify-managed-backup-evidence.py, scripts/backup-homologation.sh, scripts/check-backup-health.sh, tests/test_managed_backup_evidence.py, tests/test_backup_source_guard.py, .github/workflows/staging-managed-backup-evidence.yml, PR #286; fault check read-only anterior identificou source_identity_mismatch e source_provenance no estágio legado; registro contemporâneo e links do CI na issue #149. A correção de dois blocos AUDIT_DELTA_V1 na mesma PR foi consolidada em um único registro requerido pelo validador, mantendo os achados.
