@@ -80,9 +80,21 @@ Esta entrada cobre o código-fonte no SHA `2fe4699...` quanto aos checks locais 
 <!-- /AUDIT_DELTA_V1 -->
 
 <!-- AUDIT_DELTA_V1 -->
-## 2026-10-13 - Paridade de staging em fail-closed (issue #269 / #149 / PR #283)
+## 2026-10-13 — Correção do gate global V5: UI obrigatória e certifier à prova de falso-verde (#149)
 
 - Base SHA: 16b8713f95197bad39782ff3929f965b7146c60f
+- Evidencias: manifest oficial V5 ref 6df9d8bdaddf0639e1d0a123df27452b9c941681; CI RED #38423275686: divergencias nos blobs AUDIT_POLICY, certifier, browser/apto protocol, gate UI V2, regras e governance script; scripts/audit_ui_evidence_gate.py, tests/test_audit_ui_evidence_gate.py, docs/quality/AUDIT_UI_EVIDENCE_INTEGRITY_V2.md; PR #288 e issue #149.
+- Impacto: sincronizacao fail-closed do contrato canônico V5 UI-first e AUDIT_UI_EVIDENCE_INTEGRITY_V2 no repositorio ativo, incluindo a verificacao de artefatos UI assinados por hashes, inventario de casos, rastros de browser, reauditoria independente e persistencia pos-deploy, sem tocar producao nem rebaixar protecoes.
+- SAFE: sincronizados, sem reescritas locais ad hoc, `docs/quality/GLOBAL_AUDIT_MANIFEST.json`, `docs/quality/AUDIT_CERTIFICATION_MANIFEST_TEMPLATE.json`, `scripts/certify-audit-manifest.py` e `tests/test_certify_audit_manifest.py` com blobs **idênticos ao repositório canônico** (SHAs validados). `AGENTS.md` recebeu somente o novo bloco de UI-FIRST na cabeça, preservando todas as instruções específicas existentes. Escopo de correção isolado em branch/PR próprios.
+- Testes: RED remoto no Absolute Audit Governance #38423275686 e no Repository Governance #38426386701 devido a duas mudancas subsequentes na politica canonica apos evolucao de politica oficial durante a PR; novos scripts e suites adversariais copiados com SHA oficiais do commit canônico 6df9d8bdaddf0639e1d0a123df27452b9c941681. GREEN remoto do head corrigido ainda pendente, nao autoriza AUDIT_VERDICT=APTO.
+- Pendencias: checks do SHA final, review contraditoria humana autorizada, PRs #283/#286, paridade de main-releases-web-workers-staging, URL DNS, backup gerenciado Supabase e restore isolado, Storage privado, Auth/AAL2 e E2E grafico real com prova visual do mesmo release, certificador V5. A retencao de evidencias nao substitui operacao real.
+- Estado: NAO_APTO
+<!-- /AUDIT_DELTA_V1 -->
+
+<!-- AUDIT_DELTA_V1 -->
+## 2026-10-13 - Paridade de staging em fail-closed (issue #269 / #149 / PR #283)
+
+- Base SHA: abf049e70da017781ad0d14ca99028487c8e6513
 - Impacto: detector de staging confirma identidade de release em estado, arquivos de ambiente, web, workers, health local/publico, TLS e DNS; garante fail-closed quando existem chaves SHA duplicadas nos arquivos ou propriedades JSON repetidas no health, inclusive quando a ultima seria a esperada. A transacao de staging.env preserva snapshot e restore em rollback. Sem tocar ambiente publicado, banco, pacientes ou producao.
 - Testes: suite original 19/19 de paridade e 12/12 de transacao runtime; reproducao RED no checkout isolado exato 4d0ce881a2c4735c061bc6c24d4d597b2be18b2c gerou 6 falhas nos 4 novos testes com variantes contraditorias e identicas de APP_BUILD_SHA, STAGING_COMMIT_SHA, buildSha e status. GREEN apos patch: 23/23 testes de paridade e 12/12 transacao runtime PASS, py_compile e git diff --check PASS. CI de branch e testes UI de release publicado nao declarados verdes.
 - Evidencias: issue #269 e central #149; ops/staging/verify-runtime-parity.py, tests/test_staging_runtime_parity.py, ops/staging/runtime-env-transaction.sh, tests/test_staging_env_transaction.py e workflow staging-promote.yml. Validacao de runtime anterior encontrou release divergente; teste dup de chaves feito somente com valores sintenticos em checkout isolado. Falha CI previa de Supabase db reset conta como bloqueio distinto a revalidar.
