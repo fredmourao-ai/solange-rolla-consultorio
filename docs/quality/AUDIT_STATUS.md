@@ -101,3 +101,14 @@ Esta entrada cobre o código-fonte no SHA `2fe4699...` quanto aos checks locais 
 - Pendencias: revisao independente, gates canonicamente obrigatorios do head final, merge protegido, revalidacao pos-merge em staging no mesmo SHA/release, URL publica e jornadas reais por navegador sem flaky; comprovar backup e restore do Supabase gerenciado, Storage privado, autenticao/AAL2 e recuperacao, e certifier V5 oficial. A divergencia de politica global tem PR #288 independente; nenhuma excecao ou bypass permitido. Correcao de redirecionamentos testada apenas em checkout isolado; merge/deploy/release real permanecem pendentes.
 - Estado: NAO_APTO
 <!-- /AUDIT_DELTA_V1 -->
+
+<!-- AUDIT_DELTA_V1 -->
+## 2026-10-14 - Correcao de cancelamentos de fila Database/E2E (#300)
+
+- Base SHA: 88cca3455952d377cad0f5297b4d871c8122d487
+- Impacto: mantido o mesmo lock GitHub Actions solange-local-supabase para os jobs CI e2e e Database, mantendo cancel-in-progress false e isolamento de um job executando de cada vez; adicionada queue max a ambos para que varios pendentes preservem ordem em vez de cancelar silenciosamente as verificacoes de PRs concorrentes. Nenhum acesso a producao, banco, dados clinicos ou secrets.
+- Testes: RED real da configuracao original em node Assert com cancelamento do job e2e pendente; jobs Database cancelados observados nas PRs #283/#286/#299; GREEN de parse YAML, invariantes de serializacao e testes de regressao local requeridos no commit novo; resultado CI remoto do mesmo SHA ainda pendente.
+- Evidencias: issue #300, testes/integration/ci-supabase-concurrency.test.ts, workflows ci.yml e db.yml, documentacao oficial GitHub Actions queue max: https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency
+- Pendencias: CI + Database com jobs efetivamente concluidos no SHA atual, revisao independente, merge protegido, staging release exato, backup gerenciado e restore, UI grafica real e certificador oficial V5.
+- Estado: NAO_APTO
+<!-- /AUDIT_DELTA_V1 -->

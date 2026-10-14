@@ -22,6 +22,7 @@ describe('local Supabase CI serialization', () => {
       expect(block).toContain('concurrency:')
       expect(block).toContain('group: solange-local-supabase')
       expect(block).toContain('cancel-in-progress: false')
+      expect(block).toContain('queue: max')
     }
   })
 
