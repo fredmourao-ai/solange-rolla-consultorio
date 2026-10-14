@@ -168,7 +168,31 @@ jobs:
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_STAGING_PROJECT_REF: ${{ secrets.SUPABASE_STAGING_PROJECT_REF }}
-        run: node scripts/apply-staging-migrations.mjs
+          SUPABASE_PRODUCTION_PROJECT_REF: ${{ secrets.SUPABASE_PRODUCTION_PROJECT_REF }}
+        run: |
+          set -Eeuo pipefail
+          ATOMIC_MARKER="$STAGING_DEPLOY_ROOT/state/appointments-atomic-compatible"
+          COMPAT_MARKER="$STAGING_DEPLOY_ROOT/state/appointments-legacy-compat-$PROMOTE_SHA"
+          test -d "$STAGING_DEPLOY_ROOT/state"
+          DEPLOYED_SHA="$(cat "$STAGING_DEPLOY_ROOT/state/deployed-sha.txt")"
+          test -n "$DEPLOYED_SHA"
+          node scripts/apply-staging-migrations.mjs
+          if [ -f "$ATOMIC_MARKER" ]; then
+            node scripts/set-staging-appointment-write-mode.mjs atomic-only
+            rm -f "$COMPAT_MARKER"
+          else
+            if ! git cat-file -e "$DEPLOYED_SHA^{commit}" 2>/dev/null; then
+              git fetch --no-tags --depth=1 origin "$DEPLOYED_SHA"
+            fi
+            if git cat-file -e "$DEPLOYED_SHA:supabase/migrations/20261006004600_appointments_admin_atomic_audit.sql" 2>/dev/null; then
+              node scripts/set-staging-appointment-write-mode.mjs atomic-only
+              printf '%s\n' "$DEPLOYED_SHA" > "$ATOMIC_MARKER"
+              rm -f "$COMPAT_MARKER"
+            else
+              node scripts/set-staging-appointment-write-mode.mjs legacy-compatible
+              printf '%s\n' "$PROMOTE_SHA" > "$COMPAT_MARKER"
+            fi
+          fi
 
       - name: Verify staging accounting RLS
         env:
@@ -186,6 +210,7 @@ jobs:
       - name: Deploy exact SHA to homologation
         shell: bash
         env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_STAGING_PROJECT_REF }}
           SUPABASE_STAGING_PROJECT_REF: ${{ secrets.SUPABASE_STAGING_PROJECT_REF }}
           SUPABASE_PRODUCTION_PROJECT_REF: ${{ secrets.SUPABASE_PRODUCTION_PROJECT_REF }}
@@ -212,6 +237,7 @@ jobs:
           RECONCILER_PREVIOUS="$ROOT/reconcile-previous.sh"
           STAGING_DB_CONTAINER=supabase_db_solange-client-demo
           TRANSACTION="$ROOT/state/deploy-transaction-$PROMOTE_SHA"
+          APPOINTMENT_COMPAT_MARKER="$ROOT/state/appointments-legacy-compat-$PROMOTE_SHA"
           APP_SWAPPED=0
           WEB_SWAPPED=0
           WORKERS_SWAPPED=0
@@ -232,8 +258,22 @@ jobs:
           }
           rollback() {
             rc=$?
+            APPOINTMENT_MODE_RESTORE_FAILED=0
             trap - EXIT
             if [ "$rc" -ne 0 ]; then
+              if [ -f "$APPOINTMENT_COMPAT_MARKER" ]; then
+                RESTORED=0
+                for attempt in 1 2 3; do
+                  if node scripts/set-staging-appointment-write-mode.mjs legacy-compatible; then
+                    RESTORED=1
+                    break
+                  fi
+                  sleep "$attempt"
+                done
+                if [ "$RESTORED" -ne 1 ]; then
+                  APPOINTMENT_MODE_RESTORE_FAILED=1
+                fi
+              fi
               docker rm -f "${DOC}-candidate" "${MSG}-candidate" "${REC}-candidate" >/dev/null 2>&1 || true
               if [ "$WORKERS_SWAPPED" -eq 1 ]; then
                 if docker inspect "${DOC}-previous" >/dev/null 2>&1; then
@@ -273,9 +313,15 @@ jobs:
               else
                 rm -f "$RECONCILER_PREVIOUS"
               fi
-              rm -f "$TRANSACTION"
+              if [ "$APPOINTMENT_MODE_RESTORE_FAILED" -eq 0 ]; then
+                rm -f "$TRANSACTION" "$APPOINTMENT_COMPAT_MARKER"
+              fi
             fi
             cleanup_stage
+            if [ "$APPOINTMENT_MODE_RESTORE_FAILED" -ne 0 ]; then
+              echo "failed to restore legacy-compatible appointment grants during deploy rollback" >&2
+              exit "$APPOINTMENT_MODE_RESTORE_FAILED"
+            fi
             exit "$rc"
           }
           trap rollback EXIT
@@ -432,6 +478,10 @@ jobs:
             IMAGE="solange-recurring-payables-worker:$PROMOTE_SHA" CONTAINER="${REC}-candidate" \
             STATE_DIR="$CANDIDATE_STATE/recurring" bash ops/recurring-payables-worker/run-demo-worker.sh
 
+          if [ -f "$APPOINTMENT_COMPAT_MARKER" ]; then
+            node scripts/set-staging-appointment-write-mode.mjs atomic-only
+          fi
+
           docker stop "$WEB" >/dev/null
           docker rm -f "${WEB}-previous" >/dev/null 2>&1 || true
           docker rename "$WEB" "${WEB}-previous"
@@ -560,6 +610,10 @@ jobs:
       - name: Rollback staging release after failed validation
         if: failure()
         shell: bash
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_STAGING_PROJECT_REF: ${{ secrets.SUPABASE_STAGING_PROJECT_REF }}
+          SUPABASE_PRODUCTION_PROJECT_REF: ${{ secrets.SUPABASE_PRODUCTION_PROJECT_REF }}
         run: |
           set -Eeuo pipefail
           ROOT="$STAGING_DEPLOY_ROOT"
@@ -572,7 +626,22 @@ jobs:
           RECONCILER=solange-demo-reconciler
           RECONCILER_PREVIOUS="$ROOT/reconcile-previous.sh"
           TRANSACTION="$ROOT/state/deploy-transaction-$PROMOTE_SHA"
+          APPOINTMENT_COMPAT_MARKER="$ROOT/state/appointments-legacy-compat-$PROMOTE_SHA"
           [ -f "$TRANSACTION" ] || exit 0
+          APPOINTMENT_MODE_RESTORE_FAILED=0
+          if [ -f "$APPOINTMENT_COMPAT_MARKER" ]; then
+            RESTORED=0
+            for attempt in 1 2 3; do
+              if node scripts/set-staging-appointment-write-mode.mjs legacy-compatible; then
+                RESTORED=1
+                break
+              fi
+              sleep "$attempt"
+            done
+            if [ "$RESTORED" -ne 1 ]; then
+              APPOINTMENT_MODE_RESTORE_FAILED=1
+            fi
+          fi
           force_rm() {
             rm -rf "$@" 2>/dev/null && return 0
             sudo -n rm -rf "$@"
@@ -612,7 +681,11 @@ jobs:
             mv "$ROOT/state/previous-deployed-sha.txt" "$ROOT/state/deployed-sha.txt"
           fi
           force_rm "$ROOT/state/candidate-$PROMOTE_SHA"
-          rm -f "$TRANSACTION"
+          if [ "$APPOINTMENT_MODE_RESTORE_FAILED" -ne 0 ]; then
+            echo "failed to restore legacy-compatible appointment grants after rollback" >&2
+            exit "$APPOINTMENT_MODE_RESTORE_FAILED"
+          fi
+          rm -f "$TRANSACTION" "$APPOINTMENT_COMPAT_MARKER"
 
       - name: Finalize promoted release
         shell: bash
@@ -623,6 +696,8 @@ jobs:
           docker rm -f solange-client-demo-web-previous solange-document-worker-previous solange-messaging-worker-previous solange-recurring-payables-worker-previous >/dev/null 2>&1 || true
           rm -rf "$ROOT/app-previous" 2>/dev/null || sudo -n rm -rf "$ROOT/app-previous"
           rm -f "$ROOT/state/previous-deployed-sha.txt" "$TRANSACTION"
+          printf '%s\n' "$PROMOTE_SHA" > "$ROOT/state/appointments-atomic-compatible"
+          rm -f "$ROOT/state/appointments-legacy-compat-$PROMOTE_SHA"
           rm -f "$ROOT/reconcile-previous.sh"
           # Keep the promoted release state directory: the canonical workers bind-mount it
           # and need the same host path to exist after container restarts.

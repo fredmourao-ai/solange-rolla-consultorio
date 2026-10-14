@@ -81,6 +81,60 @@ describe('staging reconciler transactional rollback', () => {
   })
 })
 
+describe('staging appointment atomic-boundary rollout', () => {
+  it('bridges legacy DML only until the exact-SHA app is swapped and restores it on rollback', () => {
+    expect(workflow).toContain('appointments-atomic-compatible')
+    expect(workflow).toContain('appointments-legacy-compat-$PROMOTE_SHA')
+    expect(workflow).toContain('set-staging-appointment-write-mode.mjs legacy-compatible')
+    expect(workflow).toContain('set-staging-appointment-write-mode.mjs atomic-only')
+    const deploy = workflow.slice(workflow.indexOf('- name: Deploy exact SHA to homologation'))
+    expect(deploy.indexOf('set-staging-appointment-write-mode.mjs atomic-only')).toBeLessThan(
+      deploy.indexOf('docker stop "$WEB"'),
+    )
+    const rollback = workflow.slice(workflow.indexOf('- name: Rollback staging release after failed validation'))
+    expect(rollback).toContain('set-staging-appointment-write-mode.mjs legacy-compatible')
+    expect(workflow).toContain('printf \'%s\\n\' "$PROMOTE_SHA" > "$ROOT/state/appointments-atomic-compatible"')
+  })
+
+  it('derives atomic compatibility from the deployed SHA when the host marker is missing', () => {
+    const migrationStep = workflow.slice(
+      workflow.indexOf('- name: Apply forward migrations'),
+      workflow.indexOf('- name: Verify staging accounting RLS'),
+    )
+    expect(migrationStep).toContain('DEPLOYED_SHA="$(cat "$STAGING_DEPLOY_ROOT/state/deployed-sha.txt")"')
+    expect(migrationStep).toContain('git cat-file -e "$DEPLOYED_SHA:supabase/migrations/20261006004600_appointments_admin_atomic_audit.sql"')
+    expect(migrationStep.indexOf('set-staging-appointment-write-mode.mjs atomic-only')).toBeLessThan(
+      migrationStep.lastIndexOf('set-staging-appointment-write-mode.mjs legacy-compatible'),
+    )
+  })
+
+  it('continues restoring the release before surfacing a failed compatibility grant restore', () => {
+    const rollback = workflow.slice(workflow.indexOf('- name: Rollback staging release after failed validation'))
+    expect(rollback).toContain('APPOINTMENT_MODE_RESTORE_FAILED=0')
+    expect(rollback).toContain('for attempt in 1 2 3')
+    expect(rollback).toContain('APPOINTMENT_MODE_RESTORE_FAILED=1')
+    expect(rollback.indexOf('docker rm -f "$WEB"')).toBeLessThan(
+      rollback.indexOf('exit "$APPOINTMENT_MODE_RESTORE_FAILED"'),
+    )
+    expect(rollback.indexOf('exit "$APPOINTMENT_MODE_RESTORE_FAILED"')).toBeLessThan(
+      rollback.indexOf('rm -f "$TRANSACTION" "$APPOINTMENT_COMPAT_MARKER"'),
+    )
+  })
+
+  it('keeps rollback markers when the deploy trap cannot restore legacy grants', () => {
+    const deploy = workflow.slice(
+      workflow.indexOf('- name: Deploy exact SHA to homologation'),
+      workflow.indexOf('- name: Rollback staging release after failed validation'),
+    )
+    expect(deploy).not.toContain('set-staging-appointment-write-mode.mjs legacy-compatible || true')
+    expect(deploy).toContain('APPOINTMENT_MODE_RESTORE_FAILED=0')
+    expect(deploy).toContain('for attempt in 1 2 3')
+    expect(deploy).toContain('if [ "$APPOINTMENT_MODE_RESTORE_FAILED" -eq 0 ]; then')
+    expect(deploy).toContain('rm -f "$TRANSACTION" "$APPOINTMENT_COMPAT_MARKER"')
+    expect(deploy).toContain('exit "$APPOINTMENT_MODE_RESTORE_FAILED"')
+  })
+})
+
 describe('staging cloud homologation data contract', () => {
   it('seeds and verifies the same dedicated cloud staging project used by the browser', () => {
     const deploy = workflow.slice(workflow.indexOf('- name: Deploy exact SHA to homologation'))
