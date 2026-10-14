@@ -101,3 +101,13 @@ Esta entrada cobre o código-fonte no SHA `2fe4699...` quanto aos checks locais 
 - Pendencias: revisao independente, gates canonicamente obrigatorios do head final, merge protegido, revalidacao pos-merge em staging no mesmo SHA/release, URL publica e jornadas reais por navegador sem flaky; comprovar backup e restore do Supabase gerenciado, Storage privado, autenticao/AAL2 e recuperacao, e certifier V5 oficial. A divergencia de politica global tem PR #288 independente; nenhuma excecao ou bypass permitido. Correcao de redirecionamentos testada apenas em checkout isolado; merge/deploy/release real permanecem pendentes.
 - Estado: NAO_APTO
 <!-- /AUDIT_DELTA_V1 -->
+
+<!-- AUDIT_DELTA_V1 -->
+## 2026-10-13 — Detecção fail-closed de E2E flaky (#149)
+- Base SHA: 88cca3455952d377cad0f5297b4d871c8122d487
+- Impacto: o teste browser E2E da PR #286 registrou uma falha autenticação/retry na jornada de acessibilidade, classificou um teste como flaky e ainda devolveu SUCCESS no job; o novo gate configura Playwright para falhar em CI se qualquer teste estiver flaky, mantendo até duas tentativas para diagnóstico e sem aumentar exposição de dados nem tocar staging. A fila compartilhada entre jobs DB e E2E estava configurada com cancel-in-progress=false mas sem queue:max; GitHub substitui jobs pendentes em concorrencia, cancelando E2E/DB de outros PRs. queue:max preserva serializacao e até 100 pendencias sem descartes por substituicao.
+- Testes: RED remoto no CI da PR #286, job E2E 115373378648, com 1 flaky e 70 passed sob exit 0; regressão AST dedicada verifica failOnFlakyTests atrelado ao ambiente CI e política de retries original. GREEN remoto do commit desta PR deve ser observado, não presumido. Novo teste AST/contrato de concorrencia exige queue:max nas duas jobs mantendo exclusao mutua; RED observado: Database/E2E CANCELLED nas PRs #286/#288/#292. GREEN remoto pendente.
+- Evidencias: issue #149; GitHub Actions run 38419673460/job/115373378648; tests/e2e/demo-auth.ts toHaveURL(/dashboard/) timeout 5000ms na primeira tentativa; documentação oficial Playwright CLI --fail-on-flaky-tests e property testConfig.failOnFlakyTests disponível na versão 1.62. Ref oficial GitHub Actions Concurrency (queue:max, cancel-in-progress:false, FIFO) e workflows .github/workflows/ci.yml + db.yml; tests/integration/ci-supabase-concurrency.test.ts.
+- Pendencias: identificar e resolver causa funcional ou de pressão da VM do teste flaky, executar CI e E2E sem flakiness após a correção, revisões independentes, PRs #283/#286/#288, release exato, staging, backup/restore Supabase gerenciado, Storage e autenticação, UI real e certificação V5.
+- Estado: NAO_APTO
+<!-- /AUDIT_DELTA_V1 -->

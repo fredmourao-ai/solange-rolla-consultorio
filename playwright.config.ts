@@ -6,6 +6,7 @@ export default defineConfig({
   testDir: './tests/e2e',
   timeout: 180_000,
   retries: process.env.CI ? 2 : 0,
+  failOnFlakyTests: !!process.env.CI,
   globalSetup: './tests/e2e/global-setup.ts',
   use: { baseURL: runtime.baseURL, trace: 'retain-on-failure', navigationTimeout: 180_000 },
   webServer: runtime.webServer,
