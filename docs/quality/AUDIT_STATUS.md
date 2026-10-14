@@ -90,3 +90,14 @@ Esta entrada cobre o código-fonte no SHA `2fe4699...` quanto aos checks locais 
 - Pendencias: checks do SHA final, review contraditoria humana autorizada, PRs #283/#286, paridade de main-releases-web-workers-staging, URL DNS, backup gerenciado Supabase e restore isolado, Storage privado, Auth/AAL2 e E2E grafico real com prova visual do mesmo release, certificador V5. A retencao de evidencias nao substitui operacao real.
 - Estado: NAO_APTO
 <!-- /AUDIT_DELTA_V1 -->
+
+<!-- AUDIT_DELTA_V1 -->
+## 2026-10-14 - Correcao do reconciliador Quick Tunnel (#298 / Auditoria V5)
+
+- Base SHA: abf049e70da017781ad0d14ca99028487c8e6513
+- Impacto: reconciler de staging so considera hostname de Cloudflare Quick Tunnel obtido nos logs limitados do ciclo atual do container; rejeita historico anterior, falta de identidade e URL sem HTTPS/health real antes de atualizar APP_URL. O novo marcador so e publicado apos restart bem-sucedido da web e segundo health HTTPS; em falha conserva o marcador anterior e permite retry. Mantida a reconciliacao dos workers e do web. Nenhum banco de producao ou dado clinico alterado.
+- Testes: RED reproduzido na VM com 5 casos e 3 falhas/2 erros, incluindo hostname antigo e ausencia de URL fresca; GREEN 5/5 unittest no primeiro fix; RED adicional (1/1) de falso marcador quando o restart falha, GREEN 6/6 apos a correcao com retry, sh -n PASS; checagens adicionais de governanca, Vitest e UI no release publicado ainda requeridas nesta PR.
+- Evidencias: issue #298, tests/test_staging_tunnel_reconciler.py, tests/integration/staging-reconciler.test.ts e ops/staging/reconcile-demo.sh; quick tunnel anterior Unauthorized: Tunnel not found e marcador DNS expirado; novo tunnel responde HTTPS 200 em https://prerequisite-bench-tracking-she.trycloudflare.com, mas release ativo ainda nao foi atualizado e nao pode ser certificado pelo browser da versao candidata.
+- Pendencias: CI do mesmo SHA, review independente, merge protegido, deploy do SHA exato apos backup gerenciado comprovado, reauditoria GUI real com clicks, reload e persistencia, workers/Storage/restore e certificador oficial V5 para mesma release.
+- Estado: NAO_APTO
+<!-- /AUDIT_DELTA_V1 -->

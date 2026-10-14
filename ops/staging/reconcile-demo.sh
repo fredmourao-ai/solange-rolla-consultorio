@@ -10,7 +10,12 @@ app_valid() {
   [ -f "$APP/package.json" ] && [ -f "$APP/.env.production.local" ]
 }
 current_tunnel_url() {
-  docker logs solange-demo-tunnel 2>&1 | grep -Eo 'https://[a-z0-9-]+\.trycloudflare\.com' | tail -1 || true
+  # Docker logs contain historical URLs from retired quick tunnel instances.
+  # Only trust the URL of the currently running container, with bounded logs.
+  started=$(docker inspect -f '{{.State.StartedAt}}' solange-demo-tunnel 2>/dev/null || true)
+  [ -n "$started" ] || return 0
+  docker logs --since "$started" --tail 400 solange-demo-tunnel 2>&1 |
+    grep -Eo 'https://[a-z0-9-]+\.trycloudflare\.com' | tail -1 || true
 }
 ensure_running() {
   for c in solange-demo-gateway solange-demo-tunnel; do
@@ -35,17 +40,34 @@ reconcile_url() {
   app_valid || { log 'app incomplete; URL reconcile deferred'; return 0; }
   url=$(current_tunnel_url)
   [ -n "$url" ] || { log 'tunnel URL unavailable'; return 0; }
-  printf '%s\n' "$url" > "$URL_FILE"
-  current=$(sed -n 's/^APP_URL=//p' "$APP/.env.production.local" | tail -1)
-  [ "$current" = "$url" ] && return 0
-
-  log "tunnel URL changed; updating APP_URL"
-  if grep -q '^APP_URL=' "$APP/.env.production.local"; then
-    sed -i -E "s#^APP_URL=.*#APP_URL=$url#" "$APP/.env.production.local"
-  else
-    printf 'APP_URL=%s\n' "$url" >> "$APP/.env.production.local"
+  # Do not publish a quick-tunnel URL before confirming HTTPS is reachable.
+  if ! wget -q -T 8 -O /dev/null "$url/api/health"; then
+    log 'current tunnel URL health unavailable; marker unchanged'
+    return 0
   fi
-  docker restart solange-client-demo-web >/dev/null
+  current=$(sed -n 's/^APP_URL=//p' "$APP/.env.production.local" | tail -1)
+  published=$(cat "$URL_FILE" 2>/dev/null || true)
+  [ "$current" = "$url" ] && [ "$published" = "$url" ] && return 0
+
+  if [ "$current" != "$url" ]; then
+    log "tunnel URL changed; updating APP_URL"
+    if grep -q '^APP_URL=' "$APP/.env.production.local"; then
+      sed -i -E "s#^APP_URL=.*#APP_URL=$url#" "$APP/.env.production.local"
+    else
+      printf 'APP_URL=%s\n' "$url" >> "$APP/.env.production.local"
+    fi
+  fi
+  # A failed restart must not publish a new marker. Keeping the old marker
+  # also forces a retry next cycle when APP_URL was already updated.
+  if ! docker restart solange-client-demo-web >/dev/null; then
+    log 'web restart failed; tunnel URL marker unchanged'
+    return 0
+  fi
+  if ! wget -q -T 8 -O /dev/null "$url/api/health"; then
+    log 'post-restart public health unavailable; tunnel URL marker unchanged'
+    return 0
+  fi
+  printf '%s\n' "$url" > "$URL_FILE"
   log "web restarted for $url"
 }
 
