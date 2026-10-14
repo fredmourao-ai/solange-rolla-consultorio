@@ -101,3 +101,14 @@ Esta entrada cobre o código-fonte no SHA `2fe4699...` quanto aos checks locais 
 - Pendencias: revisao independente, gates canonicamente obrigatorios do head final, merge protegido, revalidacao pos-merge em staging no mesmo SHA/release, URL publica e jornadas reais por navegador sem flaky; comprovar backup e restore do Supabase gerenciado, Storage privado, autenticao/AAL2 e recuperacao, e certifier V5 oficial. A divergencia de politica global tem PR #288 independente; nenhuma excecao ou bypass permitido. Correcao de redirecionamentos testada apenas em checkout isolado; merge/deploy/release real permanecem pendentes.
 - Estado: NAO_APTO
 <!-- /AUDIT_DELTA_V1 -->
+
+<!-- AUDIT_DELTA_V1 -->
+## 2026-10-14 — Correção do túnel efêmero em homologação (#269)
+
+- Base SHA: 88cca3455952d377cad0f5297b4d871c8122d487
+- Impacto: corrigir falso-verde do reconciliador de URL pública; em vez de usar logs históricos de várias sessões Docker, filtrar a sessão atual do túnel, aceitar somente hostname emitido no anúncio oficial do Quick Tunnel e verificar TLS/HTTP 200 sem redirects antes de persistir URL e reiniciar a web. Erro 'Unauthorized: Tunnel not found' permite renovar apenas o túnel de homologação, com cooldown e sem promover release, migrar banco ou tocar dados reais; config anterior é restaurada se o restart falhar.
+- Testes: RED unitário antes da correção (comando --once inexistente e reconciliador preso em loop, TimeoutExpired), GREEN 12/12 testes de falhas, HTTPS, redirects, URL expirada, cooldown, rollback de configuração e persistência sintética em diretórios isolados; sh -n, py_compile, git diff --check e governança absoluta PASS. Revalidação gráfica pós-hotfix permanece pendente até execução em staging.
+- Evidencias: staging 2026-10-14 05:37 UTC: Cloudflare retornava Unauthorized Tunnel not found, porta local 3300 respondia 200 e o reconciliador publicava endereço antigo capturado de 2026-10-01 mesmo com túnel novo registrado. Recriação controlada do Quick Tunnel às 05:39 UTC resultou em HTTPS público 200 e certificado TLS válido, ainda com release d46b7352 (não o SHA atual). Teste RED pré-correção falhou por ausência de modo once e reconciliação; GREEN exigiu 12 casos adversariais em Git temporário, sintaxe shell e integração Vitest; CI exato e browser pós-hotfix permanecem a verificar nesta etapa.
+- Pendencias: revisar e integrar PR, comprovar gate CI no commit exato, aplicar reconciliador no staging com rollback seguro, repetir jornada no navegador gráfico do backend, validar URL pública e mesmo SHA, resolver proveniência de backup/restore/Storage (#191/#206) e certificar V5 integralmente. Nenhuma evidência parcial autoriza APTO.
+- Estado: NAO_APTO
+<!-- /AUDIT_DELTA_V1 -->
