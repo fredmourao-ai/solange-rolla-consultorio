@@ -85,6 +85,10 @@ jobs:
         run: npm ci
       - name: Unit tests
         run: npm run test:run
+      - name: Managed staging backup provenance regressions
+        run: |
+          python3 -m unittest discover -s tests -p 'test_managed_backup_evidence.py' -v
+          python3 -m unittest discover -s tests -p 'test_backup_source_guard.py' -v
 
   architecture:
     if: >-
