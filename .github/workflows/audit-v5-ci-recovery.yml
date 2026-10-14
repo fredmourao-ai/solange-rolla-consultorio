@@ -1,0 +1,31 @@
+name: Audit V5 CI Continuity
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '13 * * * *'
+
+permissions:
+  contents: read
+  pull-requests: read
+  checks: read
+  actions: write
+  issues: write
+
+concurrency:
+  group: solange-v5-ci-watch
+  cancel-in-progress: false
+
+jobs:
+  audit-ci-watch:
+    if: github.repository == 'fredmourao-ai/solange-rolla-consultorio' && github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, Linux, ARM64, solange-ci]
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run deterministic self-tests
+        run: python3 -m unittest discover -s tests -p 'test_audit_v5_ci_watch.py' -v
+      - name: Reconcile exact-HEAD checks; retry at most one cancelled job
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python3 scripts/audit_v5_ci_watch.py

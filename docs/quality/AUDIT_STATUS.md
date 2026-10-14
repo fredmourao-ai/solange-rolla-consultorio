@@ -90,3 +90,14 @@ Esta entrada cobre o código-fonte no SHA `2fe4699...` quanto aos checks locais 
 - Pendencias: checks do SHA final, review contraditoria humana autorizada, PRs #283/#286, paridade de main-releases-web-workers-staging, URL DNS, backup gerenciado Supabase e restore isolado, Storage privado, Auth/AAL2 e E2E grafico real com prova visual do mesmo release, certificador V5. A retencao de evidencias nao substitui operacao real.
 - Estado: NAO_APTO
 <!-- /AUDIT_DELTA_V1 -->
+
+<!-- AUDIT_DELTA_V1 -->
+## 2026-10-13 — Continuidade determinística de CI na Auditoria Extrema V5 (#149)
+
+- Base SHA: abf049e70da017781ad0d14ca99028487c8e6513
+- Impacto: adiciona monitor determinístico horário/manual de CI no repositório canônico, sem provedor de IA, login de navegador, sessão ChatGPT ou dependência de token pessoal. Roda no runner self-hosted exigido e usa somente GITHUB_TOKEN efêmero com permissões explícitas: acompanha head SHA das PRs #296/#292/#295/#283/#286; jamais declara APTO por CI, não faz merge, deploy, acesso clínico ou mutação de banco. Reexecução limita-se a um job obrigatório cancelado por ciclo e a uma tentativa por PR/SHA/check, com reserva persistida na issue #149 antes do efeito externo.
+- Testes: 10 testes Python sintéticos de classificação, cancelamento, reexecução única, idempotência, reserva autenticada, proteção de origem, rejeição de SHA/repo inválido e atualização sem spam; py_compile e validação estrutural do YAML executados em checkout isolado. RED operacional anterior: tentativa de monitor externo via ShopVivaliz task_submit falhou por ausência de gh auth no contexto do serviço, corrigida no desenho do novo workflow pelo GITHUB_TOKEN efêmero. GREEN local não implica execução remota do monitor até integração autorizada.
+- Evidencias: scripts/audit_v5_ci_watch.py, tests/test_audit_v5_ci_watch.py, .github/workflows/audit-v5-ci-recovery.yml; issue central #149; check CI da PR #296 em head 2b8cf00bdd81be6196cddd32bb3552d74ea1a2ad; política de segurança e revisão preservada.
+- Pendencias: executar checks e revisão independente desta proposta, merge protegido e primeira execução real do workflow em main, validar issue checkpoint e nenhuma repetição indevida; concluir a própria Auditoria V5 por UI real publicada no mesmo SHA/release/ambiente com backup/restauração gerenciada isolada, Storage, autenticação/AAL2, persistência, reauditoria independente e certificador oficial. Este observador NÃO substitui a vinculação correta de tarefas ChatGPT legadas nem o controlador da auditoria completa.
+- Estado: NAO_APTO
+<!-- /AUDIT_DELTA_V1 -->
