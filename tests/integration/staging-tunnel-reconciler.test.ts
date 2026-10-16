@@ -40,6 +40,7 @@ const fakeRuntime = [
   'getent() { [ "$TEST_DNS_RESOLVES" = yes ]; }',
   'wget() {',
   '  [ "$TEST_HTTP_HEALTHY" = yes ] || return 1',
+  '  printf "  HTTP/1.1 200 OK\n" >&2',
   '  printf \'{"status":"ok","buildSha":"%s"}\' "$TEST_HEALTH_SHA"',
   '}',
   'RELEASE_SHA_FILE="$TEST_RELEASE_SHA_FILE"',
