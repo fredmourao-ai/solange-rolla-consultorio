@@ -210,6 +210,8 @@ describe('environment workflow contracts', () => {
     expect(workflow).toContain('python3 scripts/verify-managed-backup-evidence.py --max-age-seconds 90000')
     expect(workflow).not.toContain('SOLANGE_BACKUP_DEST="$ROOT/backups" scripts/backup-homologation.sh')
     expect(workflow).not.toContain('/home/ubuntu/.local/bin/solange-backup.sh')
+    expect(workflow).not.toContain('Refresh durable backup scheduler')
+    expect(workflow).not.toContain('ops/backup/run-demo-scheduler.sh')
   })
 
   it('only removes the recurring worker when this deployment actually promoted its candidate', () => {

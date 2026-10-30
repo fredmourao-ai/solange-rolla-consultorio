@@ -585,12 +585,6 @@ jobs:
           )
           PY
 
-      - name: Refresh durable backup scheduler
-        shell: bash
-        run: |
-          set -Eeuo pipefail
-          ROOT="$GITHUB_WORKSPACE" DEMO="$STAGING_DEPLOY_ROOT" bash ops/backup/run-demo-scheduler.sh
-
       - name: Rollback staging release after failed validation
         if: failure()
         shell: bash
