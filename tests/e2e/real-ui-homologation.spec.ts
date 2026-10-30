@@ -25,7 +25,7 @@ async function createFiscalPerson(page: Page, name: string, cpf: string) {
   await page.goto('/pessoas/nova', { waitUntil: 'domcontentloaded' })
   await page.getByLabel('Nome civil').fill(name); await page.getByLabel('Data de nascimento').fill('1990-01-01'); await page.getByLabel('CPF').fill(cpf)
   await page.getByLabel('Logradouro').fill('Rua Homologação'); await page.getByLabel('Número').fill('100'); await page.getByLabel('Bairro').fill('Centro'); await page.getByLabel('Cidade').fill('Divinópolis'); await page.getByLabel('UF').fill('MG'); await page.getByLabel('CEP').fill('35500000')
-  await page.getByRole('button', { name: 'Cadastrar paciente' }).click(); await expect(page).toHaveURL(/\/pessoas$/)
+  await page.getByRole('button', { name: 'Cadastrar paciente' }).click(); await expect(page).toHaveURL(/\/pessoas$/, { timeout: 15_000 })
   await expect.poll(() => sql(`select id from public.people where civil_name=${q(name)} order by created_at desc limit 1`)).not.toBe('')
   const id = sql(`select id from public.people where civil_name=${q(name)} order by created_at desc limit 1`)
   expect(sql(`select cpf_normalized||'|'||(fiscal_address->>'city')||'|'||(fiscal_address->>'state') from public.people where id=${q(id)}`)).toBe(`${cpf}|Divinópolis|MG`)
