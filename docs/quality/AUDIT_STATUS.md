@@ -110,5 +110,5 @@ Esta entrada cobre o código-fonte no SHA `2fe4699...` quanto aos checks locais 
 - Testes: o teste de regressão `test_standard_playwright_method_trace_proves_navigation_and_interaction` foi incluído em `tests/test_audit_ui_evidence_gate.py`; no Repository Governance Gate (run 1105), os 28 testes unittest passaram antes da falha exclusiva de registro deste delta. Checks do SHA final ainda pendentes.
 - Evidencias: diff do PR #303 no SHA `cff6823a839759a89d3efb617bcc458a97f00d2a`; alteração em `scripts/audit_ui_evidence_gate.py` e teste correspondente em `tests/test_audit_ui_evidence_gate.py`.
 - Pendencias: aguardar checks do SHA final e revalidar governança após este registro. A auditoria de produção permanece não apta; esta alteração só cobre a interpretação de evidências UI no validador.
-- Estado: NAO_APTO.
+- Estado: NAO_APTO
 <!-- /AUDIT_DELTA_V1 -->
