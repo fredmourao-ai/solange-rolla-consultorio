@@ -89,6 +89,8 @@ jobs:
         run: |
           python3 -m unittest discover -s tests -p 'test_managed_backup_evidence.py' -v
           python3 -m unittest discover -s tests -p 'test_backup_source_guard.py' -v
+      - name: Staging Python security regressions (fail closed)
+        run: python3 -m unittest discover -s tests -p 'test_staging_*.py' -v
 
   architecture:
     if: >-
@@ -194,7 +196,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          trap 'rm -f "$RUNNER_TEMP/supabase-start.log" "$RUNNER_TEMP/supabase-start-retry.log"' EXIT
+          trap 'rm -f "$RUNNER_TEMP/supabase-start.log" "$RUNNER_TEMP/supabase-start-retry.log" "$RUNNER_TEMP/supabase-start-reset-retry.log"' EXIT
           if docker ps -a --format '{{.Names}}' | grep -q '_solange-rolla-consultorio$'; then
             npx supabase@2.118.0 stop --no-backup
           else
@@ -206,8 +208,14 @@ jobs:
             sleep 5
             npx supabase@2.118.0 start >"$RUNNER_TEMP/supabase-start-retry.log" 2>&1
           fi
-          npx supabase@2.118.0 db reset
-          rm -f "$RUNNER_TEMP/supabase-start.log" "$RUNNER_TEMP/supabase-start-retry.log"
+          if ! npx supabase@2.118.0 db reset; then
+            echo "::warning::Isolated local Supabase reset failed; rebuilding only the CI local stack once."
+            npx supabase@2.118.0 stop --no-backup
+            sleep 5
+            npx supabase@2.118.0 start >"$RUNNER_TEMP/supabase-start-reset-retry.log" 2>&1
+            npx supabase@2.118.0 db reset
+          fi
+          rm -f "$RUNNER_TEMP/supabase-start.log" "$RUNNER_TEMP/supabase-start-retry.log" "$RUNNER_TEMP/supabase-start-reset-retry.log"
           trap - EXIT
       - name: Prepare local E2E environment
         shell: bash
