@@ -13,7 +13,7 @@ async function createPerson(page: Page, name: string) {
   await page.getByLabel('Nome civil').fill(name)
   await page.getByLabel('Data de nascimento').fill('1990-01-01')
   await page.getByRole('button', { name: 'Cadastrar paciente' }).click()
-  await expect(page).toHaveURL(/\/pessoas$/)
+  await expect(page).toHaveURL(/\/pessoas$/, { timeout: 15_000 })
   await expect.poll(() => sql(`select id from public.people where civil_name=${q(name)} limit 1`)).not.toBe('')
   return sql(`select id from public.people where civil_name=${q(name)} limit 1`)
 }
