@@ -13,6 +13,8 @@ environment's secret manager, never in Git, issues, PRs, logs or tests.
 | `CLINICAL_ENCRYPTION_KEY_V1` | environment, server-only | L3 envelope encryption | add a new version; retain old versions while envelopes reference them |
 | `RATE_LIMIT_HMAC_KEY` | environment, server-only | privacy-safe rate-limit identifiers | coordinated rotation |
 | `PUBLIC_ACTION_HMAC_KEY` | environment, server-only | one-time public action token signatures | coordinated rotation; keep distinct from rate-limit key |
+| `EXECUTION_PROVENANCE_HMAC_KEY` | staging GitHub Actions environment, server-only | sign host disk guard audit records; required before cleanup | owner-managed coordinated rotation with key ID |
+| `EXECUTION_PROVENANCE_KEY_ID` | staging GitHub Actions environment variable | non-secret identifier for the provenance signing key | update with key rotation |
 | `WHATSAPP_ACCESS_TOKEN` | environment, server-only | Meta WhatsApp Cloud API adapter | provider policy or leak |
 | `WHATSAPP_PHONE_NUMBER_ID` | environment, server-only | Meta WhatsApp Cloud API adapter (not secret by itself, but keep alongside the token) | when the sending number changes |
 | `EMAIL_SMTP_HOST` / `EMAIL_SMTP_PORT` | environment | SMTP adapter connection | when the provider changes |
@@ -36,7 +38,10 @@ environment's secret manager, never in Git, issues, PRs, logs or tests.
 ## External provisioning blocker
 
 Secret-manager entries and rotations require account-owner/provider access not
-available in this repository execution. No values were generated or recorded.
+available in this repository execution. No values were generated or recorded. In
+particular, the host disk guard remains fail-closed until the staging GitHub
+Environment provisions `EXECUTION_PROVENANCE_HMAC_KEY` and
+`EXECUTION_PROVENANCE_KEY_ID`; do not create either through this PR.
 
 ## Signed document worker
 
