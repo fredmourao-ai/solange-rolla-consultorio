@@ -125,3 +125,14 @@ Esta entrada cobre o código-fonte no SHA `2fe4699...` quanto aos checks locais 
 - Integração de branch em 30/10: histórico de main preservado integralmente; CI exact-head, leitura do Supabase gerenciado, restore isolado, Storage e E2E gráfico ainda pendentes.
 - Estado: NAO_APTO
 <!-- /AUDIT_DELTA_V1 -->
+
+<!-- AUDIT_DELTA_V1 -->
+## 2026-10-31 - Paridade de evidencias UI V5 com pipeline canonico (PR dedicada)
+
+- Base SHA: 1b48617f78c36ad82f7caa0c898de6716ce74cb9
+- Impacto: Atualiza exclusivamente o verificador estrutural de evidencias UI, seus testes, contrato documental e tres hashes de manifesto para a versao da pipeline canonica merged em 2ec9db798212b2149c6f6d1f59c888bccf4720ab. A verificacao rejeita trace Playwright sem rede nao vazia, snapshot resources ou revisita de pagina; preserva defesas existentes contra replay, auditor/sessao repetida e cobertura de casos. Sem banco, dados clinicos, credenciais, workflows de deploy, faturamento ou estoque.
+- Testes: 26/26 testes Python de auditoria de evidencias e 24/24 testes do certificador no checkout isolado do laptop PASS; 30/30 blobs Git do manifesto conferidos contra canonico, diferenca de quatro arquivos funcionais e whitespace diff PASS. Os checks GitHub exact-head e execucao UI real pos-merge permanecem pendentes.
+- Evidencias: source pipeline Vivaliz-site/-shopvivaliz-pipeline main 2ec9db798212b2149c6f6d1f59c888bccf4720ab, PR pipeline#62 e o diff revisado para Solange. Blobs script 03da897407035f6c08f3b6dc59225598b39a19f2, testes 3415b130ccebd4b56e392c579bd73b4b9b1ca408, protocolo d1e1b0e63a07afa03d68279845f327637a85c64e; hashes conferidos no index Git. Nao utilizar os fixtures sintenticos como provas de jornadas reais.
+- Pendencias: CI global e governance exato da PR, merge protegido, validar os mesmos 30 blobs em main apos integracao; depois atualizar PR #239 e reprocessar os checks com o main sincronizado. A fila do runner Solange segue serial e auditoria clinica E2E, persistencia, armazenamento e contraditorio reais continuam NAO_APTO.
+- Estado: NAO_APTO
+<!-- /AUDIT_DELTA_V1 -->
