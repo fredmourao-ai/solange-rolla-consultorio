@@ -103,18 +103,6 @@ Esta entrada cobre o código-fonte no SHA `2fe4699...` quanto aos checks locais 
 <!-- /AUDIT_DELTA_V1 -->
 
 <!-- AUDIT_DELTA_V1 -->
-## 2026-10-14 - Correcao de cancelamentos de fila Database/E2E (#300)
-
-- Base SHA: 88cca3455952d377cad0f5297b4d871c8122d487
-- Impacto: mantido o mesmo lock GitHub Actions solange-local-supabase para os jobs CI e2e e Database, mantendo cancel-in-progress false e isolamento de um job executando de cada vez; adicionada queue max a ambos para que varios pendentes preservem ordem em vez de cancelar silenciosamente as verificacoes de PRs concorrentes. Nenhum acesso a producao, banco, dados clinicos ou secrets.
-- Testes: RED real da configuracao original em node Assert com cancelamento do job e2e pendente; jobs Database cancelados observados nas PRs #283/#286/#299; GREEN de parse YAML, invariantes de serializacao e testes de regressao local requeridos no commit novo; resultado CI remoto do mesmo SHA ainda pendente.
-- Evidencias: issue #300, testes/integration/ci-supabase-concurrency.test.ts, workflows ci.yml e db.yml, documentacao oficial GitHub Actions queue max: https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency
-- Extensao 30/10: seletor conservador por diff e dependencias conhecidas no mesmo PR #301, preservando lint como status requerido fail-closed; docs isolados dispensam E2E/DB, API health isolada executa verificacoes de codigo mas nao banco clinico, qualquer modulo compartilhado/desconhecido/politica/workflow exige gate full. Testes Python 7/7 e testes de governanca/runner/workflow 61/61 locais PASS; CI exact-head ainda pendente. Sem liberar write externo ou alterar base clinica.
-- Pendencias: CI + Database com jobs efetivamente concluidos no SHA atual, revisao independente, merge protegido, staging release exato, backup gerenciado e restore, UI grafica real e certificador oficial V5.
-- Estado: NAO_APTO
-<!-- /AUDIT_DELTA_V1 -->
-
-<!-- AUDIT_DELTA_V1 -->
 ## 2026-10-30 — Compatibilidade de traces Playwright no gate de evidência UI
 
 - Base SHA: 88cca3455952d377cad0f5297b4d871c8122d487
@@ -135,5 +123,16 @@ Esta entrada cobre o código-fonte no SHA `2fe4699...` quanto aos checks locais 
 - Correção pós-merge-base (30/10): o workflow ainda chamava `ops/backup/run-demo-scheduler.sh` no final. Esse scheduler sempre faz dump Docker local e torna-se `unhealthy` após o guard de fonte gerenciada, forçando rollback de homologação mesmo com metadata Supabase válida. Removido somente esse step legado do workflow, preservando as verificações do Supabase antes de migrations e durante deploy; nenhum container em execução foi alterado. Regressão estática adicionada em `tests/integration/environment-workflows.test.ts` com cenário RED (chamada legada presente) e GREEN (chamada ausente), CI exact-head ainda pendente. Isso não substitui restore real nem certificação de backup gerenciado.
 - Pendencias: revisão independente, todos os checks obrigatórios exact-head e merge protegido; paridade global de políticas via PR #288 já mesclada, exigindo checks na PR atual; comprovação da API do Supabase gerenciado no projeto staging correto, backup/restore real isolado, retenção/RPO/RTO, Storage privado, autenticação/AAL2 e recuperação, identidade de release exata, navegador E2E real sem flaky e certificador oficial V5 no mesmo SHA/release/ambiente. Nenhum dado clínico, dump ou produção alterado.
 - Integração de branch em 30/10: histórico de main preservado integralmente; CI exact-head, leitura do Supabase gerenciado, restore isolado, Storage e E2E gráfico ainda pendentes.
+- Estado: NAO_APTO
+<!-- /AUDIT_DELTA_V1 -->
+
+<!-- AUDIT_DELTA_V1 -->
+## 2026-10-14 - Correcao de cancelamentos de fila Database/E2E (#300) e escopo conservador de CI (#301)
+
+- Base SHA: 1b48617f78c36ad82f7caa0c898de6716ce74cb9
+- Impacto: preserva o lock GitHub Actions nao cancelavel `solange-local-supabase` entre E2E e Database e adiciona `queue: max` para preservar verificacoes concorrentes; o PR #301 classifica diffs de forma conservadora, mantendo lint como status fail-closed e rodando E2E/DB completos para workflows, politica, banco, modulos e arquivos desconhecidos. Somente README/docs estaticos podem pular suites clinicas/DB; nenhuma operacao de banco, producao ou secret.
+- Testes: RED da configuracao original reproduzido em #300; Python do seletor no head atual 7/7 PASS local; testes de governanca executados no run #41154870487, 28/28 PASS. Esse run falhou somente na validacao de append-only do ledger; este registro foi movido para o final e o Base SHA alinhado ao merge-base de #301. CI exact-head e Database permanecem pendentes, sem alegar GREEN.
+- Evidencias: #300 e #301; head inicial #301 `1a8be5fb8f0d880ed866f22705c3e916846b83dc`; run CI #41154870569 aguardando `impact_scope`, run Database #41154870470 com `impact_scope=success` e job `db=pending`; baseline historico de #300 `88cca3455952d377cad0f5297b4d871c8122d487`.
+- Pendencias: novos checks no head corrigido, revisao independente, protecoes/required-contexts efetivos (API branch-protection negou acesso a esta integracao), merge protegido, promocao staging no SHA exato, backup gerenciado + restore, UI grafica e certificacao V5.
 - Estado: NAO_APTO
 <!-- /AUDIT_DELTA_V1 -->
