@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import importlib.util
+import io
+from contextlib import redirect_stderr
 import socket
 import threading
 import time
@@ -47,12 +49,17 @@ class PortReleaseTests(unittest.TestCase):
             owner.bind(("0.0.0.0", 0))
             owner.listen()
             port = owner.getsockname()[1]
-            self.assertEqual(mod.main([str(port), "--timeout", "0"]), 1)
+            stream = io.StringIO()
+            with redirect_stderr(stream):
+                self.assertEqual(mod.main([str(port), "--timeout", "0"]), 1)
+            self.assertIn("CI_PORT_BUSY", stream.getvalue())
 
     def test_cli_rejects_privileged_port(self):
-        with self.assertRaises(SystemExit) as ctx:
+        stream = io.StringIO()
+        with redirect_stderr(stream), self.assertRaises(SystemExit) as ctx:
             mod.main(["80", "--timeout", "0"])
         self.assertEqual(ctx.exception.code, 2)
+        self.assertIn("port must be 1024", stream.getvalue())
 
 
 if __name__ == "__main__":
