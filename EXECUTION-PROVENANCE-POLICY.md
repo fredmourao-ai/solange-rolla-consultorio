@@ -22,6 +22,8 @@ Cada execucao deve registrar, sem secrets:
 
 Quando existir identidade criptografica provisionada, assinar o payload com HMAC, Ed25519 ou attestation equivalente e registrar somente a assinatura e o identificador da chave, nunca a chave. Acoes privilegiadas de producao devem usar assinatura criptografica ou identidade/attestation de plataforma equivalente. Se indisponivel, registrar signature_status=UNSIGNED e nao declarar a execucao como verificada.
 
+Para o Host Disk Guard, a chave e o identificador devem ser provisionados no GitHub Environment `staging`; nunca gerar chave localmente no host. A falta de qualquer valor deve interromper a rotina antes de limpeza ou alteracao de estado. Persistir evento assinado `STARTED` antes de qualquer limpeza e registrar `COMPLETED` ou `FAILED` no encerramento; se houver encerramento abrupto, preservar `STARTED` como inconclusivo, sem inferir sucesso.
+
 ## GitHub Actions
 
 Usar os identificadores nativos como origem: GITHUB_ACTOR, GITHUB_REPOSITORY, GITHUB_SHA, GITHUB_REF, GITHUB_RUN_ID, GITHUB_RUN_ATTEMPT, GITHUB_JOB e URL do run. Service containers, volumes e outros recursos temporarios devem ser associados ao execution_id e limpos ao final, inclusive em cancelamento/falha.
