@@ -125,3 +125,14 @@ Esta entrada cobre o código-fonte no SHA `2fe4699...` quanto aos checks locais 
 - Integração de branch em 30/10: histórico de main preservado integralmente; CI exact-head, leitura do Supabase gerenciado, restore isolado, Storage e E2E gráfico ainda pendentes.
 - Estado: NAO_APTO
 <!-- /AUDIT_DELTA_V1 -->
+
+<!-- AUDIT_DELTA_V1 -->
+## 2026-10-31 — PR #258 favicon local para falhas 404 em E2E
+
+- Base SHA: 1b48617f78c36ad82f7caa0c898de6716ce74cb9
+- Impacto: inclusão única de `src/app/favicon.ico`, construída a partir da marca existente, para eliminar o 404 de `/favicon.ico` solicitado pelo navegador e tratado como falha pela fixture de E2E. Nenhuma alteração de schema, fluxo clínico ou autorização.
+- Testes: o autor documentou 60/71 falhas relacionadas ao 404 antes do patch e 71/71 Playwright locais, typecheck, lint e build aprovados depois. Estes resultados são históricos da PR, não certificação independente desta rodada. O gate de Repository Governance no run 41161229986 reproduziu RED por ausência de AUDIT_DELTA_V1; este registro corrige a causa, mas exige novo GREEN no SHA atualizado.
+- Evidências: PR #258 e diff de `src/app/favicon.ico`, fixture `tests/e2e/fixtures.ts`, run GitHub Actions 41161229986. Nenhum dado clínico, segredo ou produção alterado.
+- Pendências: verificar novamente todos os checks obrigatórios, em especial Database e E2E no SHA exato; integrar pelo merge protegido após aprovação válida; validar `/favicon.ico` e jornadas reais na UI de staging após deploy; certifier V5 e paridade de release permanecem obrigatórios.
+- Estado: NAO_APTO
+<!-- /AUDIT_DELTA_V1 -->
