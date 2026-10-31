@@ -125,3 +125,13 @@ Esta entrada cobre o código-fonte no SHA `2fe4699...` quanto aos checks locais 
 - Integração de branch em 30/10: histórico de main preservado integralmente; CI exact-head, leitura do Supabase gerenciado, restore isolado, Storage e E2E gráfico ainda pendentes.
 - Estado: NAO_APTO
 <!-- /AUDIT_DELTA_V1 -->
+
+<!-- AUDIT_DELTA_V1 -->
+## 2026-10-31 — mascarar credenciais do Supabase local nos logs de E2E
+- Base SHA: `1b48617f78c36ad82f7caa0c898de6716ce74cb9`
+- Impacto: o job E2E exportava URLs/keys do Supabase local e credenciais sintéticas de teste em `GITHUB_ENV`, cujos valores apareciam na seção de ambiente do build. O helper registra máscaras antes da exportação e mantém o arquivo do runner fora do workspace.
+- Testes: RED antes do helper (ausente); GREEN `test_staging_ci_env_masking.py` 3/3 com sentinelas sintéticas, máscaras e exportação, scrub dos logs visíveis e rejeição de arquivo `GITHUB_ENV` dentro do workspace; `bash -n`, parse YAML e diff-check aprovados.
+- Evidências: no SHA auditado, E2E inicia e reseta Supabase local, lê `supabase status -o env`, URL é loopback e workflow não referencia `secrets.*`, credenciais gerenciadas ou upload/download de artifacts. Nenhum valor foi copiado para o delta.
+- Pendências: logs antigos continuam preservados e não foram alterados; o conector não permite comparação sanitizada com valores do secret manager. Não há evidência de uso das chaves locais em staging/produção; nenhuma rotação externa foi executada.
+- Estado: NAO_APTO
+<!-- /AUDIT_DELTA_V1 -->

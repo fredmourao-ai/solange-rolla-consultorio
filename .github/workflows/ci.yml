@@ -220,36 +220,8 @@ jobs:
       - name: Prepare local E2E environment
         shell: bash
         run: |
-          set -euo pipefail
-          while IFS='=' read -r key value; do
-            case "$key" in
-              API_URL|DB_URL|PUBLISHABLE_KEY|SECRET_KEY)
-                value="${value#\"}"
-                value="${value%\"}"
-                printf -v "$key" '%s' "$value"
-                export "$key"
-                ;;
-            esac
-          done < <(npx supabase@2.118.0 status -o env)
-          test -n "$API_URL" && test -n "$DB_URL" && test -n "$PUBLISHABLE_KEY" && test -n "$SECRET_KEY"
-          {
-            echo "DB_URL=$DB_URL"
-            echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL"
-            echo "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$PUBLISHABLE_KEY"
-            echo "SUPABASE_SECRET_KEY=$SECRET_KEY"
-            echo "APP_URL=http://127.0.0.1:3000"
-            echo "APP_ENV=local"
-            echo "NEXT_PUBLIC_TEMP_ADMIN_LOGIN_ENABLED=true"
-            echo "WHATSAPP_LIVE_ENABLED=false"
-            echo "EMAIL_LIVE_ENABLED=false"
-            echo "NFSE_LIVE_ENABLED=false"
-            echo "CLINICAL_ENCRYPTION_ACTIVE_VERSION=1"
-            echo "CLINICAL_ENCRYPTION_KEY_V1=$(printf 'solange-ci-local-e2e-key-0000001' | base64 -w0)"
-            echo "RATE_LIMIT_HMAC_KEY=solange-ci-local-rate-limit-key-32-bytes"
-            echo "PUBLIC_ACTION_HMAC_KEY=solange-ci-local-public-action-key-32-bytes"
-            echo "DEMO_LOCAL_EMAIL=demo.owner@solange.invalid"
-            echo "DEMO_LOCAL_PASSWORD=DemoLocalOnly!2026"
-          } >> "$GITHUB_ENV"
+          set -Eeuo pipefail
+          npx supabase@2.118.0 status -o env | bash scripts/export-local-e2e-env.sh
       - name: Build application
         run: npm run build
       - name: Install Playwright browser
