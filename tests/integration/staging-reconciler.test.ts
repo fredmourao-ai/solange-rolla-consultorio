@@ -11,7 +11,7 @@ describe('staging demo reconciler', () => {
 
   it('restarts the web process without rebuilding the deployed SHA', () => {
     expect(script).toContain('WEB=solange-client-demo-web')
-    expect(script).toContain('docker restart \\\"$WEB\\\"')
+    expect(script).toContain('docker restart "$WEB"')
     expect(script).not.toContain('npm run build')
   })
 })
