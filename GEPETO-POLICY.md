@@ -9,4 +9,3 @@
 - Ao delegar uma tarefa autorizada, transmitir esta regra e o contexto minimo necessario. Gepeto nao substitui OpenAI, Claude ou Gemini nem conta como quarto provider do Buscador.
 - Esta regra nao instala nem habilita plugins automaticamente em outra conta/conversa e nao amplia permissoes, escopo, custo ou autorizacao. Preservar secrets, gates, revisoes independentes exigidas, limites de execucao e proibicao de IA paga em loops/rotinas permanentes.
 <!-- /GEPETO_EVERY_TASK_V1 -->
-
