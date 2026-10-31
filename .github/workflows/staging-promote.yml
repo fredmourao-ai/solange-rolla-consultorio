@@ -164,6 +164,17 @@ jobs:
           npm run environment:check
           node scripts/staging-lock.mjs
 
+      - name: Verify managed backup before staging database changes
+        shell: bash
+        env:
+          SUPABASE_STAGING_PROJECT_REF: ${{ secrets.SUPABASE_STAGING_PROJECT_REF }}
+          SUPABASE_PRODUCTION_PROJECT_REF: ${{ secrets.SUPABASE_PRODUCTION_PROJECT_REF }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          set -Eeuo pipefail
+          python3 scripts/verify-managed-backup-evidence.py --max-age-seconds 90000
+
       - name: Apply forward migrations
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
@@ -192,6 +203,7 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           WHATSAPP_LIVE_ENABLED: ${{ vars.WHATSAPP_LIVE_ENABLED }}
           EMAIL_LIVE_ENABLED: ${{ vars.EMAIL_LIVE_ENABLED }}
           NFSE_LIVE_ENABLED: ${{ vars.NFSE_LIVE_ENABLED }}
@@ -290,9 +302,10 @@ jobs:
           test -f "$ROOT/reconcile.sh"
           rm -f "$TRANSACTION" "$RECONCILER_PREVIOUS"
           cp -p "$ROOT/reconcile.sh" "$RECONCILER_PREVIOUS"
-          mkdir -p "$ROOT/backups"
-          chmod 700 "$ROOT/backups"
-          SOLANGE_BACKUP_DEST="$ROOT/backups" scripts/backup-homologation.sh
+          # Managed staging Supabase is the source of truth; a local Docker dump
+          # is not a backup of that project's data. This metadata-only check
+          # cannot certify restore, Storage, encryption key custody or RPO/RTO.
+          python3 scripts/verify-managed-backup-evidence.py --max-age-seconds 90000
 
           # Snapshot the existing (possibly credential-bearing) runtime env before
           # the candidate rewrites it. Failure and post-acceptance rollback must
@@ -571,12 +584,6 @@ jobs:
               check=True,
           )
           PY
-
-      - name: Refresh durable backup scheduler
-        shell: bash
-        run: |
-          set -Eeuo pipefail
-          ROOT="$GITHUB_WORKSPACE" DEMO="$STAGING_DEPLOY_ROOT" bash ops/backup/run-demo-scheduler.sh
 
       - name: Rollback staging release after failed validation
         if: failure()
