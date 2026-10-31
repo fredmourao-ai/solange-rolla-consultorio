@@ -103,15 +103,19 @@ jobs:
           else
             echo "No local Supabase stack to stop."
           fi
+          # Docker may release a stopped container port asynchronously.
+          python3 scripts/ci_wait_port_release.py --timeout 120 54322
           if ! npx supabase@2.118.0 db start >"$RUNNER_TEMP/supabase-db-start.log" 2>&1; then
             echo "::warning::Local database failed initial start; retrying once after cleanup."
             npx supabase@2.118.0 stop --no-backup || true
+            python3 scripts/ci_wait_port_release.py --timeout 120 54322
             sleep 5
             npx supabase@2.118.0 db start >"$RUNNER_TEMP/supabase-db-start-retry.log" 2>&1
           fi
           if ! npx supabase@2.118.0 db reset; then
             echo "::warning::Database reset failed; rebuilding local stack once."
             npx supabase@2.118.0 stop --no-backup || true
+            python3 scripts/ci_wait_port_release.py --timeout 120 54322
             sleep 5
             npx supabase@2.118.0 db start
             npx supabase@2.118.0 db reset

@@ -140,3 +140,14 @@ Esta entrada cobre o código-fonte no SHA `2fe4699...` quanto aos checks locais 
 - Correcao de CI por impacto em PR #301 (2026-10-31): RED comprovado no seletor anterior (README + AUDIT_STATUS e verificador isolado de metadados Supabase acionavam full/DB/E2E sem dependencia clinica). Ajustada classificacao: ledger append-only e auditado pelo gate obrigatorio, combinado somente com mudancas isoladas nao força banco/clinico; verificador puro de metadados Supabase e teste correspondente exigem core/unit, nao reset DB nem jornada clinica. Ledger como unica mudanca e caminhos desconhecidos/seguranca/migration/workflows permanecem FULL/fail-closed. Testes RED (2 falhas esperadas) e GREEN (10/10) no backend task 9184a7f5-33ca-4174-bebb-bfa5e1725543, audit 8ecb3486-1a78-4076-b045-8329707f760c; nova assercao de motivos sera revalidada no SHA final. Sem mudar politica de governance, guards clinicos, locks ou runner; gates oficiais/CI no head ainda requeridos.
 - Estado: NAO_APTO
 <!-- /AUDIT_DELTA_V1 -->
+
+<!-- AUDIT_DELTA_V1 -->
+## 2026-10-31 - Espera segura da liberacao da porta Docker no CI Solange (#191 / PR #301)
+
+- Base SHA: 1b48617f78c36ad82f7caa0c898de6716ce74cb9
+- Impacto: apos o shutdown local do Supabase, os jobs Database/E2E aguardam, com prazo limitado a 120 segundos, a liberacao da porta 54322 antes de novo start. Timeout falha fechado, sem matar processo/container desconhecido. Preservado o lock nao cancelavel `solange-local-supabase`, o seletor conservador e os contextos obrigatorios.
+- RED reproduzido: rerun Database job 124541321909 falhou duas vezes em 31/10, com mensagens do Docker `bind for 0.0.0.0:54322 failed: port is already allocated`; o job limpava os logs temporarios ao sair. O ambiente compartilha porta local com E2E. A correcao nao presume qual processo ocupava a porta naquela janela.
+- GREEN local isolado: `python3 -m unittest discover -s tests -p test_ci_wait_port_release.py -v` 5/5 PASS; testes cobrem livre, ocupada, liberada antes do timeout, erro de timeout e rejeicao de porta privilegiada. Nenhum Docker, paciente, staging, producao ou rede externa foi alterado.
+- Regressao: `tests/integration/ci-supabase-concurrency.test.ts` exige preflight em tres pontos de ambas as pipelines; uso de `python3` disponivel no runner. O CI exact-head, E2E, Database, merge protegido e deploy nao estao certificados neste registro.
+- Estado: NAO_APTO
+<!-- /AUDIT_DELTA_V1 -->

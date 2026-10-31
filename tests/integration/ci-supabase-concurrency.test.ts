@@ -26,6 +26,13 @@ describe('local Supabase CI serialization', () => {
     }
   })
 
+  it('waits for Docker port release before restarting either local stack', () => {
+    for (const workflow of [ciWorkflow, dbWorkflow]) {
+      const steps = workflow.match(/python3 scripts\/ci_wait_port_release[.]py --timeout 120 54322/g) ?? []
+      expect(steps).toHaveLength(3)
+    }
+  })
+
   it('keeps non-Supabase CI jobs outside the global local-database lock', () => {
     for (const job of ['lint', 'typecheck', 'unit', 'architecture', 'build']) {
       const block = jobBlock(ciWorkflow, job)
