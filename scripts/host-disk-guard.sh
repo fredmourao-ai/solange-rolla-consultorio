@@ -2,15 +2,13 @@
 set -Eeuo pipefail
 umask 077
 
-STATE_DIR="${HOME}/.local/state/shopvivaliz"
-CONF_DIR="${HOME}/.config/shopvivaliz"
-KEY_FILE="${CONF_DIR}/execution-provenance.key"
-mkdir -p "$STATE_DIR" "$CONF_DIR"
-chmod 700 "$CONF_DIR"
-if [[ ! -s "$KEY_FILE" ]]; then
-  openssl rand -hex 32 > "$KEY_FILE"
-  chmod 600 "$KEY_FILE"
+if [[ -z "${EXECUTION_PROVENANCE_HMAC_KEY:-}" || -z "${EXECUTION_PROVENANCE_KEY_ID:-}" ]]; then
+  echo "blocked: trusted execution provenance key and key ID are required" >&2
+  exit 78
 fi
+
+STATE_DIR="${HOME}/.local/state/shopvivaliz"
+mkdir -p "$STATE_DIR"
 
 exec 9>"${STATE_DIR}/disk-guard.lock"
 flock -n 9 || exit 0
@@ -50,11 +48,41 @@ path_busy() {
   return 1
 }
 
+write_record() {
+  local result="$1" exit_code="$2" disk_after="$3" timestamp payload digest signature signature_id
+  timestamp="$(date -u +%FT%TZ)"
+  payload="execution_id=$execution_id|origin_type=$origin_type|origin_ref=$origin_ref|actor=$actor|repo=$repo|ref=$ref|sha=$sha|host=$host|action=host_disk_guard|result=$result|exit_code=$exit_code|disk_before=${before}%|disk_after=$disk_after|cache_actions=$cache_actions|started_utc=$ts_start|timestamp_utc=$timestamp"
+  digest="$(printf '%s' "$payload" | sha256sum | awk '{print $1}')"
+  signature="$(PROVENANCE_PAYLOAD="$payload" python3 -c 'import hashlib,hmac,os; print(hmac.new(os.environ["EXECUTION_PROVENANCE_HMAC_KEY"].encode(), os.environ["PROVENANCE_PAYLOAD"].encode(), hashlib.sha256).hexdigest())')"
+  signature_id="${EXECUTION_PROVENANCE_KEY_ID}:$origin_type:$execution_id:${digest:0:16}"
+  printf '{"execution_id":"%s","origin_type":"%s","origin_ref":"%s","actor":"%s","agent_tool":"deterministic-disk-guard","repository":"%s","ref":"%s","sha":"%s","host":"%s","action":"host_disk_guard","result":"%s","exit_code":"%s","disk_before":"%s%%","disk_after":"%s","cache_actions":%s,"started_utc":"%s","timestamp_utc":"%s","payload_sha256":"%s","signature_status":"HMAC-SHA256","signing_key_id":"%s","signature_id":"%s","signature":"%s"}\n' \
+    "$execution_id" "$origin_type" "$origin_ref" "$actor" "$repo" "$ref" "$sha" "$host" "$result" "$exit_code" "$before" "$disk_after" "$cache_actions" "$ts_start" "$timestamp" "$digest" "$EXECUTION_PROVENANCE_KEY_ID" "$signature_id" "$signature" \
+    >> "$STATE_DIR/execution-provenance.jsonl"
+}
+
 before="$(percent_used)"
 cache_actions=0
+after=""
+finalize() {
+  local exit_code="$?"
+  trap - EXIT
+  if (( exit_code == 0 )); then
+    write_record "COMPLETED" "$exit_code" "$after"
+  else
+    write_record "FAILED" "$exit_code" "$after"
+  fi
+  exit "$exit_code"
+}
+trap finalize EXIT
+write_record "STARTED" "" ""
 
 if (( before >= 80 )); then
-  for cache in     "$HOME/.npm/_cacache"     "$HOME/.npm/_npx"     "$HOME/.cache/ms-playwright"     "$HOME/.cache/ms-playwright-arm64"     "$HOME/.cache/google-chrome-for-testing"; do
+  for cache in \
+    "$HOME/.npm/_cacache" \
+    "$HOME/.npm/_npx" \
+    "$HOME/.cache/ms-playwright" \
+    "$HOME/.cache/ms-playwright-arm64" \
+    "$HOME/.cache/google-chrome-for-testing"; do
     if [[ -e "$cache" ]] && ! path_busy "$cache"; then
       rm -rf -- "$cache"
       cache_actions=$((cache_actions + 1))
@@ -72,14 +100,5 @@ if (( before >= 80 )); then
   fi
 fi
 
-
 after="$(percent_used)"
-ts_end="$(date -u +%FT%TZ)"
-payload="execution_id=$execution_id|origin_type=$origin_type|origin_ref=$origin_ref|actor=$actor|repo=$repo|ref=$ref|sha=$sha|host=$host|action=host_disk_guard|disk_before=${before}%|disk_after=${after}%|cache_actions=$cache_actions|timestamp_utc=$ts_end"
-digest="$(printf '%s' "$payload" | sha256sum | awk '{print $1}')"
-signature="$(printf '%s' "$payload" | openssl dgst -sha256 -hmac "$(cat "$KEY_FILE")" | awk '{print $2}')"
-printf '{"execution_id":"%s","origin_type":"%s","origin_ref":"%s","actor":"%s","agent_tool":"deterministic-disk-guard","repository":"%s","ref":"%s","sha":"%s","host":"%s","action":"host_disk_guard","result":"COMPLETED","disk_before":"%s%%","disk_after":"%s%%","cache_actions":%s,"started_utc":"%s","timestamp_utc":"%s","payload_sha256":"%s","signature_status":"HMAC-SHA256","signing_key_id":"host-disk-guard-v1","signature":"%s"}\n' \
-  "$execution_id" "$origin_type" "$origin_ref" "$actor" "$repo" "$ref" "$sha" "$host" "$before" "$after" "$cache_actions" "$ts_start" "$ts_end" "$digest" "$signature" \
-  >> "$STATE_DIR/execution-provenance.jsonl"
-
 echo "disk_guard host=$host before=${before}% after=${after}% caches=$cache_actions execution_id=$execution_id"
