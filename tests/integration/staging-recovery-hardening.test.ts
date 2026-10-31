@@ -7,7 +7,7 @@ const storageScript = readFileSync('scripts/backup-verify-staging-storage.mjs', 
 const recoveryScript = readFileSync('scripts/ensure-staging-recovery-backup.sh', 'utf8')
 const restoreScript = readFileSync('scripts/verify-staging-logical-backup-docker.sh', 'utf8')
 const promoteWorkflow = readFileSync('.github/workflows/staging-promote.yml', 'utf8')
-const backupWorkflow = readFileSync('.github/workflows/staging-backup-audit.yml', 'utf8')
+const backupWorkflow = readFileSync('.github/workflows/staging-managed-backup-audit.yml', 'utf8')
 
 describe('staging recovery hardening', () => {
   it('rotates the protected owner credential and verifies both new and legacy logins', () => {

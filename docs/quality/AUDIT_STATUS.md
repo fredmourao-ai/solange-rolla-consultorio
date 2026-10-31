@@ -53,3 +53,12 @@ Todos os pontos acima já estavam listados como pendentes na auditoria de 2026-0
 
 ## Regra de validade
 Esta entrada cobre o código-fonte no SHA `eff6220ea0ed530bfae48395a7da894a5cdf6f6c` **apenas quanto aos checks locais listados**. Não recertifica homologação, produção, workers, backup/restore ou rollback — todos permanecem no estado `NÃO VALIDADO` herdado da auditoria de 2026-09-15. Qualquer mudança material subsequente (schema, auth, financeiro, workers, deploy, backup) invalida esta cobertura e exige nova entrada.
+<!-- AUDIT_DELTA_V1 -->
+## PR #196 — separar validacao de PR e backup operacional
+- Base SHA: `76ca70d63bcfc37c6962266667c5faac63fddb89`
+- Impacto: validacao pull_request_target usa somente runner GitHub-hosted, token contents:read e nenhum secret; backup gerenciado fica restrito a workflow_dispatch em main no environment staging.
+- Testes: contrato de seguranca RED/GREEN em YAML confirma isolamento de runner e secrets, gate exato de main, ausencia de schedule e cancel-in-progress falso; parse YAML passou.
+- Evidencias: o fluxo anterior habilitava pull_request no job que usava runner self-hosted staging e secrets Supabase; o fluxo corrigido separa os arquivos de workflow; pull_request_target usa checkout explicitamente do SHA da PR sem credenciais persistentes e sem cache compartilhado.
+- Pendencias: aprovacoes e restricoes de branch do environment staging sao configuracao remota e nao foram verificadas pelo conector; checks remotos e validacao operacional seguem pendentes.
+- Estado: NAO_APTO
+<!-- /AUDIT_DELTA_V1 -->

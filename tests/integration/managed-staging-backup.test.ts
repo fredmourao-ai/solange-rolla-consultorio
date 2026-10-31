@@ -1,5 +1,9 @@
+import { createRequire } from 'node:module'
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
+
+const require = createRequire(import.meta.url)
+const loadYaml = (require('js-yaml') as { load: (content: string) => unknown }).load
 import {
   checkManagedStagingBackup,
   selectLatestCompletedBackup,
@@ -60,6 +64,7 @@ describe('managed staging backup provenance', () => {
 const recoveryScript = readFileSync('scripts/ensure-staging-recovery-backup.sh', 'utf8')
 const restoreScript = readFileSync('scripts/verify-staging-logical-backup-docker.sh', 'utf8')
 const backupWorkflow = readFileSync('.github/workflows/staging-backup-audit.yml', 'utf8')
+const managedBackupWorkflow = readFileSync('.github/workflows/staging-managed-backup-audit.yml', 'utf8')
 
 describe('staging logical recovery fallback', () => {
   it('exports the exact linked staging project and restore-verifies it', () => {
@@ -80,18 +85,42 @@ describe('staging logical recovery fallback', () => {
     expect(restoreScript).toContain('(select count(*) from pg_policies)>0')
   })
 
-  it('runs daily on the staging host and on protected PR validation', () => {
-    expect(backupWorkflow).toContain("cron: '17 5 * * *'")
-    expect(backupWorkflow).toContain('solange-staging-host')
-    expect(backupWorkflow).toContain('scripts/ensure-staging-recovery-backup.sh')
-    expect(backupWorkflow).toContain('Verify protected staging credential is configured')
-    expect(backupWorkflow).toContain('STAGING_DEMO_PASSWORD: ${{ secrets.STAGING_DEMO_PASSWORD }}')
-    expect(backupWorkflow).toContain('Ensure staging database recovery credential')
-    expect(backupWorkflow).toContain('node scripts/ensure-staging-database-credential.mjs')
-    expect(backupWorkflow).not.toContain('SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}')
-    expect(backupWorkflow).toContain('SUPABASE_PRODUCTION_PROJECT_REF: ${{ secrets.SUPABASE_PRODUCTION_PROJECT_REF }}')
-    expect(backupWorkflow).toContain('NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}')
-    expect(backupWorkflow).toContain('SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}')
-    expect(backupWorkflow).toContain('test "${#STAGING_DEMO_PASSWORD}" -ge 32')
+  it('separates untrusted PR validation from protected main-only staging recovery', () => {
+    const prWorkflow = loadYaml(backupWorkflow) as {
+      on: { pull_request_target?: unknown; workflow_dispatch?: unknown; schedule?: unknown }
+      concurrency: { 'cancel-in-progress': boolean }
+      jobs: { 'validate-pr': { if: string; 'runs-on': string; permissions: { contents: string } } }
+    }
+    const stagingWorkflow = loadYaml(managedBackupWorkflow) as {
+      on: { pull_request_target?: unknown; workflow_dispatch?: unknown; schedule?: unknown }
+      concurrency: { 'cancel-in-progress': boolean }
+      jobs: {
+        'managed-backup': { if: string; environment: string; 'runs-on': string[]; steps: unknown[] }
+      }
+    }
+    const prJob = prWorkflow.jobs['validate-pr']
+    const stagingJob = stagingWorkflow.jobs['managed-backup']
+
+    expect(prWorkflow.on.pull_request_target).toBeDefined()
+    expect(prWorkflow.on.workflow_dispatch).toBeUndefined()
+    expect(prWorkflow.on.schedule).toBeUndefined()
+    expect(prWorkflow.concurrency['cancel-in-progress']).toBe(false)
+    expect(prJob.if).toBe("github.event_name == 'pull_request_target'")
+    expect(prJob['runs-on']).toBe('ubuntu-latest')
+    expect(prJob.permissions).toEqual({ contents: 'read' })
+    expect(JSON.stringify(prWorkflow)).not.toContain('secrets.')
+    expect(JSON.stringify(prWorkflow)).not.toContain('self-hosted')
+    expect(JSON.stringify(prWorkflow)).not.toContain('cache')
+    expect(JSON.stringify(prWorkflow)).toContain('github.event.pull_request.head.sha')
+
+    expect(stagingWorkflow.on.pull_request_target).toBeUndefined()
+    expect(stagingWorkflow.on.workflow_dispatch).toBeDefined()
+    expect(stagingWorkflow.on.schedule).toBeUndefined()
+    expect(stagingWorkflow.concurrency['cancel-in-progress']).toBe(false)
+    expect(stagingJob.if).toBe("github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'")
+    expect(stagingJob.environment).toBe('staging')
+    expect(stagingJob['runs-on']).toContain('solange-staging-host')
+    expect(JSON.stringify(stagingJob)).toContain('secrets.SUPABASE_ACCESS_TOKEN')
+    expect(JSON.stringify(stagingJob)).toContain('scripts/ensure-staging-recovery-backup.sh')
   })
 })
