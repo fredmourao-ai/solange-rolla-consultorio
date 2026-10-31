@@ -103,6 +103,17 @@ class LedgerGateTests(unittest.TestCase):
         self.assertFalse(ok)
         self.assertIn("without an updated", message)
 
+    def test_portuguese_accented_field_labels_are_supported(self):
+        self.write("src/example.ts", "export const x = 2;\\n")
+        self.append_delta()
+        ledger = self.repo / validator.LEDGER
+        content = ledger.read_text(encoding="utf-8")
+        content = content.replace("- Evidencias:", "- Evidências:")
+        content = content.replace("- Pendencias:", "- Pendências:")
+        ledger.write_text(content, encoding="utf-8")
+        ok, message = self.check(self.commit("accented evidence labels"))
+        self.assertTrue(ok, message)
+
     def test_material_with_record_is_green(self):
         self.write("src/example.ts", "export const x = 2;\n")
         self.append_delta()

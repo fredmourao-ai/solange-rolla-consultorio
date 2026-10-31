@@ -114,11 +114,24 @@ def evaluate(root: Path, base_sha: str, head_sha: str) -> tuple[bool, str]:
         return False, "the new audit delta must be a complete, final ledger record"
 
     section = added.split(BEGIN, 1)[1].split(END, 1)[0]
+    field_aliases = {
+        "Base SHA": "Base SHA",
+        "Impacto": "Impacto",
+        "Testes": "Testes",
+        "Evidencias": "Evidencias",
+        "Evidências": "Evidencias",
+        "Pendencias": "Pendencias",
+        "Pendências": "Pendencias",
+        "Estado": "Estado",
+    }
+    field_pattern = re.compile(
+        r"- (" + "|".join(re.escape(label) for label in field_aliases) + r"):\s*(.*)"
+    )
     fields = {}
     for line in section.splitlines():
-        match = re.fullmatch(r"- (Base SHA|Impacto|Testes|Evidencias|Pendencias|Estado):\s*(.*)", line)
+        match = field_pattern.fullmatch(line)
         if match:
-            fields[match.group(1)] = match.group(2).strip()
+            fields[field_aliases[match.group(1)]] = match.group(2).strip()
     required = ("Base SHA", "Impacto", "Testes", "Evidencias", "Pendencias", "Estado")
     if any(not fields.get(name) for name in required):
         return False, "AUDIT_DELTA_V1 requires all six nonempty evidence fields"
