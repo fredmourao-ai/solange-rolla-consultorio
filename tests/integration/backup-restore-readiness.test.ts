@@ -121,5 +121,16 @@ exit 99
     } finally {
       rmSync(root, { recursive: true, force: true })
     }
+
+
+  it('rejects managed runtime identity before creating local dumps', () => {
+    const result = spawnSync('python3', ['-m', 'unittest', 'tests.test_backup_source_identity'], {
+      encoding: 'utf8',
+      timeout: 30_000,
+      env: { ...process.env, PYTHONDONTWRITEBYTECODE: '1' },
+    })
+    expect(result.error, result.stderr || 'Python backup identity test failed').toBeUndefined()
+    expect(result.status, result.stderr).toBe(0)
+  }, 30_000)
   })
 })

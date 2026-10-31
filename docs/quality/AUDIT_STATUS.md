@@ -78,3 +78,15 @@ Esta entrada cobre o código-fonte no SHA `2fe4699...` quanto aos checks locais 
 - Pendencias: atualizar evidencias apos a execucao dos checks do PR e de main; nenhum destes testes certifica seguranca clinica, staging publico, workers, emissao NFS-e, restore de Storage, rollback ou paridade de release; aplicar integralmente o protocolo V5 antes de certificar producao.
 - Estado: NAO_APTO
 <!-- /AUDIT_DELTA_V1 -->
+
+
+<!-- AUDIT_DELTA_V1 -->
+## 2026-10-31 — Preservar identidade do banco no backup local (#191 / #285)
+
+- Base SHA: 16b8713f95197bad39782ff3929f965b7146c60f
+- Impacto: preserva no script de exportação o guard fail-closed do main: identidade não secreta do runtime é lida do web real e cópia Docker local é recusada se o URL aponta ao Supabase gerenciado. Mantém o cliente PG15 sem extração/transporte de senha; o backup local não pode declarar cobertura de outro runtime.
+- Testes: RED com runtime Supabase gerenciado produziu indevidamente dois dumps no branch original; GREEN com bloqueio antes de docker run; fixture local loopback ainda produz dois dumps e LAST_SUCCESS; sh -n PASS; o novo Vitest harness integra os casos Python, mas a suíte Vitest completa não foi executada neste fixture sem node_modules; diff-check PASS.
+- Evidências: comparação main/scripts/backup-homologation.sh blob bfafdba3dba09c40ce4852e35256ef516e410d30 versus head #285 85e70c7ac7e31f2df1e830a5db7492176b0d1ab9; testes usam Docker fake em tempdir, sem runtime real/dados/segredos.
+- Pendências: CI exato, revisão humana e merge protegido; #191 continua aberto até backup/restore do projeto gerenciado efetivo, objetos Storage e RPO/RTO serem provados pela rota autorizada.
+- Estado: NAO_APTO
+<!-- /AUDIT_DELTA_V1 -->

@@ -44,3 +44,8 @@ A rotina de backup usa o cliente `postgres:15-alpine` dentro do namespace de red
 Para impedir que a limpeza frequente `docker image prune -af` elimine o cliente necessário ao backup diário, o instalador mantém um contêiner **criado e nunca iniciado** chamado `solange-backup-pg15-client-image-anchor`. Ele serve apenas como referência à imagem, sem porta, rede ou processo; sua imagem é conferida antes de reutilização. Não deve ser confundido com um serviço em falha, nem removido pelos jobs genéricos de limpeza.
 
 O diagnóstico exige tanto o health check `/check-backup-health.sh` quanto uma exportação real, dois SHA-256 válidos, `pg_restore --list` e ensaio periódico de restauração em um PostgreSQL isolado. Nunca reinicializar o volume de produção/homologação como teste.
+
+
+## Identidade da fonte — controle atual
+
+Antes de qualquer dump, o script consulta somente os campos não secretos de identidade do web publicado. Se a URL efetiva aponta ao projeto Supabase gerenciado, a cópia local é recusada antes de invocar pg_dump; checksum de outro banco Docker não pode representar backup do runtime. O caminho local só é aceito quando o endpoint configurado é loopback de desenvolvimento, com referências de staging e produção válidas e distintas. A recuperação e o restore do projeto Supabase gerenciado continuam pendentes e não são certificados por este scheduler.
