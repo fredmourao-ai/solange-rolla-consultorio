@@ -67,3 +67,13 @@ Diferente da rodada anterior (2026-09-17), **pgTAP/RLS e E2E local não são mai
 
 ## Regra de validade
 Esta entrada cobre o código-fonte no SHA `2fe4699...` quanto aos checks locais listados (build/lint/typecheck/unit/arquitetura/migrations), **e também quanto a pgTAP/RLS e E2E local via UI real (Chromium)**, ambos comprovados PASS nesta rodada via Docker/Supabase local. Não recertifica homologação, produção, backup/restore gerenciado real, rollback real, workers em ambiente implantado nem paridade de runtime publicado — todos permanecem `NÃO VALIDADO`, agora restritos especificamente ao que depende de rota de rede para staging/produção publicados, que esta sessão não tem. Qualquer mudança material subsequente (schema, auth, financeiro, workers, deploy, backup, staging) invalida esta cobertura e exige nova entrada. A correção do achado de produto desta rodada (favicon ausente, causa das 60 falhas E2E iniciais) está em PR #258, ainda não mesclada no momento desta entrada — enquanto não mesclada, o SHA de `main` ainda não contém o fix, apenas o branch desta auditoria o valida localmente.
+
+<!-- AUDIT_DELTA_V1 -->
+## 2026-10-31 — proteger runner self-hosted no contrato de retomada
+- Base SHA: `7d188141cd60b0eaf7d99ddb553a2be7b1507999`
+- Impacto: o novo workflow `agent-resume-contract.yml` aceitava qualquer `pull_request` em runner self-hosted; o job agora falha fechado para forks e mantém eventos de `push`/manual.
+- Testes: RED observado no run 38148906954 em `github-actions-runner-policy.test.ts`; adicionada regressão específica para este workflow. GREEN local não executado porque o shell deste ambiente está indisponível; CI oficial do head corrigido pendente.
+- Evidencias: o check exato falhou em `agent-resume-contract.yml:validate:pull_request`; o job usava `[self-hosted, Linux, ARM64, solange-ci]` sem condição de mesmo repositório.
+- Pendencias: falta execução GREEN do CI no novo SHA e rebase/atualização segura da base; nenhum merge ou staging foi executado.
+- Estado: NAO_APTO
+<!-- /AUDIT_DELTA_V1 -->

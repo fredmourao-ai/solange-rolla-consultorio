@@ -222,6 +222,16 @@ describe('GitHub Actions runner policy', () => {
     }
   })
 
+  it('keeps the resume contract workflow behind the same-repository fork guard', () => {
+    const workflow = workflows().find(({ name }) => name === 'agent-resume-contract.yml')
+    expect(workflow).toBeDefined()
+
+    const content = workflow?.content ?? ''
+    const [job] = runnerJobs(content)
+    expect(pullRequestEvents(content)).toContain('pull_request')
+    expect(conditionRequiresSameRepoOnEvent(job?.condition ?? '', 'pull_request')).toBe(true)
+  })
+
   it('guards every pull-request runner job at job level for every PR event', () => {
     for (const workflow of workflows()) {
       const events = pullRequestEvents(workflow.content)
