@@ -125,3 +125,14 @@ Esta entrada cobre o código-fonte no SHA `2fe4699...` quanto aos checks locais 
 - Integração de branch em 30/10: histórico de main preservado integralmente; CI exact-head, leitura do Supabase gerenciado, restore isolado, Storage e E2E gráfico ainda pendentes.
 - Estado: NAO_APTO
 <!-- /AUDIT_DELTA_V1 -->
+
+<!-- AUDIT_DELTA_V1 -->
+## 2026-10-31 - Contrato Gepeto e Superpowers para agentes (PR #239)
+
+- Base SHA: 1b48617f78c36ad82f7caa0c898de6716ce74cb9
+- Impacto: Instrucao de leitura da politica Gepeto/Superpowers acrescentada a AGENTS.md e CLAUDE.md, mais novo GEPETO-POLICY.md, mantendo integralmente os contratos canonicos anteriores de seguranca, MFA, CI, staging e governanca. Nenhum arquivo de runtime, script, banco, dependencia, segredo, paciente ou deploy foi alterado. Os conflitos com main foram resolvidos sem force e preservando a versao mais recente do main.
+- Testes: RED reproduzido no Repository Governance Gate oficial do SHA 7519646911105c362fc623aed06195068ddbc410 por ausencia deste delta. GREEN local anterior de 50 testes em tres suites de governanca, self-test validate-audit-governance.py, git diff --check, paridade de 30/30 objetos Git de HEAD com o manifesto canonico; o gate de delta e os checks no SHA resultante deste registro exigem reexecucao e evidencia propria. Ambiente Windows converte finais de linha no working tree, por isso a verificacao canonica de hashes foi feita sobre objetos Git originais, nao sobre bytes convertidos no checkout.
+- Evidencias: PR fredmourao-ai/solange-rolla-consultorio#239, merge sem forcar do main no commit 7519646911105c362fc623aed06195068ddbc410, comentarios de auditoria da PR e resultado de Repository Governance Gate run 41167492359, que apontou exigencia deste registro append-only. Nenhum check cancelado/pendente foi tratado como aprovado.
+- Pendencias: Todos os required checks de GitHub Actions no SHA final, incluindo Repository Governance Gate, Absolute Audit Governance, Global Task Continuity e CI/Database quando aplicaveis; resolver fila e cancelamentos oficialmente, realizar merge protegido e validar main/staging conforme impacto. Auditoria global V5 segue NAO_APTO, sem evidencias de certificacao clinica/UI pos-deploy no mesmo release.
+- Estado: NAO_APTO
+<!-- /AUDIT_DELTA_V1 -->
