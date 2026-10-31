@@ -88,8 +88,9 @@ describe('staging logical recovery fallback', () => {
   it('separates untrusted PR validation from protected main-only staging recovery', () => {
     const prWorkflow = loadYaml(backupWorkflow) as {
       on: { pull_request_target?: unknown; workflow_dispatch?: unknown; schedule?: unknown }
+      permissions: { contents: string }
       concurrency: { 'cancel-in-progress': boolean }
-      jobs: { 'validate-pr': { if: string; 'runs-on': string; permissions: { contents: string } } }
+      jobs: { 'validate-pr': { if: string; 'runs-on': string; permissions: { contents: string }; steps: Array<{ with?: Record<string, unknown> }> } }
     }
     const stagingWorkflow = loadYaml(managedBackupWorkflow) as {
       on: { pull_request_target?: unknown; workflow_dispatch?: unknown; schedule?: unknown }
@@ -107,10 +108,16 @@ describe('staging logical recovery fallback', () => {
     expect(prWorkflow.concurrency['cancel-in-progress']).toBe(false)
     expect(prJob.if).toBe("github.event_name == 'pull_request_target'")
     expect(prJob['runs-on']).toBe('ubuntu-latest')
+    expect(prWorkflow.permissions).toEqual({ contents: 'read' })
     expect(prJob.permissions).toEqual({ contents: 'read' })
+    expect(prJob.steps[0]?.with?.['persist-credentials']).toBe(false)
+    expect(prJob.steps[0]?.with?.ref).toBe('${{ github.event.pull_request.head.sha }}')
     expect(JSON.stringify(prWorkflow)).not.toContain('secrets.')
     expect(JSON.stringify(prWorkflow)).not.toContain('self-hosted')
     expect(JSON.stringify(prWorkflow)).not.toContain('cache')
+    expect(JSON.stringify(prWorkflow)).not.toContain('upload-artifact')
+    expect(JSON.stringify(prWorkflow)).not.toContain('download-artifact')
+    expect(JSON.stringify(prWorkflow)).not.toContain('id-token: write')
     expect(JSON.stringify(prWorkflow)).toContain('github.event.pull_request.head.sha')
 
     expect(stagingWorkflow.on.pull_request_target).toBeUndefined()
