@@ -17,14 +17,47 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  impact_scope:
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: [self-hosted, Linux, ARM64, solange-ci]
+    timeout-minutes: 5
+    outputs:
+      run_core: ${{ steps.select.outputs.run_core }}
+      run_e2e: ${{ steps.select.outputs.run_e2e }}
+      run_db: ${{ steps.select.outputs.run_db }}
+    steps:
+      - name: Checkout diff for audited CI scope
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Select impacted suites (fail closed on unknown dependencies)
+        id: select
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          if [[ "$GITHUB_EVENT_NAME" == pull_request ]]; then
+            python3 scripts/ci-impact-selection.py --base "$BASE_SHA" --head "$HEAD_SHA" --github-output "$GITHUB_OUTPUT"
+          else
+            python3 scripts/ci-impact-selection.py --force-full --github-output "$GITHUB_OUTPUT"
+          fi
+      - name: Verify CI impact-selection regressions
+        run: python3 -m unittest tests.test_ci_impact_selection -v
+
   db:
+    needs: impact_scope
     concurrency:
       group: solange-local-supabase
       cancel-in-progress: false
       queue: max
     if: >-
       github.event_name != 'pull_request' ||
-      github.event.pull_request.head.repo.full_name == github.repository
+      (github.event.pull_request.head.repo.full_name == github.repository &&
+       needs.impact_scope.outputs.run_db == 'true')
     runs-on: [self-hosted, Linux, ARM64, solange-ci]
     timeout-minutes: 20
     steps:
