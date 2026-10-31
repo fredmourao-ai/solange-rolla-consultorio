@@ -60,6 +60,39 @@ class ScopedSolangeCI(unittest.TestCase):
         self.assertEqual(selector.classify(["../docs/reference/foo.md"])["mode"], "full")
         self.assertIsNone(selector.changed_paths("", "bad"))
 
+    def test_audit_ledger_does_not_force_unrelated_clinical_gates(self):
+        result = selector.classify(["README.md", "docs/quality/AUDIT_STATUS.md"])
+        self.assertEqual(result["mode"], "scoped")
+        self.assertEqual(result["groups"], ["audit_ledger", "docs"])
+        for check in ("run_core", "run_e2e", "run_db"):
+            self.assertFalse(result[check], check)
+
+    def test_managed_backup_metadata_needs_core_but_not_live_db(self):
+        result = selector.classify([
+            "scripts/verify-managed-backup-evidence.py",
+            "tests/test_managed_backup_evidence.py",
+            "docs/quality/AUDIT_STATUS.md",
+        ])
+        self.assertEqual(result["mode"], "scoped")
+        self.assertEqual(result["groups"], ["audit_ledger", "managed_backup_metadata"])
+        self.assertTrue(result["run_core"])
+        self.assertFalse(result["run_e2e"])
+        self.assertFalse(result["run_db"])
+
+    def test_unknown_backup_or_security_change_still_full(self):
+        for changed in (
+            ["scripts/backup-homologation.sh", "docs/quality/AUDIT_STATUS.md"],
+            [".github/workflows/staging-promote.yml", "scripts/verify-managed-backup-evidence.py"],
+            ["supabase/migrations/20261031.sql", "docs/quality/AUDIT_STATUS.md"],
+            ["docs/quality/GLOBAL_AUDIT_MANIFEST.json", "docs/quality/AUDIT_STATUS.md"],
+        ):
+            with self.subTest(changed=changed):
+                result = selector.classify(changed)
+                self.assertEqual(result["mode"], "full")
+                self.assertTrue(result["run_db"])
+                self.assertTrue(result["run_e2e"])
+                self.assertNotIn("audit_ledger_without_component_change", result["full_reasons"])
+
     def test_duplicate_paths_are_stable(self):
         self.assertEqual(selector.classify(["README.md", "README.md"])["changed_files"], ["README.md"])
 

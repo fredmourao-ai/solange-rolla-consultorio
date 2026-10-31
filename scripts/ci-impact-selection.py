@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Conservative CI scope selection for the Solange clinical application.
 
-Isolated documentation does not require clinical UI/DB test infrastructure.
-The independent health endpoint still needs lint/types/unit/build but does
-not mutate clinical data. Everything unknown/shared/security-sensitive is FULL.
+Isolated documentation and its mandatory append-only audit ledger do not
+require clinical UI/DB test infrastructure. The independent health endpoint
+and managed backup metadata verifier need core checks but not a clinical DB.
+Everything unknown/shared/security-sensitive is FULL.
 """
 from __future__ import annotations
 
@@ -23,6 +24,13 @@ SECURITY_PREFIXES = (
     "supabase/", "ops/", "src/platform/", "src/modules/",
 )
 ISOLATED_HEALTH = {"src/app/api/health/route.ts"}
+# The mandatory governance gate checks the audit ledger independently.
+AUDIT_LEDGER = "docs/quality/AUDIT_STATUS.md"
+# Read-only metadata verifier: no DB writes, migrations, restore or clinical UI.
+MANAGED_BACKUP_METADATA = {
+    "scripts/verify-managed-backup-evidence.py",
+    "tests/test_managed_backup_evidence.py",
+}
 
 
 def classify(paths: list[str] | None, *, force_full: bool = False) -> dict[str, object]:
@@ -35,6 +43,10 @@ def classify(paths: list[str] | None, *, force_full: bool = False) -> dict[str, 
     for file in files:
         if file.startswith("/") or "//" in file or ".." in file.split("/"):
             unsafe.append(file)
+        elif file == AUDIT_LEDGER:
+            groups.add("audit_ledger")
+        elif file in MANAGED_BACKUP_METADATA:
+            groups.add("managed_backup_metadata")
         elif file in SECURITY_DOCS or file.startswith(SECURITY_PREFIXES):
             unsafe.append(file)
         elif file in ISOLATED_HEALTH:
@@ -45,13 +57,16 @@ def classify(paths: list[str] | None, *, force_full: bool = False) -> dict[str, 
             # Other APIs, components, contracts, test suites and dependencies
             # must be analyzed conservatively, not assumed isolated.
             unsafe.append(file)
+    # A ledger-only PR has no material subsystem diff: fail closed.
+    if groups == {"audit_ledger"} and not unsafe:
+        unsafe.append("audit_ledger_without_component_change")
     full = bool(unsafe)
     return {
         "mode": "full" if full else "scoped",
         "groups": ["full"] if full else sorted(groups),
         "changed_files": files,
         "full_reasons": sorted(set(unsafe)),
-        "run_core": full or "health" in groups,
+        "run_core": full or "health" in groups or "managed_backup_metadata" in groups,
         "run_e2e": full,
         "run_db": full,
     }
