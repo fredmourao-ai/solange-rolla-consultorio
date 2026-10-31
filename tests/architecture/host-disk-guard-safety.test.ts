@@ -11,7 +11,7 @@ const workflowPath = fileURLToPath(new URL('../../.github/workflows/host-disk-gu
 const diskGuard = readFileSync(scriptPath, 'utf8')
 const workflow = readFileSync(workflowPath, 'utf8')
 
-function runWithStubs(home, diskUsage, dockerExitCode) {
+function runWithStubs(home: string, diskUsage: number, dockerExitCode: number) {
   const bin = path.join(home, 'bin')
   mkdirSync(bin)
   const dfPath = path.join(bin, 'df')
@@ -36,7 +36,7 @@ exit ${dockerExitCode}
   })
 }
 
-function verifyRecord(record, key) {
+function verifyRecord(record: Record<string, string | number>, key: string) {
   const payload = [
     `execution_id=${record.execution_id}`,
     `origin_type=${record.origin_type}`,
