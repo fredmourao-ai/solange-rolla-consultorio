@@ -22,6 +22,7 @@ describe('local Supabase CI serialization', () => {
       expect(block).toContain('concurrency:')
       expect(block).toContain('group: solange-local-supabase')
       expect(block).toContain('cancel-in-progress: false')
+      expect(block).toContain('queue: max')
     }
   })
 
@@ -37,6 +38,20 @@ describe('local Supabase CI serialization', () => {
     expect(db).toContain('npx prettier@3.9.9 --no-semi --single-quote')
     expect(db).toContain('database-types-generated.ts')
     expect(db).toContain('database-types-committed.ts')
+  })
+
+
+  it('keeps required checks fail-closed while scoping independent areas', () => {
+    const lint = jobBlock(ciWorkflow, 'lint')
+    const e2e = jobBlock(ciWorkflow, 'e2e')
+    const db = jobBlock(dbWorkflow, 'db')
+    expect(lint).toContain('SCOPE_RESULT')
+    expect(lint).toContain('test "$SCOPE_RESULT" = success')
+    expect(lint).toContain('always()')
+    expect(e2e).toContain("needs.impact_scope.outputs.run_e2e == 'true'")
+    expect(db).toContain("needs.impact_scope.outputs.run_db == 'true'")
+    expect(ciWorkflow).toContain('python3 scripts/ci-impact-selection.py')
+    expect(dbWorkflow).toContain('python3 scripts/ci-impact-selection.py')
   })
 
 })
