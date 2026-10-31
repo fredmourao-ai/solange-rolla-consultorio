@@ -125,3 +125,14 @@ Esta entrada cobre o código-fonte no SHA `2fe4699...` quanto aos checks locais 
 - Integração de branch em 30/10: histórico de main preservado integralmente; CI exact-head, leitura do Supabase gerenciado, restore isolado, Storage e E2E gráfico ainda pendentes.
 - Estado: NAO_APTO
 <!-- /AUDIT_DELTA_V1 -->
+
+<!-- AUDIT_DELTA_V1 -->
+## 2026-10-31 - Fail-closed de Main Guard na promocao de staging (issue #191 / PR #305)
+
+- Base SHA: 1b48617f78c36ad82f7caa0c898de6716ce74cb9
+- Impacto: alinha workflow_run e a lista REST de checks obrigatorios do workflow staging-promote.yml aos quatro gates CI, Database, Repository Governance Gate e Absolute Audit Main Guard; protege workflow_dispatch/manual e a promocao do SHA de main sem prova do Main Guard. Teste de contrato em tests/integration/environment-workflows.test.ts inclui ambas as listas. Este delta append-only apenas registra a alteracao de CI, nao prova backup ou runtime.
+- Testes: inspecao RED do main mostrou tres checks em staging-promote contra quatro no auto-merge; patch inspecionado atualiza as duas listas e as duas assercoes. No CI do head anterior 76eeeef310d2e3e0edfbc0f535f7dcf824451b41, 28 testes de governanca passaram, mas o job governance-gate 124444322624 falhou especificamente com AUDIT_LEDGER_DELTA=FAIL por falta deste registro. Novo CI do commit de correcao e execucao dos contratos ainda requerem GREEN; E2E e Database no head anterior estavam CANCELLED, nao validados.
+- Evidencias: PR #305, diff isolado de .github/workflows/staging-promote.yml e tests/integration/environment-workflows.test.ts; run Repository Governance Gate 41169547472/job 124444322624 em 2026-10-31 05:38 UTC (log de 28 tests OK antes de AUDIT_LEDGER_DELTA=FAIL); issue #191. Nenhum segredo, dado clinico, pagamento, migration ou configuracao ativa foi alterado.
+- Pendencias: reexecutar e verificar todos os gates pertinentes sobre o SHA definitivo e protecoes de branch antes de merge; validar main e staging com SHA exato, backup Supabase gerenciado recuperavel, restore isolado, Storage privado e UI real de 15 dias. Modo fail-closed deve permanecer; sem homologacao/APTO presumida.
+- Estado: NAO_APTO
+<!-- /AUDIT_DELTA_V1 -->
