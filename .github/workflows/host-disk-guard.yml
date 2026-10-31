@@ -1,8 +1,6 @@
 name: Host Disk Guard
 
 on:
-  schedule:
-    - cron: '37 * * * *'
   workflow_dispatch:
 
 permissions:
@@ -14,6 +12,7 @@ concurrency:
 
 jobs:
   guard:
+    environment: staging
     runs-on: [self-hosted, Linux, ARM64, solange-ci, solange-staging-host]
     timeout-minutes: 10
     steps:
@@ -23,4 +22,7 @@ jobs:
           fetch-depth: 1
           persist-credentials: false
       - name: Run signed deterministic disk guard
+        env:
+          EXECUTION_PROVENANCE_HMAC_KEY: ${{ secrets.EXECUTION_PROVENANCE_HMAC_KEY }}
+          EXECUTION_PROVENANCE_KEY_ID: ${{ vars.EXECUTION_PROVENANCE_KEY_ID }}
         run: bash scripts/host-disk-guard.sh
