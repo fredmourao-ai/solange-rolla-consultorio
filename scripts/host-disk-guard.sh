@@ -51,7 +51,6 @@ path_busy() {
 }
 
 before="$(percent_used)"
-removed_volumes=0
 cache_actions=0
 
 if (( before >= 80 )); then
@@ -73,36 +72,14 @@ if (( before >= 80 )); then
   fi
 fi
 
-if (( before >= 80 )) && command -v docker >/dev/null 2>&1; then
-  now_epoch="$(date +%s)"
-  if (( before >= 85 )); then
-    min_age=1800
-  else
-    min_age=21600
-  fi
-  while IFS= read -r volume; do
-    [[ "$volume" =~ ^[0-9a-f]{64}$ ]] || continue
-    [[ -z "$(docker ps -aq --filter volume="$volume")" ]] || continue
-    labels="$(docker volume inspect -f '{{json .Labels}}' "$volume" 2>/dev/null || :)"
-    [[ "$labels" == "null" || "$labels" == "{}" ]] || continue
-    created="$(docker volume inspect -f '{{.CreatedAt}}' "$volume" 2>/dev/null || :)"
-    [[ -n "$created" ]] || continue
-    created_epoch="$(date -d "$created" +%s 2>/dev/null || printf '%s' "$now_epoch")"
-    age=$((now_epoch - created_epoch))
-    (( age >= min_age )) || continue
-    if docker volume rm "$volume" >/dev/null 2>&1; then
-      removed_volumes=$((removed_volumes + 1))
-    fi
-  done < <(docker volume ls -qf dangling=true)
-fi
 
 after="$(percent_used)"
 ts_end="$(date -u +%FT%TZ)"
-payload="execution_id=$execution_id|origin_type=$origin_type|origin_ref=$origin_ref|actor=$actor|repo=$repo|ref=$ref|sha=$sha|host=$host|action=host_disk_guard|disk_before=${before}%|disk_after=${after}%|cache_actions=$cache_actions|removed_anonymous_volumes=$removed_volumes|timestamp_utc=$ts_end"
+payload="execution_id=$execution_id|origin_type=$origin_type|origin_ref=$origin_ref|actor=$actor|repo=$repo|ref=$ref|sha=$sha|host=$host|action=host_disk_guard|disk_before=${before}%|disk_after=${after}%|cache_actions=$cache_actions|timestamp_utc=$ts_end"
 digest="$(printf '%s' "$payload" | sha256sum | awk '{print $1}')"
 signature="$(printf '%s' "$payload" | openssl dgst -sha256 -hmac "$(cat "$KEY_FILE")" | awk '{print $2}')"
-printf '{"execution_id":"%s","origin_type":"%s","origin_ref":"%s","actor":"%s","agent_tool":"deterministic-disk-guard","repository":"%s","ref":"%s","sha":"%s","host":"%s","action":"host_disk_guard","result":"COMPLETED","disk_before":"%s%%","disk_after":"%s%%","cache_actions":%s,"removed_anonymous_volumes":%s,"started_utc":"%s","timestamp_utc":"%s","payload_sha256":"%s","signature_status":"HMAC-SHA256","signing_key_id":"host-disk-guard-v1","signature":"%s"}\n' \
-  "$execution_id" "$origin_type" "$origin_ref" "$actor" "$repo" "$ref" "$sha" "$host" "$before" "$after" "$cache_actions" "$removed_volumes" "$ts_start" "$ts_end" "$digest" "$signature" \
+printf '{"execution_id":"%s","origin_type":"%s","origin_ref":"%s","actor":"%s","agent_tool":"deterministic-disk-guard","repository":"%s","ref":"%s","sha":"%s","host":"%s","action":"host_disk_guard","result":"COMPLETED","disk_before":"%s%%","disk_after":"%s%%","cache_actions":%s,"started_utc":"%s","timestamp_utc":"%s","payload_sha256":"%s","signature_status":"HMAC-SHA256","signing_key_id":"host-disk-guard-v1","signature":"%s"}\n' \
+  "$execution_id" "$origin_type" "$origin_ref" "$actor" "$repo" "$ref" "$sha" "$host" "$before" "$after" "$cache_actions" "$ts_start" "$ts_end" "$digest" "$signature" \
   >> "$STATE_DIR/execution-provenance.jsonl"
 
-echo "disk_guard host=$host before=${before}% after=${after}% caches=$cache_actions anonymous_volumes_removed=$removed_volumes execution_id=$execution_id"
+echo "disk_guard host=$host before=${before}% after=${after}% caches=$cache_actions execution_id=$execution_id"
