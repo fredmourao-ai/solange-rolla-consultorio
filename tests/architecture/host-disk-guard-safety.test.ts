@@ -1,4 +1,6 @@
-import { readFileSync } from 'node:fs'
+import { spawnSync } from 'node:child_process'
+import { mkdtempSync, readdirSync, rmSync, readFileSync } from 'node:fs'
+import os from 'node:os'
 import { describe, expect, it } from 'vitest'
 import { fileURLToPath } from 'node:url'
 
@@ -20,6 +22,20 @@ describe('host disk guard safety', () => {
     expect(keyGate).toBeGreaterThanOrEqual(0)
     expect(keyGate).toBeLessThan(firstCleanup)
     expect(diskGuard).toContain('EXECUTION_PROVENANCE_KEY_ID')
+  })
+
+  it('does not create host state or clean up without signing material', () => {
+    const home = mkdtempSync(os.tmpdir() + '/disk-guard-no-key-')
+    try {
+      const result = spawnSync('bash', [scriptPath], {
+        encoding: 'utf8',
+        env: { HOME: home, PATH: process.env.PATH ?? '/usr/bin:/bin' },
+      })
+      expect(result.status).toBe(78)
+      expect(readdirSync(home)).toEqual([])
+    } finally {
+      rmSync(home, { recursive: true, force: true })
+    }
   })
 
   it('keeps host cleanup manual and behind the staging environment gate', () => {
