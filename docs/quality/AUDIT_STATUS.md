@@ -101,3 +101,15 @@ Esta entrada cobre o código-fonte no SHA `2fe4699...` quanto aos checks locais 
 - Pendencias: executar checks e revisão independente desta proposta, merge protegido e primeira execução real do workflow em main, validar issue checkpoint e nenhuma repetição indevida; concluir a própria Auditoria V5 por UI real publicada no mesmo SHA/release/ambiente com backup/restauração gerenciada isolada, Storage, autenticação/AAL2, persistência, reauditoria independente e certificador oficial. Este observador NÃO substitui a vinculação correta de tarefas ChatGPT legadas nem o controlador da auditoria completa.
 - Estado: NAO_APTO
 <!-- /AUDIT_DELTA_V1 -->
+
+
+<!-- AUDIT_DELTA_V1 -->
+## 2026-10-31 — Retry isolado para checks cancelados apesar de outra falha (#149 / #297)
+
+- Base SHA: abf049e70da017781ad0d14ca99028487c8e6513
+- Impacto: a classificação agregada preserva CHECKS_FAILED quando qualquer gate falha; a seleção de retry agora considera independentemente cada check obrigatório cancelado, evitando que uma falha distinta esconda um cancelamento retry-safe. Mantida reserva autenticada, uma tentativa por PR/head/check e no máximo um rerun por ciclo; sem merge, deploy, ou alteração de runtime.
+- Testes: novo caso misto RED/GREEN (um check falho e outro cancelado); suíte unittest focal 12/12 GREEN; py_compile e validação de escopo YAML/runner/permissões PASS; git diff --cached --check PASS.
+- Evidências: scripts/audit_v5_ci_watch.py, tests/test_audit_v5_ci_watch.py, workflow audit-v5-ci-recovery.yml; PR #297 no head ce3eb9ffd5ef1ad762fd83bbdf23b30997a693ea; repro RED do cenário misto e GREEN com reserva por check; merge-base do PR abf049e70da017781ad0d14ca99028487c8e6513.
+- Pendências: CI remoto do novo SHA, revisão humana e merge protegido; workflow não foi disparado manualmente, sem ação operacional externa.
+- Estado: NAO_APTO
+<!-- /AUDIT_DELTA_V1 -->

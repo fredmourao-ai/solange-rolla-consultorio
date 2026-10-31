@@ -95,6 +95,20 @@ class WatchTests(unittest.TestCase):
         reruns = [path for path, _ in api.posts if '/actions/jobs/' in path]
         self.assertEqual(reruns, [f'/repos/{watch.REPOSITORY}/actions/jobs/21/rerun'])
 
+    def test_cancelled_check_is_retried_even_when_another_check_failed(self):
+        class MixedFailureAndCancellation(FakeApi):
+            def get(self, path):
+                value = super().get(path)
+                if '/check-runs?' in path:
+                    value['check_runs'][0]['conclusion'] = 'failure'
+                    value['check_runs'][1]['conclusion'] = 'cancelled'
+                return value
+
+        api = MixedFailureAndCancellation()
+        watch.run(api)
+        reruns = [path for path, _ in api.posts if '/actions/jobs/' in path]
+        self.assertEqual(reruns, [f'/repos/{watch.REPOSITORY}/actions/jobs/21/rerun'])
+
     def test_no_retry_on_failed_but_not_cancelled(self):
         self.assertEqual(watch.classify(watch.current_checks([row('e2e', conclusion='failure')])),
                          'CHECKS_FAILED_REMEDIATION_REQUIRED')

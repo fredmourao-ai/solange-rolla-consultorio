@@ -175,11 +175,12 @@ def run(api: GitHub) -> dict:
         status = classify(checks)
         complete = f"{sum(checks.get(n) is not None and checks[n].conclusion == 'success' for n in REQUIRED)}/{len(REQUIRED)}"
         records.append((pr, sha, complete, status))
-        if status == "CHECKS_CANCELLED_RETRY_ELIGIBLE":
-            for n in REQUIRED:
-                c = checks.get(n)
-                if c and c.conclusion == "cancelled" and c.status == "completed" and c.job_id:
-                    retry_candidates.append((pr, sha, c))
+        # Retry any cancelled required job independently of the aggregate
+        # status: a different failed check must not hide a safe one-time retry.
+        for n in REQUIRED:
+            c = checks.get(n)
+            if c and c.conclusion == "cancelled" and c.status == "completed" and c.job_id:
+                retry_candidates.append((pr, sha, c))
 
     comments = issue_comments(api)
     # A previously reserved cancellation must not starve other cancelled
