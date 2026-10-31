@@ -80,7 +80,7 @@ jobs:
             artifacts/global-audit-policy/
             artifacts/main-merge-provenance/
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 1
 
       - name: Record artifact-storage fallback
         if: always() && steps.evidence-upload.outcome == 'failure'
