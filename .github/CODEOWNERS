@@ -1,15 +1,15 @@
 # Initial ownership. Replace/add visible teams as collaborators are onboarded.
-* @fredmourao-ai
+* @fredmourao-ai @shopvivaliz-human
 
 # Security and governance
-/.github/ @fredmourao-ai
-/AGENTS.md @fredmourao-ai
-/docs/ARCHITECTURE.md @fredmourao-ai
-/docs/adr/ @fredmourao-ai
+/.github/ @fredmourao-ai @shopvivaliz-human
+/AGENTS.md @fredmourao-ai @shopvivaliz-human
+/docs/ARCHITECTURE.md @fredmourao-ai @shopvivaliz-human
+/docs/adr/ @fredmourao-ai @shopvivaliz-human
 
 # High-risk domains
-/src/modules/identity/ @fredmourao-ai
-/src/modules/clinical/ @fredmourao-ai
-/src/modules/fiscal/ @fredmourao-ai
-/src/modules/signatures/ @fredmourao-ai
-/supabase/migrations/ @fredmourao-ai
+/src/modules/identity/ @fredmourao-ai @shopvivaliz-human
+/src/modules/clinical/ @fredmourao-ai @shopvivaliz-human
+/src/modules/fiscal/ @fredmourao-ai @shopvivaliz-human
+/src/modules/signatures/ @fredmourao-ai @shopvivaliz-human
+/supabase/migrations/ @fredmourao-ai @shopvivaliz-human
