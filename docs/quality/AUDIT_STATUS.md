@@ -173,11 +173,9 @@ Esta entrada cobre o código-fonte no SHA `2fe4699...` quanto aos checks locais 
 ## 2026-11-01 — PR #308 - checklist obrigatorio para todos os agentes
 
 - Base SHA: 88fb7fb3a50d853526d66389edbb036b988c4ffb
-- Base de verificacao: merge-base validado contra main; a integracao continua sujeita a revisao do HEAD exato.
-- Impacto: adiciona instrucoes de checklist por etapa em Copilot, GPT, Claude e Gemini; amplia gatilho do workflow de contrato; adiciona testes negativos em `tests/test_agent_checklist_contract_v1.py`. Nao altera dados de paciente, ambiente de producao, schema de banco ou segredos.
-- RED comprovado: Repository Governance Gate run 41254976471 / job 124696096921 falhou com `AUDIT_LEDGER_DELTA=FAIL` porque seis caminhos materiais mudaram sem um novo delta no ledger. Esta remediacao preserva integralmente o historico presente em main e acrescenta apenas a entrada atual.
-- Verificacao: diffs e logs oficiais analisados, nao ha alegacao de GREEN neste novo SHA. Executar novamente Repository Governance Gate, Global Task Continuity Contract, CI e demais checks impactados antes do merge.
-- Limites: a presenca do contrato escrito nao prova que o controlador externo ou seu CLI estejam atualizados. Preservar fail-closed sem controlador legitimo e vinculo real; nao simular checkpoints, nao flexibilizar gates e nao usar repositório como transporte de producao.
-- Pendencias: checks oficiais no HEAD novo, validacao das dependencias, merge protegido e verificacao independente.
+- Impacto: atualiza instrucoes de agentes GPT, Codex, Claude, Gemini e Copilot, gatilho do workflow de continuidade e seus testes de contrato; sem schema, paciente, preco, credencial ou deploy.
+- Testes: testes locais de contrato e sintaxe descritos na PR; gate oficial de governanca no HEAD 9507249 falhou pelo formato do ledger, portanto testes e checks completos ainda devem reexecutar no SHA corrigido; nao alegar CI verde antes do resultado remoto.
+- Evidencias: GitHub Actions Repository Governance Gate run 41309549735 job 124856863916, log oficial AUDIT_LEDGER_DELTA=FAIL com seis campos obrigatorios; PR #308 e diff de sete arquivos; nenhuma evidencia clinica ficticia.
+- Pendencias: confirmar AUDIT_LEDGER_DELTA=PASS em novo commit, Global Task Continuity Contract, Repository Governance, CI, Absolute Audit, jobs Database e demais required contexts; verificar protecoes, revisao vigente e merge normal; validar main depois.
 - Estado: NAO_APTO
 <!-- /AUDIT_DELTA_V1 -->
