@@ -170,9 +170,22 @@ Esta entrada cobre o código-fonte no SHA `2fe4699...` quanto aos checks locais 
 <!-- /AUDIT_DELTA_V1 -->
 
 <!-- AUDIT_DELTA_V1 -->
-## 2026-11-01 — PR #308 - checklist obrigatorio para todos os agentes
+## 2026-10-31 - Contrato Gepeto e Superpowers para agentes (PR #239)
 
 - Base SHA: 88fb7fb3a50d853526d66389edbb036b988c4ffb
+- Impacto: Instrucao de leitura da politica Gepeto/Superpowers acrescentada a AGENTS.md e CLAUDE.md, mais novo GEPETO-POLICY.md, mantendo integralmente os contratos canonicos anteriores de seguranca, MFA, CI, staging e governanca. Nenhum arquivo de runtime, script, banco, dependencia, segredo, paciente ou deploy foi alterado. Os conflitos com main foram resolvidos sem force e preservando a versao mais recente do main.
+- Testes: RED reproduzido no Repository Governance Gate oficial do SHA 7519646911105c362fc623aed06195068ddbc410 por ausencia deste delta. GREEN local anterior de 50 testes em tres suites de governanca, self-test validate-audit-governance.py, git diff --check, paridade de 30/30 objetos Git de HEAD com o manifesto canonico; o gate de delta e os checks no SHA resultante deste registro exigem reexecucao e evidencia propria. Ambiente Windows converte finais de linha no working tree, por isso a verificacao canonica de hashes foi feita sobre objetos Git originais, nao sobre bytes convertidos no checkout.
+- Evidencias: PR fredmourao-ai/solange-rolla-consultorio#239, merge sem forcar do main no commit 7519646911105c362fc623aed06195068ddbc410, comentarios de auditoria da PR e resultado de Repository Governance Gate run 41167492359, que apontou exigencia deste registro append-only. Nenhum check cancelado/pendente foi tratado como aprovado.
+- Complemento de remediacao de paridade: repositorio pipeline PR #62 merged em main 2ec9db798212b2149c6f6d1f59c888bccf4720ab; tres artefatos de Playwright (trace .network, resources/ e revisita) e tres hashes do manifesto sincronizados sem alterar dados clinicos ou runtime. Falhas RED exatas nos runs 41168273910 e 41168274091.
+- GREEN local nesta atualizacao: 26 testes trace, 28 testes ledger, 24 testes certifier, validator de governanca PASS, GLOBAL_AUDIT_POLICY autenticado PASS e paridade 30/30 blobs can?nicos; check oficial do novo SHA permanece pendente.
+- Pendencias: Todos os required checks de GitHub Actions no SHA final, incluindo Repository Governance Gate, Absolute Audit Governance, Global Task Continuity e CI/Database quando aplicaveis; resolver fila e cancelamentos oficialmente, realizar merge protegido e validar main/staging conforme impacto. Auditoria global V5 segue NAO_APTO, sem evidencias de certificacao clinica/UI pos-deploy no mesmo release.
+- Estado: NAO_APTO
+<!-- /AUDIT_DELTA_V1 -->
+
+<!-- AUDIT_DELTA_V1 -->
+## 2026-11-01 — PR #308 - checklist obrigatorio para todos os agentes
+
+- Base SHA: b43c429b3b1bd2e7bfd511dbf19a3d8329053e98
 - Impacto: atualiza instrucoes de agentes GPT, Codex, Claude, Gemini e Copilot, gatilho do workflow de continuidade e seus testes de contrato; sem schema, paciente, preco, credencial ou deploy.
 - Testes: testes locais de contrato e sintaxe descritos na PR; gate oficial de governanca no HEAD 9507249 falhou pelo formato do ledger, portanto testes e checks completos ainda devem reexecutar no SHA corrigido; nao alegar CI verde antes do resultado remoto.
 - Evidencias: GitHub Actions Repository Governance Gate run 41309549735 job 124856863916, log oficial AUDIT_LEDGER_DELTA=FAIL com seis campos obrigatorios; PR #308 e diff de sete arquivos; nenhuma evidencia clinica ficticia.
