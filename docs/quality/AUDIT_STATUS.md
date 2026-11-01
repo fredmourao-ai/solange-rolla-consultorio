@@ -144,3 +144,39 @@ Esta entrada cobre o código-fonte no SHA `2fe4699...` quanto aos checks locais 
 - Regressao CI E2E observada 31/10 ~19:20 UTC no run #41224914166 / job #124611853985: 66 PASS, 2 FAIL, 3 FLAKY. RED: valor financeiro fixo `R$ 900,00` ausente em dashboard que soma recebiveis dinamicos; selector global `getByText('Ana', exact)` produz strict violation em multiplos recebiveis legitimos. Correcao no mesmo PR #301 restringe o teste do card ao link `Abrir financeiro` e ao formato BRL dinamico, e escopa os nomes para a lista de recebiveis/pacientes sem aceitar lista vazia. Teste E2E e verificacao financeira exata em ambiente isolado ainda precisam GREEN oficial; falhas intermitentes de agenda cobranca/login nao foram ocultadas. Nenhum dado clinico/producao alterado.
 - Estado: NAO_APTO
 <!-- /AUDIT_DELTA_V1 -->
+
+<!-- AUDIT_DELTA_V1 -->
+## 2026-10-31 — Observabilidade segura de HTTP na evidência de backup Supabase (#191 / PR #307)
+
+- Base SHA: 1d11a023093ff416adcb94f27bf0f755d024b13c
+- Impacto: `scripts/verify-managed-backup-evidence.py` classifica `urllib.error.HTTPError` somente pelo código numérico 400–599, senão `unknown`; preserva o modo fail-closed do probe e não expõe URL, cabeçalhos, token, corpo nem referência de projeto. `tests/test_managed_backup_evidence.py` cobre as classes 401/403/404/429/500/503 e casos inválidos. Não concede nova permissão ao Supabase e não faz dump, restore ou alteração clínica.
+- Testes: RED no código original: seis subcasos HTTP registravam apenas `HTTPError`, sem status (issue #191). GREEN isolado pré-PR: 33/33 regressões Python no SHA `268faa0ad2485c1c2db89f7cdf458e906dcdca21` em VM backend (task `1210f134-8a46-4e09-bcc0-8b82f1ef8ffb`, exit 0; auditoria `9fbd1a3a-b850-42a5-b297-c1f5c28c943e`). O Repository Governance Gate [run 41184682339](https://github.com/fredmourao-ai/solange-rolla-consultorio/actions/runs/41184682339) executou 28 testes com OK, mas terminou FAIL por ausência deste registro append-only (RED oficial). Novo CI e gate em SHA final exigidos; não declarar GREEN remoto com evidência local.
+- Evidencias: diff de [PR #307](https://github.com/fredmourao-ai/solange-rolla-consultorio/pull/307), HEAD anterior `268faa0ad2485c1c2db89f7cdf458e906dcdca21`; log do job Governance `124489069233` com `AUDIT_LEDGER_DELTA=FAIL`; issue [#191](https://github.com/fredmourao-ai/solange-rolla-consultorio/issues/191). Readback adicional somente leitura no backend em 31/10 UTC: a instância `solange-backup-scheduler` continua `healthy` apesar de a cópia `/check-backup-health.sh` embutida no container NÃO conter `source_provenance` (task `6886440b-ba9b-4f1a-8bfa-05438557d7f9`) e `LAST_SUCCESS` local não ter `source_kind` ou `source_ref` (task `d787737a-d003-4763-b601-df707aa3058d`). Isso é risco preexistente separado, não corrigido por esta PR.
+- Reparo adicional SAFE no instalador legado (31/10): `ops/backup/run-demo-scheduler.sh` agora faz preflight sem side effects da identidade da web ANTES de `mkdir`, `install` ou `docker rm -f`: quando o runtime e Supabase gerenciado, identidade ausente, URL estrangeira ou formato perigoso, recusa substituicao (`scheduler_refused`) sem derrubar o container anterior nem mascarar dump Docker local como backup gerenciado. Para URL local explicitamente validada, fluxo Docker preservado. Isso nao reconfigura o container ja ativo nem certifica backup remoto.
+- Regressao focal do instalador: RED no script baseline com 4 de 5 casos falhando em fixture fake Docker (tentativa de rm ao detectar managed/unknown/foreign); GREEN com preflight em 5/5 testes sintéticos e `bash -n`, sem rede, credenciais, paciente, banco, Docker real ou deploy. Arquivo: `tests/test_backup_scheduler_preflight.py`. CI/governanca oficiais do novo SHA ainda requeridos.
+- Pendencias: concluir CI/Governance/Database no HEAD resultante, integração protegida, executar consulta oficial única do Supabase para conhecer status HTTP real e permissões, comprovar backup gerenciado correto, retenção, export e restore isolado, Storage privado e RPO/RTO. O scheduler legado saudável porém sem guarda de proveniência precisa de atualização canônica sob gates, sem editar release ativa. Homologação UI #98 exige staging no SHA exato, sessão clínica sintética com lease e jornada de 15 dias por interface real; nenhum paciente, banco ou provedor foi alterado neste delta.
+- Estado: NAO_APTO
+<!-- /AUDIT_DELTA_V1 -->
+
+<!-- AUDIT_DELTA_V1 -->
+## 2026-11-01 — Gate Main Guard obrigatorio na promocao de staging (#98/#191/PR #305)
+
+- Base SHA: ed3693f2d564fc6cb4c93a7794fc9f9c7576c3e5
+- Impacto: sincroniza os dois caminhos de selecao de checks do `staging-promote.yml` (workflow_run e verificacao REST do SHA main) com os quatro gates CI, Database, Repository Governance Gate e Absolute Audit Main Guard ja exigidos pelo auto-merge. Nao muda banco, migrations, tokens ou runtime.
+- Testes: RED de contrato no main revelou 3 gates em vez de 4, GREEN de inspecao do diff confirmou 4 em ambos os caminhos e as duas assercoes no teste `tests/integration/environment-workflows.test.ts`; regressao oficial CI exato do novo SHA ainda pendente, nao presumir SUCCESS.
+- Evidencias: rebase de arvore baseado no main vigente, preservando os dois arquivos corrigidos originais da PR #305; o restante do repositorio e herdado do main, evitando regressoes das PRs #301/#307. Check de merge protegido e E2E real continuam obrigatorios.
+- Pendencias: executar gates no SHA e integrar por protecoes; a promocao permanece fail-closed ate Supabase Management API 401 ser resolvido oficialmente e backup/restore isolado/Storage/UI 15 dias comprovados.
+- Estado: NAO_APTO
+<!-- /AUDIT_DELTA_V1 -->
+
+<!-- AUDIT_DELTA_V1 -->
+## 2026-11-01 — PR #308 - checklist obrigatorio para todos os agentes
+
+- Base de verificacao: `1d11a023093ff416adcb94f27bf0f755d024b13c` no main consultado durante esta auditoria; a integracao continua sujeita a merge-base e HEAD exatos.
+- Impacto: adiciona instrucoes de checklist por etapa em Copilot, GPT, Claude e Gemini; amplia gatilho do workflow de contrato; adiciona testes negativos em `tests/test_agent_checklist_contract_v1.py`. Nao altera dados de paciente, ambiente de producao, schema de banco ou segredos.
+- RED comprovado: Repository Governance Gate run 41254976471 / job 124696096921 falhou com `AUDIT_LEDGER_DELTA=FAIL` porque seis caminhos materiais mudaram sem um novo delta no ledger. Esta remediacao preserva integralmente o historico presente em main e acrescenta apenas a entrada atual.
+- Verificacao: diffs e logs oficiais analisados, nao ha alegacao de GREEN neste novo SHA. Executar novamente Repository Governance Gate, Global Task Continuity Contract, CI e demais checks impactados antes do merge.
+- Limites: a presenca do contrato escrito nao prova que o controlador externo ou seu CLI estejam atualizados. Preservar fail-closed sem controlador legitimo e vinculo real; nao simular checkpoints, nao flexibilizar gates e nao usar repositório como transporte de producao.
+- Pendencias: checks oficiais no HEAD novo, validacao das dependencias, merge protegido e verificacao independente.
+- Estado: NAO_APTO
+<!-- /AUDIT_DELTA_V1 -->
