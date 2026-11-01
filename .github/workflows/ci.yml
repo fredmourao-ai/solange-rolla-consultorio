@@ -17,33 +17,76 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  lint:
+  impact_scope:
     if: >-
       github.event_name != 'pull_request' ||
       github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: [self-hosted, Linux, ARM64, solange-ci]
+    timeout-minutes: 5
+    outputs:
+      run_core: ${{ steps.select.outputs.run_core }}
+      run_e2e: ${{ steps.select.outputs.run_e2e }}
+      run_db: ${{ steps.select.outputs.run_db }}
+    steps:
+      - name: Checkout diff for audited CI scope
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Select impacted suites (fail closed on unknown dependencies)
+        id: select
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          if [[ "$GITHUB_EVENT_NAME" == pull_request ]]; then
+            python3 scripts/ci-impact-selection.py --base "$BASE_SHA" --head "$HEAD_SHA" --github-output "$GITHUB_OUTPUT"
+          else
+            python3 scripts/ci-impact-selection.py --force-full --github-output "$GITHUB_OUTPUT"
+          fi
+      - name: Verify CI impact-selection regressions
+        run: python3 -m unittest tests.test_ci_impact_selection -v
+
+  lint:
+    needs: impact_scope
+    if: >-
+      github.event_name != 'pull_request' ||
+      (github.event.pull_request.head.repo.full_name == github.repository && always())
     runs-on: [self-hosted, Linux, ARM64, solange-ci]
     timeout-minutes: 25
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+      - name: Enforce successful CI impact classification (required lint context)
+        env:
+          SCOPE_RESULT: ${{ needs.impact_scope.result }}
+        shell: bash
+        run: test "$SCOPE_RESULT" = success
+
       - name: Isolate npm cache per runner
         shell: bash
         run: echo "NPM_CONFIG_CACHE=$RUNNER_TEMP/npm-cache" >> "$GITHUB_ENV"
 
       - name: Use Node 24.19.0
+        if: needs.impact_scope.outputs.run_core == 'true'
         uses: actions/setup-node@v7
         with:
           node-version: 24.19.0
           cache: npm
       - name: Install locked dependencies
+        if: needs.impact_scope.outputs.run_core == 'true'
         run: npm ci
       - name: Lint
+        if: needs.impact_scope.outputs.run_core == 'true'
         run: npm run lint
 
   typecheck:
+    needs: impact_scope
     if: >-
       github.event_name != 'pull_request' ||
-      github.event.pull_request.head.repo.full_name == github.repository
+      (github.event.pull_request.head.repo.full_name == github.repository &&
+       needs.impact_scope.outputs.run_core == 'true')
     runs-on: [self-hosted, Linux, ARM64, solange-ci]
     timeout-minutes: 10
     steps:
@@ -64,9 +107,11 @@ jobs:
         run: npm run typecheck
 
   unit:
+    needs: impact_scope
     if: >-
       github.event_name != 'pull_request' ||
-      github.event.pull_request.head.repo.full_name == github.repository
+      (github.event.pull_request.head.repo.full_name == github.repository &&
+       needs.impact_scope.outputs.run_core == 'true')
     runs-on: [self-hosted, Linux, ARM64, solange-ci]
     timeout-minutes: 25
     steps:
@@ -93,9 +138,11 @@ jobs:
         run: python3 -m unittest discover -s tests -p 'test_staging_*.py' -v
 
   architecture:
+    needs: impact_scope
     if: >-
       github.event_name != 'pull_request' ||
-      github.event.pull_request.head.repo.full_name == github.repository
+      (github.event.pull_request.head.repo.full_name == github.repository &&
+       needs.impact_scope.outputs.run_core == 'true')
     runs-on: [self-hosted, Linux, ARM64, solange-ci]
     timeout-minutes: 10
     steps:
@@ -125,9 +172,11 @@ jobs:
         run: npm run environment:check
 
   build:
+    needs: impact_scope
     if: >-
       github.event_name != 'pull_request' ||
-      github.event.pull_request.head.repo.full_name == github.repository
+      (github.event.pull_request.head.repo.full_name == github.repository &&
+       needs.impact_scope.outputs.run_core == 'true')
     runs-on: [self-hosted, Linux, ARM64, solange-ci]
     timeout-minutes: 15
     steps:
@@ -156,12 +205,15 @@ jobs:
         run: npm audit --omit=dev --audit-level=high
 
   e2e:
+    needs: impact_scope
     concurrency:
       group: solange-local-supabase
       cancel-in-progress: false
+      queue: max
     if: >-
       github.event_name != 'pull_request' ||
-      github.event.pull_request.head.repo.full_name == github.repository
+      (github.event.pull_request.head.repo.full_name == github.repository &&
+       needs.impact_scope.outputs.run_e2e == 'true')
     runs-on: [self-hosted, Linux, ARM64, solange-ci]
     timeout-minutes: 65
     steps:
@@ -202,15 +254,19 @@ jobs:
           else
             echo "No local Supabase stack to stop."
           fi
+          # Docker may release a stopped container port asynchronously.
+          python3 scripts/ci_wait_port_release.py --timeout 120 54322
           if ! npx supabase@2.118.0 start >"$RUNNER_TEMP/supabase-start.log" 2>&1; then
             echo "::warning::Local Supabase failed initial health check; retrying once after cleanup."
             npx supabase@2.118.0 stop --no-backup || true
+            python3 scripts/ci_wait_port_release.py --timeout 120 54322
             sleep 5
             npx supabase@2.118.0 start >"$RUNNER_TEMP/supabase-start-retry.log" 2>&1
           fi
           if ! npx supabase@2.118.0 db reset; then
             echo "::warning::Isolated local Supabase reset failed; rebuilding only the CI local stack once."
             npx supabase@2.118.0 stop --no-backup
+            python3 scripts/ci_wait_port_release.py --timeout 120 54322
             sleep 5
             npx supabase@2.118.0 start >"$RUNNER_TEMP/supabase-start-reset-retry.log" 2>&1
             npx supabase@2.118.0 db reset
