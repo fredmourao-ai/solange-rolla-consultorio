@@ -181,3 +181,15 @@ Esta entrada cobre o código-fonte no SHA `2fe4699...` quanto aos checks locais 
 - Pendencias: Todos os required checks de GitHub Actions no SHA final, incluindo Repository Governance Gate, Absolute Audit Governance, Global Task Continuity e CI/Database quando aplicaveis; resolver fila e cancelamentos oficialmente, realizar merge protegido e validar main/staging conforme impacto. Auditoria global V5 segue NAO_APTO, sem evidencias de certificacao clinica/UI pos-deploy no mesmo release.
 - Estado: NAO_APTO
 <!-- /AUDIT_DELTA_V1 -->
+
+
+<!-- AUDIT_DELTA_V1 -->
+## 2026-11-01 — PR #312 — Revisao humana somente para grants de seguranca
+
+- Base SHA: b43c429b3b1bd2e7bfd511dbf19a3d8329053e98
+- Impacto: previne CODEOWNERS wildcard e pedidos universais de revisao para shopvivaliz-human; preserva ownership de agentes em mudancas tecnicas e exige owner pessoal somente nos caminhos de autorizacao formal. Acrescenta regressao fail-closed ao governance gate, sem mexer em pacientes, fiscal, banco, Supabase, runners, secrets, RBAC ou protecao de branch.
+- Testes: RED oficial documentado no Repository Governance Gate job 124995259963 (run 41355739773) do HEAD ac7734947b16d36a24a7a5c397067335dceb0bfa: os sete testes de roteamento passaram e OWNER_REVIEW_ROUTING=PASS, mas AUDIT_LEDGER_DELTA=FAIL pela ausencia de delta para quatro caminhos materiais. Reparada essa causa acrescentando este registro append-only; GREEN de CI e auditoria do novo HEAD ainda requeridos, sem fingir aprovacao.
+- Evidencias: PR https://github.com/fredmourao-ai/solange-rolla-consultorio/pull/312; diff de .github/CODEOWNERS, scripts/check_pr_review_routing.py, scripts/repository-governance-validate.sh e tests/test_pr_review_routing.py; resultados oficiais e log do job vermelho acima. PR #311 de revisao universal foi fechada sem merge.
+- Pendencias: confirmar AUDIT_LEDGER_DELTA=PASS, checks oficiais no SHA final, integracao pelos gates existentes sem merge concorrente e readback do CODEOWNERS principal. Isso nao certifica homologacao Solange 15 dias, backup/restore de Supabase gerenciado (#191) nem UI clinica (#98).
+- Estado: NAO_APTO
+<!-- /AUDIT_DELTA_V1 -->
