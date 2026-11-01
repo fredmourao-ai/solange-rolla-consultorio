@@ -172,7 +172,8 @@ Esta entrada cobre o código-fonte no SHA `2fe4699...` quanto aos checks locais 
 <!-- AUDIT_DELTA_V1 -->
 ## 2026-11-01 — PR #308 - checklist obrigatorio para todos os agentes
 
-- Base de verificacao: `1d11a023093ff416adcb94f27bf0f755d024b13c` no main consultado durante esta auditoria; a integracao continua sujeita a merge-base e HEAD exatos.
+- Base SHA: 88fb7fb3a50d853526d66389edbb036b988c4ffb
+- Base de verificacao: merge-base validado contra main; a integracao continua sujeita a revisao do HEAD exato.
 - Impacto: adiciona instrucoes de checklist por etapa em Copilot, GPT, Claude e Gemini; amplia gatilho do workflow de contrato; adiciona testes negativos em `tests/test_agent_checklist_contract_v1.py`. Nao altera dados de paciente, ambiente de producao, schema de banco ou segredos.
 - RED comprovado: Repository Governance Gate run 41254976471 / job 124696096921 falhou com `AUDIT_LEDGER_DELTA=FAIL` porque seis caminhos materiais mudaram sem um novo delta no ledger. Esta remediacao preserva integralmente o historico presente em main e acrescenta apenas a entrada atual.
 - Verificacao: diffs e logs oficiais analisados, nao ha alegacao de GREEN neste novo SHA. Executar novamente Repository Governance Gate, Global Task Continuity Contract, CI e demais checks impactados antes do merge.
