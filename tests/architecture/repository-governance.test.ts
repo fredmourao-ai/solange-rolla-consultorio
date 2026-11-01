@@ -7,7 +7,6 @@ const root = fileURLToPath(new URL('../../', import.meta.url))
 const requiredRunnerLabels = ['self-hosted', 'Linux', 'ARM64', 'solange-ci']
 // Stateful staging workflows are pinned when they need access to persisted homologation state.
 const runnerLabelExceptionsByFile: Record<string, string[][]> = {
-  'pr-auto-merge.yml': [requiredRunnerLabels, ['ubuntu-latest']],
   'staging-promote.yml': [requiredRunnerLabels, [...requiredRunnerLabels, 'solange-staging-host']],
   'diag-staging-host.yml': [[...requiredRunnerLabels, 'solange-staging-host']],
   'historical-state-audit.yml': [[...requiredRunnerLabels, 'solange-staging-host'], [...requiredRunnerLabels, 'solange-staging-host']],
