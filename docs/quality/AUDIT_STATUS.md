@@ -193,3 +193,13 @@ Esta entrada cobre o código-fonte no SHA `2fe4699...` quanto aos checks locais 
 - Pendencias: confirmar AUDIT_LEDGER_DELTA=PASS, checks oficiais no SHA final, integracao pelos gates existentes sem merge concorrente e readback do CODEOWNERS principal. Isso nao certifica homologacao Solange 15 dias, backup/restore de Supabase gerenciado (#191) nem UI clinica (#98).
 - Estado: NAO_APTO
 <!-- /AUDIT_DELTA_V1 -->
+
+<!-- AUDIT_DELTA_V1 -->
+## 2026-11-01 - PR #312 - roteamento de revisao humana por risco
+
+- Causa e escopo: `shopvivaliz-human` ja tem visibilidade de PRs como colaborador. Solicitar review genericamente de toda alteracao criava aprovacao humana indevida. A PR #312 preserva os CODEOWNERS anteriores do agente e adiciona apenas `/security/owner-approvals/ @shopvivaliz-human`, junto a validador de roteamento e 7 testes de regressao no gate existente. Nao concede privilegios, altera dados clinicos/fiscais, precos, RBAC, branch protection ou deploy.
+- RED oficial: workflow Repository Governance Gate run 41355739773, job 124995259963, falhou por `AUDIT_LEDGER_DELTA=FAIL: material paths changed (4) without an updated docs/quality/AUDIT_STATUS.md`. Os mesmos logs mostram `OWNER_REVIEW_ROUTING=PASS` e sete testes de roteamento PASS, mas o gate global NAO estava verde.
+- Correcao: registro deste delta append-only para ligar escopo, causa, evidencias e pendencias ao SHA novo; nao alterar ou eliminar os gates. O commit deste delta exigira nova validacao do Repository Governance Gate no head atualizado.
+- Pendencias: repetir checks oficiais no SHA final, preservar owner-only approvals para grants formais, merge protegido por executor autorizado e, quando aplicavel, validacao pos-merge. Nao inferir aptidao clinica/staging/UI por testes apenas documentais.
+- Estado: NAO_APTO ate verificacao final aplicavel.
+<!-- /AUDIT_DELTA_V1 -->
