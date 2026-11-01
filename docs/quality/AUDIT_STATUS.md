@@ -181,3 +181,14 @@ Esta entrada cobre o código-fonte no SHA `2fe4699...` quanto aos checks locais 
 - Pendencias: Todos os required checks de GitHub Actions no SHA final, incluindo Repository Governance Gate, Absolute Audit Governance, Global Task Continuity e CI/Database quando aplicaveis; resolver fila e cancelamentos oficialmente, realizar merge protegido e validar main/staging conforme impacto. Auditoria global V5 segue NAO_APTO, sem evidencias de certificacao clinica/UI pos-deploy no mesmo release.
 - Estado: NAO_APTO
 <!-- /AUDIT_DELTA_V1 -->
+
+<!-- AUDIT_DELTA_V1 -->
+## 2026-11-01 - remover dependencia GitHub-hosted do handoff Solange (CI gratuito)
+
+- Base SHA: b43c429b3b1bd2e7bfd511dbf19a3d8329053e98
+- Impacto: corta a duplicacao dos testes completos do aplicativo no governance-gate em modo CI, mantendo bridge V5, contrato de continuidade, historico append-only e isolamento; remove o job staging-handoff hospedado e seu polling 160x15s do auto-merge; o workflow staging-promote ja observa conclusoes de CI/Database/Governance/Main Guard pelo gatilho workflow_run em runner Solange privado e verifica SHA exato e sucesso de todos os gates antes do deploy. Mantem runner exclusivo de staging, backup, aprovacao e checks; nao altera deploy, seguranca, dados ou faturamento.
+- Testes: regressao de arquitetura adicionada para impedir que gate de governanca repita app checks cobertos por CI requerido; contratos de workflows e runners atualizados para rejeitar ubuntu-latest em qualquer job Solange; suite local e governanca devem executar antes de PR/merge. Caso observacional existente workflow_run 41324154623 confirmou canonical-gate PASS, mas promote SKIPPED; isso NAO certifica deploy.
+- Evidencias: runner proprio ficou cerca de 15 minutos em governance-gate com npm ci/build duplicados durante janela de PR; otimizacao elimina essa concorrencia sem remover CI exigido; repo publico legado PR #34 demonstra falha upstream GitHub-hosted por bloqueio de billing; runner proprio solange-ci-a1 ativo no backend; o repositorio canonico ja recebe workflow_run em staging-promote sem GitHub-hosted. Codigo para CI do SHA revisado ainda requer validacao independente.
+- Pendencias: executar testes reais/CI no novo SHA e revisão de branch; integrar somente com gates e aprovacao vigente, verificar workflow_run apos merge e homologacao real/UI/backup sem custo; nao reivindicar APTO V5 por esta mudanca de orquestracao.
+- Estado: NAO_APTO
+<!-- /AUDIT_DELTA_V1 -->
