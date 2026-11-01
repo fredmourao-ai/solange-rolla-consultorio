@@ -184,22 +184,12 @@ Esta entrada cobre o código-fonte no SHA `2fe4699...` quanto aos checks locais 
 
 
 <!-- AUDIT_DELTA_V1 -->
-## 2026-11-01 — PR #312 — Revisao humana somente para grants de seguranca
+## 2026-11-01 — PR #312 — Prevencao de revisao humana universal, com CODEOWNERS restrito
 
 - Base SHA: b43c429b3b1bd2e7bfd511dbf19a3d8329053e98
-- Impacto: previne CODEOWNERS wildcard e pedidos universais de revisao para shopvivaliz-human; preserva ownership de agentes em mudancas tecnicas e exige owner pessoal somente nos caminhos de autorizacao formal. Acrescenta regressao fail-closed ao governance gate, sem mexer em pacientes, fiscal, banco, Supabase, runners, secrets, RBAC ou protecao de branch.
-- Testes: RED oficial documentado no Repository Governance Gate job 124995259963 (run 41355739773) do HEAD ac7734947b16d36a24a7a5c397067335dceb0bfa: os sete testes de roteamento passaram e OWNER_REVIEW_ROUTING=PASS, mas AUDIT_LEDGER_DELTA=FAIL pela ausencia de delta para quatro caminhos materiais. Reparada essa causa acrescentando este registro append-only; GREEN de CI e auditoria do novo HEAD ainda requeridos, sem fingir aprovacao.
-- Evidencias: PR https://github.com/fredmourao-ai/solange-rolla-consultorio/pull/312; diff de .github/CODEOWNERS, scripts/check_pr_review_routing.py, scripts/repository-governance-validate.sh e tests/test_pr_review_routing.py; resultados oficiais e log do job vermelho acima. PR #311 de revisao universal foi fechada sem merge.
-- Pendencias: confirmar AUDIT_LEDGER_DELTA=PASS, checks oficiais no SHA final, integracao pelos gates existentes sem merge concorrente e readback do CODEOWNERS principal. Isso nao certifica homologacao Solange 15 dias, backup/restore de Supabase gerenciado (#191) nem UI clinica (#98).
+- Impacto: shopvivaliz-human deve visualizar todas as PRs como colaborador mas nao revisar tecnicas comuns. Preserva os CODEOWNERS anteriores de fredmourao-ai, acrescenta somente /security/owner-approvals/ @shopvivaliz-human e impede owner humano wildcard/diretorios amplos ou review request automatico. Mudanca limitada a .github/CODEOWNERS, scripts/check_pr_review_routing.py, scripts/repository-governance-validate.sh, tests/test_pr_review_routing.py e este ledger; nenhuma alteracao clinica, fiscal, Supabase, RBAC, branch protection, runners, segredos ou producao.
+- Testes: RED oficial no Repository Governance Gate run 41355739773, job 124995259963, do HEAD ac7734947b16d36a24a7a5c397067335dceb0bfa: OWNER_REVIEW_ROUTING=PASS e os 7 testes de roteamento PASS, mas AUDIT_LEDGER_DELTA=FAIL pela falta de registro para 4 caminhos materiais. Dois agentes anexaram simultaneamente dois registros na branch do PR; o validator exige EXATAMENTE um AUDIT_DELTA_V1 adicional. Reconciliados agora em um unico bloco append-only relativo ao main, sem perder as evidencias e sem alterar o gate. CI do novo HEAD ainda deve certificar GREEN.
+- Evidencias: PR https://github.com/fredmourao-ai/solange-rolla-consultorio/pull/312; log oficial https://github.com/fredmourao-ai/solange-rolla-consultorio/actions/runs/41355739773; CODEOWNERS geral da conta humana na PR #311 foi descartado/fechado sem merge. O registro anterior de auditoria do main foi preservado integralmente e os dois relatos concorrentes da mesma PR foram semanticamente consolidados.
+- Pendencias: executar Repository Governance Gate e checks oficiais no SHA exato, integrar apenas quando branch protection permitir (sem interferir no runner single-writer), e comprovar CODEOWNERS no main. Preservar grants humanos somente nas PRs de seguranca formal e decisao comercial protegida. Esta correcao documental/de governanca nao certifica Solange #98 (15 dias de UI grafica), #191 (backup/restore Supabase gerenciado HTTP 401), nem releases ou dados clinicos.
 - Estado: NAO_APTO
-<!-- /AUDIT_DELTA_V1 -->
-
-<!-- AUDIT_DELTA_V1 -->
-## 2026-11-01 - PR #312 - roteamento de revisao humana por risco
-
-- Causa e escopo: `shopvivaliz-human` ja tem visibilidade de PRs como colaborador. Solicitar review genericamente de toda alteracao criava aprovacao humana indevida. A PR #312 preserva os CODEOWNERS anteriores do agente e adiciona apenas `/security/owner-approvals/ @shopvivaliz-human`, junto a validador de roteamento e 7 testes de regressao no gate existente. Nao concede privilegios, altera dados clinicos/fiscais, precos, RBAC, branch protection ou deploy.
-- RED oficial: workflow Repository Governance Gate run 41355739773, job 124995259963, falhou por `AUDIT_LEDGER_DELTA=FAIL: material paths changed (4) without an updated docs/quality/AUDIT_STATUS.md`. Os mesmos logs mostram `OWNER_REVIEW_ROUTING=PASS` e sete testes de roteamento PASS, mas o gate global NAO estava verde.
-- Correcao: registro deste delta append-only para ligar escopo, causa, evidencias e pendencias ao SHA novo; nao alterar ou eliminar os gates. O commit deste delta exigira nova validacao do Repository Governance Gate no head atualizado.
-- Pendencias: repetir checks oficiais no SHA final, preservar owner-only approvals para grants formais, merge protegido por executor autorizado e, quando aplicavel, validacao pos-merge. Nao inferir aptidao clinica/staging/UI por testes apenas documentais.
-- Estado: NAO_APTO ate verificacao final aplicavel.
 <!-- /AUDIT_DELTA_V1 -->
