@@ -157,3 +157,14 @@ Esta entrada cobre o código-fonte no SHA `2fe4699...` quanto aos checks locais 
 - Pendencias: concluir CI/Governance/Database no HEAD resultante, integração protegida, executar consulta oficial única do Supabase para conhecer status HTTP real e permissões, comprovar backup gerenciado correto, retenção, export e restore isolado, Storage privado e RPO/RTO. O scheduler legado saudável porém sem guarda de proveniência precisa de atualização canônica sob gates, sem editar release ativa. Homologação UI #98 exige staging no SHA exato, sessão clínica sintética com lease e jornada de 15 dias por interface real; nenhum paciente, banco ou provedor foi alterado neste delta.
 - Estado: NAO_APTO
 <!-- /AUDIT_DELTA_V1 -->
+
+<!-- AUDIT_DELTA_V1 -->
+## 2026-11-01 — Gate Main Guard obrigatorio na promocao de staging (#98/#191/PR #305)
+
+- Base SHA: ed3693f2d564fc6cb4c93a7794fc9f9c7576c3e5
+- Impacto: sincroniza os dois caminhos de selecao de checks do `staging-promote.yml` (workflow_run e verificacao REST do SHA main) com os quatro gates CI, Database, Repository Governance Gate e Absolute Audit Main Guard ja exigidos pelo auto-merge. Nao muda banco, migrations, tokens ou runtime.
+- Testes: RED de contrato no main revelou 3 gates em vez de 4, GREEN de inspecao do diff confirmou 4 em ambos os caminhos e as duas assercoes no teste `tests/integration/environment-workflows.test.ts`; regressao oficial CI exato do novo SHA ainda pendente, nao presumir SUCCESS.
+- Evidencias: rebase de arvore baseado no main vigente, preservando os dois arquivos corrigidos originais da PR #305; o restante do repositorio e herdado do main, evitando regressoes das PRs #301/#307. Check de merge protegido e E2E real continuam obrigatorios.
+- Pendencias: executar gates no SHA e integrar por protecoes; a promocao permanece fail-closed ate Supabase Management API 401 ser resolvido oficialmente e backup/restore isolado/Storage/UI 15 dias comprovados.
+- Estado: NAO_APTO
+<!-- /AUDIT_DELTA_V1 -->
