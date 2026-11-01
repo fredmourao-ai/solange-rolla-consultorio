@@ -133,6 +133,35 @@ class ManagedEvidenceTests(unittest.TestCase):
         with self.assertRaises(checker.AuditFailure) as err:
             checker.fetch_backups(REF,TOKEN,opener=Rejected())
         self.assertNotIn(TOKEN,str(err.exception))
+    def test_http_status_diagnostic_is_numeric_and_never_leaks_provider_content(self):
+        from urllib.error import HTTPError
+
+        for status in (401, 403, 404, 429, 500, 503):
+            with self.subTest(status=status):
+                def rejected(request, timeout=20):
+                    raise HTTPError(
+                        "https://secret.example/TOKEN/" + TOKEN,
+                        status, "SECRET_RESPONSE_" + TOKEN,
+                        {"X-Secret": TOKEN}, None,
+                    )
+                with self.assertRaises(checker.AuditFailure) as error:
+                    checker.fetch_backups(REF, TOKEN, opener=rejected)
+                self.assertEqual(str(error.exception),
+                                 f"provider_query_failed_HTTP_{status}")
+                self.assertNotIn(TOKEN, str(error.exception))
+                self.assertNotIn(REF, str(error.exception))
+
+    def test_malformed_http_status_fails_closed_without_unsafe_text(self):
+        from urllib.error import HTTPError
+
+        def rejected(request, timeout=20):
+            raise HTTPError("https://secret.example/" + TOKEN,
+                            999, "SECRET_" + TOKEN, {}, None)
+        with self.assertRaises(checker.AuditFailure) as error:
+            checker.fetch_backups(REF, TOKEN, opener=rejected)
+        self.assertEqual(str(error.exception),
+                         "provider_query_failed_HTTP_unknown")
+
     def test_api_missing_auth_fails_closed(self):
         with self.assertRaises(checker.AuditFailure):
             checker.fetch_backups(REF,"")
