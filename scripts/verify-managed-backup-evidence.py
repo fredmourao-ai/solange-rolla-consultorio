@@ -14,6 +14,7 @@ import math
 import os
 import re
 import sys
+from urllib.error import HTTPError
 from urllib.parse import urlsplit
 from urllib.request import Request, urlopen
 
@@ -59,9 +60,14 @@ def fetch_backups(staging_ref: str, access_token: str, *, opener=urlopen) -> dic
     try:
         with opener(request, timeout=20) as response:
             payload = response.read(MAX_RESPONSE + 1)
+    except HTTPError as exc:
+        # Only expose a numeric HTTP status: exception text, URL, headers,
+        # and response body can contain credentials or project identifiers.
+        code = exc.code
+        status = str(code) if type(code) is int and 400 <= code <= 599 else "unknown"
+        raise AuditFailure("provider_query_failed_HTTP_" + status) from None
     except Exception as exc:
-        # HTTP exceptions may include URLs, proxy credentials or secret headers.
-        # Return only the exception class and NEVER its unsanitized text.
+        # Preserve sanitization for transport errors with potentially sensitive text.
         raise AuditFailure("provider_query_failed_" + type(exc).__name__) from None
     if len(payload) > MAX_RESPONSE:
         raise AuditFailure("provider_response_oversized")
